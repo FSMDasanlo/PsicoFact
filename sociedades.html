@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sociedades - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Gestión de Sociedades</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openModal()">+ Nueva Sociedad</button>
+                    <a href="configuracion.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar sociedad..." oninput="handleSearch()">
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
+                        <th>Teléfono</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="societies-body"></tbody>
+            </table>
+
+            <div class="pagination">
+                <button class="btn-turquesa" id="prev-page" onclick="changePage(-1)">Anterior</button>
+                <span id="page-info">Página 1 de 1</span>
+                <button class="btn-turquesa" id="next-page" onclick="changePage(1)">Siguiente</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Sociedad -->
+    <div id="modalSociedad" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nueva Sociedad</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="form-sociedad" class="form-grid">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" name="telefono">
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Sociedad</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+
+        let societies = [
+            { id: 1, nombre: 'Asisa', telefono: '900101010' },
+            { id: 2, nombre: 'Adeslas', telefono: '900202020' },
+            { id: 3, nombre: 'Sanitas', telefono: '900303030' }
+        ];
+
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let sortField = 'nombre';
+        let sortDirection = 'asc';
+        let editingId = null;
+
+        function renderTable() {
+            const tbody = document.getElementById('societies-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            let filtered = societies.filter(s => s.nombre.toLowerCase().includes(searchTerm));
+            filtered.sort((a, b) => {
+                let valA = a[sortField].toLowerCase(), valB = b[sortField].toLowerCase();
+                return sortDirection === 'asc' ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
+            });
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+            const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+            tbody.innerHTML = '';
+            pageItems.forEach(s => {
+                tbody.innerHTML += `<tr><td>${s.nombre}</td><td>${s.telefono}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editSociety(${s.id})">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteSociety(${s.id})">🗑️</a>
+                    </td></tr>`;
+            });
+            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+        }
+
+        function handleSearch() { currentPage = 1; renderTable(); }
+        function handleSort(field) { sortDirection = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc'; sortField = field; renderTable(); }
+        function changePage(delta) { currentPage += delta; renderTable(); }
+        function openModal(title = "Nueva Sociedad") {
+            const modal = document.getElementById('modalSociedad');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nueva Sociedad") { document.getElementById('form-sociedad').reset(); editingId = null; }
+            modal.style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('modalSociedad').style.display = 'none'; }
+        function editSociety(id) {
+            const s = societies.find(s => s.id === id);
+            editingId = id;
+            document.getElementById('nombre').value = s.nombre;
+            document.getElementById('telefono').value = s.telefono;
+            openModal("Editar Sociedad");
+        }
+        function deleteSociety(id) { if (confirm("¿Eliminar esta sociedad?")) { societies = societies.filter(s => s.id !== id); renderTable(); } }
+        document.getElementById('form-sociedad').onsubmit = (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            editingId ? societies[societies.findIndex(s => s.id === editingId)] = {id: editingId, ...data} : societies.push({id: Date.now(), ...data});
+            renderTable(); closeModal();
+        };
+        window.onclick = (e) => { if (e.target == document.getElementById('modalSociedad')) closeModal(); }
+        renderTable();
+    </script>
+</body>
+</html>

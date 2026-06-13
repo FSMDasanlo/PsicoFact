@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacientes - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Gestión de Pacientes</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openModal()">+ Nuevo Paciente</button>
+                    <a href="configuracion.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar por nombre o apellidos..." oninput="handleSearch()">
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
+                        <th class="sortable" onclick="handleSort('apellidos')">Apellidos</th>
+                        <th>Teléfono</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="patients-body"></tbody>
+            </table>
+
+            <div class="pagination">
+                <button class="btn-turquesa" id="prev-page" onclick="changePage(-1)">Anterior</button>
+                <span id="page-info">Página 1 de 1</span>
+                <button class="btn-turquesa" id="next-page" onclick="changePage(1)">Siguiente</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Nuevo Paciente (Reutilizado) -->
+    <div id="modalPaciente" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nuevo Paciente</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="form-paciente" class="form-grid">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="apellidos">Apellidos</label>
+                    <input type="text" id="apellidos" name="apellidos" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" name="telefono" required>
+                </div>
+                <div class="form-group">
+                    <label for="sociedad">Sociedad</label>
+                    <select id="sociedad" name="sociedad" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="clinica">Clínica</label>
+                    <select id="clinica" name="clinica" required>
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label for="observaciones">Observaciones</label>
+                    <textarea id="observaciones" name="observaciones" rows="3"></textarea>
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Paciente</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+
+        // Listas maestras para los desplegables
+        const clinicasMaster = ['Clínica Central', 'Centro Norte'];
+        const sociedadesMaster = ['Asisa', 'Adeslas', 'Sanitas'];
+
+        // Datos de ejemplo para visualizar paginación
+        let patients = [
+            { id: 1, nombre: 'Juan', apellidos: 'Pérez Martínez', telefono: '600111222', sociedad: 'Asisa', clinica: 'Clínica Central' },
+            { id: 2, nombre: 'María', apellidos: 'García López', telefono: '600333444', sociedad: 'Sanitas', clinica: 'Centro Norte' }
+        ];
+
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let sortField = 'nombre';
+        let sortDirection = 'asc';
+        let editingId = null;
+
+        // Poblar desplegables al iniciar
+        function populateDropdowns() {
+            const selectClinica = document.getElementById('clinica');
+            const selectSociedad = document.getElementById('sociedad');
+            
+            clinicasMaster.forEach(c => selectClinica.innerHTML += `<option value="${c}">${c}</option>`);
+            sociedadesMaster.forEach(s => selectSociedad.innerHTML += `<option value="${s}">${s}</option>`);
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('patients-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            
+            // 1. Filtrar
+            let filtered = patients.filter(p => 
+                p.nombre.toLowerCase().includes(searchTerm) || 
+                p.apellidos.toLowerCase().includes(searchTerm)
+            );
+
+            // 2. Ordenar
+            filtered.sort((a, b) => {
+                let valA = a[sortField].toLowerCase();
+                let valB = b[sortField].toLowerCase();
+                if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // 3. Paginación
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            
+            const start = (currentPage - 1) * itemsPerPage;
+            const pageItems = filtered.slice(start, start + itemsPerPage);
+
+            tbody.innerHTML = '';
+            pageItems.forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${p.nombre}</td>
+                    <td>${p.apellidos}</td>
+                    <td>${p.telefono || '-'}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editPatient(${p.id})" title="Editar">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deletePatient(${p.id})" title="Eliminar">🗑️</a>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+
+            // Actualizar controles UI
+            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+        }
+
+        function handleSearch() {
+            currentPage = 1;
+            renderTable();
+        }
+
+        function handleSort(field) {
+            if (sortField === field) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDirection = 'asc';
+            }
+            renderTable();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            renderTable();
+        }
+
+        function openModal(title = "Nuevo Paciente") {
+            const modal = document.getElementById('modalPaciente');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nuevo Paciente") {
+                document.getElementById('form-paciente').reset();
+                editingId = null;
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalPaciente').style.display = 'none';
+        }
+
+        function editPatient(id) {
+            const p = patients.find(p => p.id === id);
+            editingId = id;
+            document.getElementById('nombre').value = p.nombre;
+            document.getElementById('apellidos').value = p.apellidos;
+            document.getElementById('telefono').value = p.telefono || '';
+            document.getElementById('sociedad').value = p.sociedad || '';
+            document.getElementById('clinica').value = p.clinica || '';
+            openModal("Editar Paciente");
+        }
+
+        function deletePatient(id) {
+            const p = patients.find(p => p.id === id);
+            if (confirm(`¿Está seguro de que desea eliminar al paciente ${p.nombre}?`)) {
+                patients = patients.filter(item => item.id !== id);
+                renderTable();
+            }
+        }
+
+        document.getElementById('form-paciente').onsubmit = function(e) {
+            e.preventDefault();
+            const data = {
+                nombre: document.getElementById('nombre').value,
+                apellidos: document.getElementById('apellidos').value,
+                telefono: document.getElementById('telefono').value,
+                sociedad: document.getElementById('sociedad').value,
+                clinica: document.getElementById('clinica').value
+            };
+
+            if (editingId) {
+                const index = patients.findIndex(p => p.id === editingId);
+                patients[index] = { ...patients[index], ...data };
+            } else {
+                patients.push({ id: Date.now(), ...data });
+            }
+            renderTable();
+            closeModal();
+        };
+
+        window.onclick = (e) => { if (e.target == document.getElementById('modalPaciente')) closeModal(); }
+        
+        // Renderizado inicial
+        populateDropdowns();
+        renderTable();
+    </script>
+</body>
+</html>

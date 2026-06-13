@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PsicoFact - Gestión Facultativa</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts para una tipografía limpia -->
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <nav class="main-menu">
+            <a href="agenda.html" class="menu-card">
+                <div class="icon">📅</div>
+                <h2>Agenda</h2>
+                <p>Citas y horarios</p>
+            </a>
+            <a href="consultas.html" class="menu-card">
+                <div class="icon">👤</div>
+                <h2>Consultas</h2>
+                <p>Gestión de expedientes</p>
+            </a>
+            <a href="configuracion.html" class="menu-card">
+                <div class="icon">⚙️</div>
+                <h2>Configuración</h2>
+                <p>Ajustes de la aplicación</p>
+            </a>
+        </nav>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script>
+        // Función para mostrar la fecha actual en español
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+    </script>
+
+</body>
+</html>

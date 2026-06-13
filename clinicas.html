@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clínicas - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Gestión de Clínicas</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openModal()">+ Nueva Clínica</button>
+                    <a href="configuracion.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar por nombre o contacto..." oninput="handleSearch()">
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
+                        <th class="sortable" onclick="handleSort('contacto')">Responsable</th>
+                        <th>Teléfono</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="clinics-body"></tbody>
+            </table>
+
+            <div class="pagination">
+                <button class="btn-turquesa" id="prev-page" onclick="changePage(-1)">Anterior</button>
+                <span id="page-info">Página 1 de 1</span>
+                <button class="btn-turquesa" id="next-page" onclick="changePage(1)">Siguiente</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Clínica -->
+    <div id="modalClinica" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nueva Clínica</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="form-clinica" class="form-grid">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="contacto">Responsable / Contacto</label>
+                    <input type="text" id="contacto" name="contacto">
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" name="telefono">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group full-width">
+                    <label for="direccion">Dirección</label>
+                    <input type="text" id="direccion" name="direccion">
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Clínica</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+
+        let clinics = [
+            { id: 1, nombre: 'Clínica Central', contacto: 'Dr. Aranda', direccion: 'Calle Principal 10', telefono: '912345678', email: 'central@psicofact.com' },
+            { id: 2, nombre: 'Centro Norte', contacto: 'Dra. Méndez', direccion: 'Av. Norte 55', telefono: '913456789', email: 'norte@psicofact.com' }
+        ];
+
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let sortField = 'nombre';
+        let sortDirection = 'asc';
+        let editingId = null;
+
+        function renderTable() {
+            const tbody = document.getElementById('clinics-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            let filtered = clinics.filter(c => c.nombre.toLowerCase().includes(searchTerm) || c.contacto.toLowerCase().includes(searchTerm));
+            filtered.sort((a, b) => {
+                let valA = a[sortField].toLowerCase(), valB = b[sortField].toLowerCase();
+                return sortDirection === 'asc' ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
+            });
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+            tbody.innerHTML = '';
+            pageItems.forEach(c => {
+                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editClinic(${c.id})">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic(${c.id})">🗑️</a>
+                    </td></tr>`;
+            });
+            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+        }
+
+        function handleSearch() { currentPage = 1; renderTable(); }
+        function handleSort(field) { sortDirection = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc'; sortField = field; renderTable(); }
+        function changePage(delta) { currentPage += delta; renderTable(); }
+        function openModal(title = "Nueva Clínica") {
+            const modal = document.getElementById('modalClinica');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nueva Clínica") { document.getElementById('form-clinica').reset(); editingId = null; }
+            modal.style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('modalClinica').style.display = 'none'; }
+        function editClinic(id) {
+            const c = clinics.find(c => c.id === id);
+            editingId = id;
+            ['nombre', 'contacto', 'direccion', 'telefono', 'email'].forEach(f => document.getElementById(f).value = c[f]);
+            openModal("Editar Clínica");
+        }
+        function deleteClinic(id) { if (confirm("¿Eliminar esta clínica?")) { clinics = clinics.filter(c => c.id !== id); renderTable(); } }
+        document.getElementById('form-clinica').onsubmit = (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            editingId ? clinics[clinics.findIndex(c => c.id === editingId)] = {id: editingId, ...data} : clinics.push({id: Date.now(), ...data});
+            renderTable(); closeModal();
+        };
+        window.onclick = (e) => { if (e.target == document.getElementById('modalClinica')) closeModal(); }
+        renderTable();
+    </script>
+</body>
+</html>

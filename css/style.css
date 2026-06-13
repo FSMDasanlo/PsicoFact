@@ -1,0 +1,334 @@
+:root {
+    --azul-oscuro: #2c3e50;
+    --azul-primario: #3498db;
+    --turquesa: #1abc9c;
+    --turquesa-claro: #48c9b0;
+    --fondo: #f4f7f6;
+    --blanco: #ffffff;
+    --texto: #333333;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--fondo);
+    color: var(--texto);
+    line-height: 1.6;
+}
+
+/* Header / Navbar */
+.navbar {
+    background: linear-gradient(to right, var(--azul-oscuro), var(--azul-primario)); /* Degradado de azul oscuro a azul primario */
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.brand-name {
+    color: var(--blanco);
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+}
+
+.brand-name strong {
+    font-weight: 800;
+}
+
+.header-date {
+    color: var(--blanco);
+    font-style: italic;
+    font-size: 0.85rem;
+    text-transform: capitalize;
+}
+
+/* Contenedor Principal */
+.container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    text-align: center;
+}
+
+.welcome-section {
+    margin-bottom: 3rem;
+}
+
+.welcome-section h1 {
+    color: var(--azul-oscuro);
+    font-size: 2.2rem;
+}
+
+/* Menú de Tarjetas */
+.main-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.menu-card {
+    background-color: var(--blanco);
+    text-decoration: none;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-bottom: 5px solid var(--turquesa);
+}
+
+.menu-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    border-bottom: 5px solid var(--azul-primario);
+}
+
+.menu-card .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.menu-card h2 {
+    color: var(--azul-oscuro);
+    margin-bottom: 0.5rem;
+}
+
+.menu-card p {
+    color: #7f8c8d;
+}
+
+/* Footer */
+footer {
+    margin-top: 4rem;
+    padding: 2rem;
+    font-size: 0.9rem;
+    color: #95a5a6;
+    text-align: center;
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+    .main-menu {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Estilos para la sección de Agenda */
+.agenda-container {
+    background-color: var(--blanco);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    text-align: left;
+}
+
+.agenda-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--azul-primario);
+    padding-bottom: 1rem;
+}
+
+.agenda-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.agenda-table th {
+    background-color: var(--azul-primario);
+    color: var(--blanco);
+    padding: 12px;
+    text-align: left;
+}
+
+.agenda-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.agenda-table tr:hover {
+    background-color: #f1faff;
+}
+
+.status-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.confirmed { background-color: #d4edda; color: #155724; }
+.pending { background-color: #fff3cd; color: #856404; }
+.completed { background-color: #d1ecf1; color: #0c5460; }
+
+.agenda-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-turquesa {
+    background-color: var(--turquesa);
+    color: var(--blanco);
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.btn-turquesa:hover {
+    background-color: var(--turquesa-claro);
+}
+
+.back-link {
+    color: var(--azul-primario);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* Estilos del Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(44, 62, 80, 0.7);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--blanco);
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+}
+
+.close-modal {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--azul-oscuro);
+}
+
+/* Estilos del Formulario */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    text-align: left;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--azul-oscuro);
+}
+
+.form-group input, .form-group textarea, .form-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--azul-primario);
+}
+
+.full-width {
+    grid-column: span 2;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.action-icon {
+    text-decoration: none;
+    font-size: 1.2rem;
+    margin: 0 8px;
+    transition: opacity 0.2s;
+}
+
+.action-icon:hover {
+    opacity: 0.7;
+}
+
+/* Búsqueda y Paginación */
+.search-container {
+    margin-bottom: 1.5rem;
+    position: relative;
+    max-width: 400px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 10px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #999;
+}
+
+.pagination {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+}
+
+.pagination button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.agenda-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.agenda-table th.sortable:after {
+    content: ' ↕';
+    font-size: 0.8rem;
+    opacity: 0.5;
+}

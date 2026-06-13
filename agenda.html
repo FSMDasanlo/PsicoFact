@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Citas de Hoy</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openAppointmentModal()">Nueva Cita</button>
+                    <a href="index.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Paciente (Sociedad)</th>
+                        <th>Clínica / Observaciones</th>
+                        <th>Estado</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="agenda-body"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal para Nueva Cita -->
+    <div id="modalCita" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nueva Cita</h2>
+                <span class="close-modal" onclick="closeAppointmentModal()">&times;</span>
+            </div>
+            <form id="form-cita" class="form-grid">
+                <div class="form-group">
+                    <label for="fecha">Fecha</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+                <div class="form-group">
+                    <label for="hora">Hora</label>
+                    <input type="time" id="hora" name="hora" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="paciente-select">Paciente</label>
+                    <select id="paciente-select" name="paciente" required onchange="handlePatientChange()">
+                        <option value="">Seleccione un paciente...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sociedad-cita">Sociedad</label>
+                    <input type="text" id="sociedad-cita" name="sociedad" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label for="clinica-cita">Clínica</label>
+                    <input type="text" id="clinica-cita" name="clinica" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group full-width">
+                    <label for="obs-cita">Observaciones</label>
+                    <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Cita</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeAppointmentModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+
+        // Datos Maestros (Simulados para el ejemplo)
+        const patientsMaster = [
+            { id: 1, nombre: 'Juan Pérez Martínez', sociedad: 'Asisa', clinica: 'Clínica Central' },
+            { id: 2, nombre: 'María García López', sociedad: 'Sanitas', clinica: 'Centro Norte' },
+            { id: 3, nombre: 'Carlos Sánchez Ruiz', sociedad: 'Adeslas', clinica: 'Clínica Central' }
+        ];
+
+        let appointments = [
+            { id: 1, fecha: '2023-05-20', hora: '09:00', paciente: 'Juan Pérez Martínez', sociedad: 'Asisa', clinica: 'Clínica Central', obs: 'Terapia Cognitiva', estado: 'confirmada' },
+            { id: 2, fecha: '2023-05-20', hora: '10:30', paciente: 'María García López', sociedad: 'Sanitas', clinica: 'Centro Norte', obs: 'Primera Consulta', estado: 'pending' }
+        ];
+
+        let editingAppointmentId = null;
+
+        function populatePatientDropdown() {
+            const select = document.getElementById('paciente-select');
+            patientsMaster.forEach(p => {
+                select.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`;
+            });
+        }
+
+        function handlePatientChange() {
+            const selectedName = document.getElementById('paciente-select').value;
+            const patient = patientsMaster.find(p => p.nombre === selectedName);
+            
+            if (patient) {
+                document.getElementById('sociedad-cita').value = patient.sociedad;
+                document.getElementById('clinica-cita').value = patient.clinica;
+            } else {
+                document.getElementById('sociedad-cita').value = '';
+                document.getElementById('clinica-cita').value = '';
+            }
+        }
+
+        function getStatusLabel(estado) {
+            const labels = {
+                'confirmada': 'Confirmada',
+                'pending': 'Pendiente',
+                'completed': 'Realizada'
+            };
+            return labels[estado] || 'Pendiente';
+        }
+
+        function renderAgenda() {
+            const tbody = document.getElementById('agenda-body');
+            tbody.innerHTML = '';
+            
+            // Ordenar por hora
+            appointments.sort((a, b) => a.hora.localeCompare(b.hora));
+
+            appointments.forEach(app => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${app.hora}</td>
+                    <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
+                    <td>${app.clinica} <br><small style="color: #999">${app.obs}</small></td>
+                    <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment(${app.id})" title="Marcar como Realizada">✅</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="editAppointment(${app.id})" title="Editar">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteAppointment(${app.id})" title="Eliminar">🗑️</a>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openAppointmentModal(title = "Nueva Cita") {
+            const modal = document.getElementById('modalCita');
+            modal.querySelector('h2').textContent = title;
+            
+            if (title === "Nueva Cita") {
+                document.getElementById('form-cita').reset();
+                document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+                editingAppointmentId = null;
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeAppointmentModal() {
+            document.getElementById('modalCita').style.display = 'none';
+        }
+
+        function completeAppointment(id) {
+            const app = appointments.find(a => a.id === id);
+            if (app) {
+                app.estado = 'completed';
+                renderAgenda();
+            }
+        }
+
+        function deleteAppointment(id) {
+            if (confirm('¿Está seguro de que desea eliminar esta cita?')) {
+                appointments = appointments.filter(a => a.id !== id);
+                renderAgenda();
+            }
+        }
+
+        function editAppointment(id) {
+            const app = appointments.find(a => a.id === id);
+            if (app) {
+                editingAppointmentId = id;
+                document.getElementById('fecha').value = app.fecha;
+                document.getElementById('hora').value = app.hora;
+                document.getElementById('paciente-select').value = app.paciente;
+                document.getElementById('sociedad-cita').value = app.sociedad;
+                document.getElementById('clinica-cita').value = app.clinica;
+                document.getElementById('obs-cita').value = app.obs;
+                
+                openAppointmentModal("Editar Cita");
+            }
+        }
+
+        document.getElementById('form-cita').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const fecha = document.getElementById('fecha').value;
+            const hora = document.getElementById('hora').value;
+            const paciente = document.getElementById('paciente-select').value;
+            const sociedad = document.getElementById('sociedad-cita').value;
+            const clinica = document.getElementById('clinica-cita').value;
+            const obs = document.getElementById('obs-cita').value;
+            
+            // Validación de conflicto (30 minutos)
+            const nuevaFechaHora = new Date(`${fecha}T${hora}`);
+            const conflicto = appointments.find(app => {
+                if (app.id === editingAppointmentId) return false;
+                if (app.fecha !== fecha) return false;
+                const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
+                const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
+                return diferenciaMs < (30 * 60 * 1000); // 30 minutos en ms
+            });
+
+            if (conflicto) {
+                alert(`¡Conflicto de horario! Existe otra cita a las ${conflicto.hora} con ${conflicto.paciente}. Por favor, elija una hora con al menos 30 minutos de diferencia.`);
+                return;
+            }
+
+            if (editingAppointmentId) {
+                const index = appointments.findIndex(a => a.id === editingAppointmentId);
+                appointments[index] = {
+                    ...appointments[index],
+                    fecha, hora, paciente, sociedad, clinica, obs
+                };
+            } else {
+                appointments.push({
+                    id: Date.now(),
+                    fecha: fecha,
+                    hora: hora,
+                    paciente: paciente,
+                    sociedad: sociedad,
+                    clinica: clinica,
+                    obs: obs,
+                    estado: 'pending'
+                });
+            }
+
+            renderAgenda();
+            closeAppointmentModal();
+        };
+
+        window.onclick = (e) => { if (e.target == document.getElementById('modalCita')) closeAppointmentModal(); }
+
+        // Inicio
+        populatePatientDropdown();
+        renderAgenda();
+    </script>
+</body>
+</html>
