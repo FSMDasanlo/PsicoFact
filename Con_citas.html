@@ -110,6 +110,24 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
         async function loadFilters() {
             const snapshotClinicas = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
             const snapshotSociedades = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));

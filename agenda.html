@@ -107,6 +107,24 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
         const dateElement = document.getElementById('current-date');
         dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -239,7 +257,7 @@
             });
 
             if (conflicto) {
-                alert(`¡Conflicto de horario! Existe otra cita a las ${conflicto.hora} con ${conflicto.paciente}. Por favor, elija una hora con al menos 30 minutos de diferencia.`);
+                showToast(`Conflicto: Cita existente a las ${conflicto.hora} con ${conflicto.paciente}.`, 'error');
                 return;
             }
 

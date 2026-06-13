@@ -84,7 +84,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border-bottom: 5px solid var(--turquesa);
+    border-bottom: 5px solid var(--azul-primario);
 }
 
 .menu-card:hover {
@@ -185,17 +185,21 @@ footer {
 }
 
 .btn-turquesa {
-    background-color: var(--turquesa);
+    background: linear-gradient(to right, var(--azul-oscuro), var(--azul-primario));
     color: var(--blanco);
     padding: 8px 16px;
     border-radius: 6px;
     text-decoration: none;
     font-weight: 600;
-    transition: background-color 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.2s;
+    border: none;
 }
 
 .btn-turquesa:hover {
-    background-color: var(--turquesa-claro);
+    opacity: 0.9;
+    transform: translateY(-1px);
+    /* Efecto de brillo sutil */
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.6); /* Usando var(--azul-primario) con opacidad */
 }
 
 .back-link {
@@ -347,3 +351,86 @@ footer {
     font-size: 0.8rem;
     opacity: 0.5;
 }
+
+/* Estilos para Factura */
+.invoice-box {
+    max-width: 800px;
+    margin: auto;
+    padding: 30px;
+    border: 1px solid #eee;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    line-height: 24px;
+    color: #333;
+    background: #fff;
+    text-align: left;
+}
+
+.invoice-box table {
+    width: 100%;
+    line-height: inherit;
+    text-align: left;
+    border-collapse: collapse;
+}
+
+.invoice-box table td {
+    padding: 5px;
+    vertical-align: top;
+}
+
+.invoice-box table tr.heading td {
+    background: #eee;
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+}
+
+.invoice-box table tr.item td {
+    border-bottom: 1px solid #eee;
+}
+
+.invoice-box table tr.total td:nth-child(2) {
+    border-top: 2px solid #eee;
+    font-weight: bold;
+    text-align: right;
+}
+
+.invoice-details {
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Sistema de Toasts */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    min-width: 280px;
+    background-color: var(--azul-oscuro);
+    color: var(--blanco);
+    padding: 16px 24px;
+    margin-top: 10px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-left: 6px solid transparent;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success { border-left-color: var(--turquesa); }
+.toast.error { border-left-color: #e74c3c; }
+.toast.info { border-left-color: var(--azul-primario); }
