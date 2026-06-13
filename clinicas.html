@@ -126,8 +126,10 @@
 
         window.renderTable = function() {
             const tbody = document.getElementById('clinics-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filtered = clinics.filter(c => c.nombre.toLowerCase().includes(searchTerm) || c.contacto.toLowerCase().includes(searchTerm));
             tbody.innerHTML = '';
-            clinics.forEach(c => {
+            filtered.forEach(c => {
                 tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.importe} €</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editClinic('${c.id}')">✏️</a>
@@ -135,6 +137,10 @@
                     </td></tr>`;
             });
         }
+
+        window.handleSearch = () => renderTable();
+        window.handleSort = () => {}; 
+        window.changePage = () => {};
 
         window.openModal = function(title = "Nueva Clínica") {
             const modal = document.getElementById('modalClinica');

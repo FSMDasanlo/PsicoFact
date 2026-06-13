@@ -97,161 +97,112 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const dateElement = document.getElementById('current-date');
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Listas maestras para los desplegables
-        const clinicasMaster = ['Clínica Central', 'Centro Norte'];
-        const sociedadesMaster = ['Asisa', 'Adeslas', 'Sanitas'];
-
-        // Datos de ejemplo para visualizar paginación
-        let patients = [
-            { id: 1, nombre: 'Juan', apellidos: 'Pérez Martínez', telefono: '600111222', sociedad: 'Asisa', clinica: 'Clínica Central' },
-            { id: 2, nombre: 'María', apellidos: 'García López', telefono: '600333444', sociedad: 'Sanitas', clinica: 'Centro Norte' }
-        ];
-
-        let currentPage = 1;
-        const itemsPerPage = 10;
-        let sortField = 'nombre';
-        let sortDirection = 'asc';
+        let patients = [];
         let editingId = null;
 
-        // Poblar desplegables al iniciar
-        function populateDropdowns() {
+        async function loadData() {
+            // Cargar Clínicas y Sociedades desde Firestore para los desplegables
+            const snapshotClinicas = await getDocs(collection(db, "clinicas"));
+            const snapshotSociedades = await getDocs(collection(db, "sociedades"));
+            
             const selectClinica = document.getElementById('clinica');
             const selectSociedad = document.getElementById('sociedad');
-            
-            clinicasMaster.forEach(c => selectClinica.innerHTML += `<option value="${c}">${c}</option>`);
-            sociedadesMaster.forEach(s => selectSociedad.innerHTML += `<option value="${s}">${s}</option>`);
+            selectClinica.innerHTML = '<option value="">Seleccione...</option>';
+            selectSociedad.innerHTML = '<option value="">Seleccione...</option>';
+
+            snapshotClinicas.forEach(c => {
+                const nombre = c.data().nombre;
+                selectClinica.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+            });
+            snapshotSociedades.forEach(s => {
+                const nombre = s.data().nombre;
+                selectSociedad.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+            });
+
+            // Cargar Pacientes
+            const querySnapshot = await getDocs(collection(db, "pacientes"));
+            patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderTable();
         }
 
-        function renderTable() {
+        window.renderTable = function() {
             const tbody = document.getElementById('patients-body');
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            
-            // 1. Filtrar
-            let filtered = patients.filter(p => 
+            const filtered = patients.filter(p => 
                 p.nombre.toLowerCase().includes(searchTerm) || 
                 p.apellidos.toLowerCase().includes(searchTerm)
             );
-
-            // 2. Ordenar
-            filtered.sort((a, b) => {
-                let valA = a[sortField].toLowerCase();
-                let valB = b[sortField].toLowerCase();
-                if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-                if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-                return 0;
-            });
-
-            // 3. Paginación
-            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            
-            const start = (currentPage - 1) * itemsPerPage;
-            const pageItems = filtered.slice(start, start + itemsPerPage);
-
             tbody.innerHTML = '';
-            pageItems.forEach(p => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
+            filtered.forEach(p => {
+                tbody.innerHTML += `<tr>
                     <td>${p.nombre}</td>
                     <td>${p.apellidos}</td>
                     <td>${p.telefono || '-'}</td>
                     <td style="text-align: center;">
-                        <a href="javascript:void(0)" class="action-icon" onclick="editPatient(${p.id})" title="Editar">✏️</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="deletePatient(${p.id})" title="Eliminar">🗑️</a>
-                    </td>`;
-                tbody.appendChild(row);
+                        <a href="javascript:void(0)" class="action-icon" onclick="editPatient('${p.id}')" title="Editar">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deletePatient('${p.id}')" title="Eliminar">🗑️</a>
+                    </td></tr>`;
             });
-
-            // Actualizar controles UI
-            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
-            document.getElementById('prev-page').disabled = currentPage === 1;
-            document.getElementById('next-page').disabled = currentPage === totalPages;
         }
 
-        function handleSearch() {
-            currentPage = 1;
-            renderTable();
-        }
+        window.handleSearch = () => renderTable();
+        window.handleSort = () => {}; 
+        window.changePage = () => {};
 
-        function handleSort(field) {
-            if (sortField === field) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortField = field;
-                sortDirection = 'asc';
-            }
-            renderTable();
-        }
-
-        function changePage(delta) {
-            currentPage += delta;
-            renderTable();
-        }
-
-        function openModal(title = "Nuevo Paciente") {
+        window.openModal = function(title = "Nuevo Paciente") {
             const modal = document.getElementById('modalPaciente');
             modal.querySelector('h2').textContent = title;
-            if (title === "Nuevo Paciente") {
-                document.getElementById('form-paciente').reset();
-                editingId = null;
-            }
+            if (title === "Nuevo Paciente") { document.getElementById('form-paciente').reset(); editingId = null; }
             modal.style.display = 'flex';
         }
-
-        function closeModal() {
-            document.getElementById('modalPaciente').style.display = 'none';
-        }
-
-        function editPatient(id) {
+        window.closeModal = () => document.getElementById('modalPaciente').style.display = 'none';
+        
+        window.editPatient = function(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            document.getElementById('nombre').value = p.nombre;
-            document.getElementById('apellidos').value = p.apellidos;
-            document.getElementById('telefono').value = p.telefono || '';
-            document.getElementById('sociedad').value = p.sociedad || '';
-            document.getElementById('clinica').value = p.clinica || '';
+            ['nombre', 'apellidos', 'telefono', 'sociedad', 'clinica', 'observaciones'].forEach(f => {
+                const el = document.getElementById(f);
+                if (el) el.value = p[f] || '';
+            });
             openModal("Editar Paciente");
         }
 
-        function deletePatient(id) {
-            const p = patients.find(p => p.id === id);
-            if (confirm(`¿Está seguro de que desea eliminar al paciente ${p.nombre}?`)) {
-                patients = patients.filter(item => item.id !== id);
-                renderTable();
+        window.deletePatient = async function(id) {
+            if (confirm("¿Está seguro de que desea eliminar este paciente?")) {
+                await deleteDoc(doc(db, "pacientes", id));
+                loadData();
             }
         }
 
-        document.getElementById('form-paciente').onsubmit = function(e) {
+        document.getElementById('form-paciente').onsubmit = async function(e) {
             e.preventDefault();
-            const data = {
-                nombre: document.getElementById('nombre').value,
-                apellidos: document.getElementById('apellidos').value,
-                telefono: document.getElementById('telefono').value,
-                sociedad: document.getElementById('sociedad').value,
-                clinica: document.getElementById('clinica').value
-            };
-
-            if (editingId) {
-                const index = patients.findIndex(p => p.id === editingId);
-                patients[index] = { ...patients[index], ...data };
-            } else {
-                patients.push({ id: Date.now(), ...data });
-            }
-            renderTable();
-            closeModal();
+            const data = Object.fromEntries(new FormData(e.target));
+            editingId ? await updateDoc(doc(db, "pacientes", editingId), data) : await addDoc(collection(db, "pacientes"), data);
+            loadData(); closeModal();
         };
 
         window.onclick = (e) => { if (e.target == document.getElementById('modalPaciente')) closeModal(); }
-        
-        // Renderizado inicial
-        populateDropdowns();
-        renderTable();
+        loadData();
     </script>
 </body>
 </html>
