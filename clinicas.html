@@ -130,8 +130,8 @@
             clinics.forEach(c => {
                 tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.importe} €</td>
                     <td style="text-align: center;">
-                        <a href="javascript:void(0)" class="action-icon" onclick="editClinic(${c.id})">✏️</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic(${c.id})">🗑️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="editClinic('${c.id}')">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic('${c.id}')">🗑️</a>
                     </td></tr>`;
             });
         }
@@ -158,7 +158,7 @@
             } 
         }
 
-        document.getElementById('form-clinica').onsubmit = (e) => {
+        document.getElementById('form-clinica').onsubmit = async (e) => {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
             if (editingId) {

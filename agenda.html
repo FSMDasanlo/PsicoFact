@@ -127,7 +127,7 @@
             const select = document.getElementById('paciente-select');
             select.innerHTML = '<option value="">Seleccione un paciente...</option>';
             patientsMaster.forEach(p => {
-                select.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`;
+                select.innerHTML += `<option value="${p.nombre} ${p.apellidos}">${p.nombre} ${p.apellidos}</option>`;
             });
         }
 
@@ -220,6 +220,22 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
+
+            // Validación de conflicto (30 minutos)
+            const nuevaFechaHora = new Date(`${data.fecha}T${data.hora}`);
+            const conflicto = appointments.find(app => {
+                if (app.id === editingAppointmentId) return false;
+                if (app.fecha !== data.fecha) return false;
+                const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
+                const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
+                return diferenciaMs < (30 * 60 * 1000); // 30 minutos en ms
+            });
+
+            if (conflicto) {
+                alert(`¡Conflicto de horario! Existe otra cita a las ${conflicto.hora} con ${conflicto.paciente}. Por favor, elija una hora con al menos 30 minutos de diferencia.`);
+                return;
+            }
+
             editingAppointmentId ? await updateDoc(doc(db, "citas", editingAppointmentId), data) : await addDoc(collection(db, "citas"), { ...data, estado: 'pending' });
             loadDailyAppointments(); closeAppointmentModal();
         };
