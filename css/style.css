@@ -173,6 +173,11 @@ footer {
 .pending { background-color: #fff3cd; color: #856404; }
 .completed { background-color: #d1ecf1; color: #0c5460; }
 
+/* Resaltado para fila completada */
+.row-completed {
+    background-color: #f0fdfa !important; /* Un tono turquesa muy suave */
+}
+
 .agenda-actions {
     display: flex;
     align-items: center;
@@ -197,6 +202,16 @@ footer {
     color: var(--azul-primario);
     text-decoration: none;
     font-weight: 600;
+}
+
+.home-icon {
+    text-decoration: none;
+    font-size: 1.4rem;
+    transition: transform 0.2s;
+}
+
+.home-icon:hover {
+    transform: scale(1.2);
 }
 
 /* Estilos del Modal */
