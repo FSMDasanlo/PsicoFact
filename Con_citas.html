@@ -46,17 +46,12 @@
                     <label for="filtro-clinica">Clínica</label>
                     <select id="filtro-clinica">
                         <option value="">Todas las clínicas</option>
-                        <option value="Clínica Central">Clínica Central</option>
-                        <option value="Centro Norte">Centro Norte</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="filtro-sociedad">Sociedad</label>
                     <select id="filtro-sociedad">
                         <option value="">Todas las sociedades</option>
-                        <option value="Asisa">Asisa</option>
-                        <option value="Sanitas">Sanitas</option>
-                        <option value="Adeslas">Adeslas</option>
                     </select>
                 </div>
                 <div class="form-actions full-width" style="align-items: flex-end;">
@@ -97,7 +92,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -111,6 +106,22 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        async function loadFilters() {
+            const snapshotClinicas = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
+            const snapshotSociedades = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));
+            
+            const selectClinica = document.getElementById('filtro-clinica');
+            const selectSociedad = document.getElementById('filtro-sociedad');
+
+            snapshotClinicas.forEach(c => {
+                selectClinica.innerHTML += `<option value="${c.data().nombre}">${c.data().nombre}</option>`;
+            });
+            snapshotSociedades.forEach(s => {
+                selectSociedad.innerHTML += `<option value="${s.data().nombre}">${s.data().nombre}</option>`;
+            });
+        }
+        loadFilters();
 
         const dateElement = document.getElementById('current-date');
         dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });

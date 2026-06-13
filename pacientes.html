@@ -99,7 +99,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -122,8 +122,8 @@
 
         async function loadData() {
             // Cargar Clínicas y Sociedades desde Firestore para los desplegables
-            const snapshotClinicas = await getDocs(collection(db, "clinicas"));
-            const snapshotSociedades = await getDocs(collection(db, "sociedades"));
+            const snapshotClinicas = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
+            const snapshotSociedades = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));
             
             const selectClinica = document.getElementById('clinica');
             const selectSociedad = document.getElementById('sociedad');
