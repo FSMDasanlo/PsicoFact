@@ -89,43 +89,51 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const dateElement = document.getElementById('current-date');
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Datos Maestros (Simulados para el ejemplo)
-        const patientsMaster = [
-            { id: 1, nombre: 'Juan Pérez Martínez', sociedad: 'Asisa', clinica: 'Clínica Central' },
-            { id: 2, nombre: 'María García López', sociedad: 'Sanitas', clinica: 'Centro Norte' },
-            { id: 3, nombre: 'Carlos Sánchez Ruiz', sociedad: 'Adeslas', clinica: 'Clínica Central' }
-        ];
-
-        // Datos de Clínicas para obtener el importe configurado
-        const clinicsMasterData = [
-            { nombre: 'Clínica Central', importe: '60.00' },
-            { nombre: 'Centro Norte', importe: '50.00' }
-        ];
-
-        let appointments = [
-            { id: 1, fecha: '2023-05-20', hora: '09:00', paciente: 'Juan Pérez Martínez', sociedad: 'Asisa', clinica: 'Clínica Central', obs: 'Terapia Cognitiva', estado: 'confirmada' },
-            { id: 2, fecha: '2023-05-20', hora: '10:30', paciente: 'María García López', sociedad: 'Sanitas', clinica: 'Centro Norte', obs: 'Primera Consulta', estado: 'pending' }
-        ];
-
+        let patientsMaster = [];
+        let clinicsMasterData = [];
+        let appointments = [];
         let editingAppointmentId = null;
 
-        function populatePatientDropdown() {
+        async function init() {
+            const snapP = await getDocs(collection(db, "pacientes"));
+            patientsMaster = snapP.docs.map(d => d.data());
+            const snapC = await getDocs(collection(db, "clinicas"));
+            clinicsMasterData = snapC.docs.map(d => d.data());
+            populatePatientDropdown();
+            loadDailyAppointments();
+        }
+
+        window.populatePatientDropdown = function() {
             const select = document.getElementById('paciente-select');
+            select.innerHTML = '<option value="">Seleccione un paciente...</option>';
             patientsMaster.forEach(p => {
                 select.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`;
             });
         }
 
-        function handlePatientChange() {
+        window.handlePatientChange = function() {
             const selectedName = document.getElementById('paciente-select').value;
-            const patient = patientsMaster.find(p => p.nombre === selectedName);
-            
+            const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
             if (patient) {
                 document.getElementById('sociedad-cita').value = patient.sociedad;
                 document.getElementById('clinica-cita').value = patient.clinica;
@@ -139,7 +147,7 @@
             }
         }
 
-        function getStatusLabel(estado) {
+        window.getStatusLabel = function(estado) {
             const labels = {
                 'confirmada': 'Confirmada',
                 'pending': 'Pendiente',
@@ -148,13 +156,18 @@
             return labels[estado] || 'Pendiente';
         }
 
-        function renderAgenda() {
+        async function loadDailyAppointments() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const q = query(collection(db, "citas"), where("fecha", "==", hoy));
+            const snap = await getDocs(q);
+            appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderAgenda();
+        }
+
+        window.renderAgenda = function() {
             const tbody = document.getElementById('agenda-body');
             tbody.innerHTML = '';
-            
-            // Ordenar por hora
             appointments.sort((a, b) => a.hora.localeCompare(b.hora));
-
             appointments.forEach(app => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -163,114 +176,54 @@
                     <td>${app.clinica} <br><small style="color: #999">${app.obs}</small></td>
                     <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
                     <td style="text-align: center;">
-                        <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment(${app.id})" title="Marcar como Realizada">✅</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="editAppointment(${app.id})" title="Editar">✏️</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="deleteAppointment(${app.id})" title="Eliminar">🗑️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment('${app.id}')" title="Marcar como Realizada">✅</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="editAppointment('${app.id}')" title="Editar">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteAppointment('${app.id}')" title="Eliminar">🗑️</a>
                     </td>`;
                 tbody.appendChild(row);
             });
         }
 
-        function openAppointmentModal(title = "Nueva Cita") {
+        window.openAppointmentModal = function(title = "Nueva Cita") {
             const modal = document.getElementById('modalCita');
             modal.querySelector('h2').textContent = title;
-            
             if (title === "Nueva Cita") {
                 document.getElementById('form-cita').reset();
                 document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
                 editingAppointmentId = null;
             }
-            
             modal.style.display = 'flex';
         }
-
-        function closeAppointmentModal() {
-            document.getElementById('modalCita').style.display = 'none';
+        window.closeAppointmentModal = () => document.getElementById('modalCita').style.display = 'none';
+        
+        window.completeAppointment = async (id) => {
+            await updateDoc(doc(db, "citas", id), { estado: 'completed' });
+            loadDailyAppointments();
         }
-
-        function completeAppointment(id) {
-            const app = appointments.find(a => a.id === id);
-            if (app) {
-                app.estado = 'completed';
-                renderAgenda();
-            }
-        }
-
-        function deleteAppointment(id) {
+        window.deleteAppointment = async (id) => {
             if (confirm('¿Está seguro de que desea eliminar esta cita?')) {
-                appointments = appointments.filter(a => a.id !== id);
-                renderAgenda();
+                await deleteDoc(doc(db, "citas", id));
+                loadDailyAppointments();
             }
         }
-
-        function editAppointment(id) {
+        window.editAppointment = (id) => {
             const app = appointments.find(a => a.id === id);
-            if (app) {
-                editingAppointmentId = id;
-                document.getElementById('fecha').value = app.fecha;
-                document.getElementById('hora').value = app.hora;
-                document.getElementById('paciente-select').value = app.paciente;
-                document.getElementById('sociedad-cita').value = app.sociedad;
-                document.getElementById('clinica-cita').value = app.clinica;
-                document.getElementById('obs-cita').value = app.obs;
-                
-                openAppointmentModal("Editar Cita");
-            }
-        }
-
-        document.getElementById('form-cita').onsubmit = function(e) {
-            e.preventDefault();
-            
-            const fecha = document.getElementById('fecha').value;
-            const hora = document.getElementById('hora').value;
-            const paciente = document.getElementById('paciente-select').value;
-            const sociedad = document.getElementById('sociedad-cita').value;
-            const clinica = document.getElementById('clinica-cita').value;
-            const obs = document.getElementById('obs-cita').value;
-            
-            // Validación de conflicto (30 minutos)
-            const nuevaFechaHora = new Date(`${fecha}T${hora}`);
-            const conflicto = appointments.find(app => {
-                if (app.id === editingAppointmentId) return false;
-                if (app.fecha !== fecha) return false;
-                const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
-                const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
-                return diferenciaMs < (30 * 60 * 1000); // 30 minutos en ms
+            editingAppointmentId = id;
+            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'observaciones'].forEach(f => {
+                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : f))));
+                if(el) el.value = app[f] || '';
             });
-
-            if (conflicto) {
-                alert(`¡Conflicto de horario! Existe otra cita a las ${conflicto.hora} con ${conflicto.paciente}. Por favor, elija una hora con al menos 30 minutos de diferencia.`);
-                return;
-            }
-
-            if (editingAppointmentId) {
-                const index = appointments.findIndex(a => a.id === editingAppointmentId);
-                appointments[index] = {
-                    ...appointments[index],
-                    fecha, hora, paciente, sociedad, clinica, obs
-                };
-            } else {
-                appointments.push({
-                    id: Date.now(),
-                    fecha: fecha,
-                    hora: hora,
-                    paciente: paciente,
-                    sociedad: sociedad,
-                    clinica: clinica,
-                    obs: obs,
-                    estado: 'pending'
-                });
-            }
-
-            renderAgenda();
-            closeAppointmentModal();
+            document.getElementById('paciente-select').value = app.paciente;
+            openAppointmentModal("Editar Cita");
+        }
+        document.getElementById('form-cita').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            editingAppointmentId ? await updateDoc(doc(db, "citas", editingAppointmentId), data) : await addDoc(collection(db, "citas"), { ...data, estado: 'pending' });
+            loadDailyAppointments(); closeAppointmentModal();
         };
-
-        window.onclick = (e) => { if (e.target == document.getElementById('modalCita')) closeAppointmentModal(); }
-
-        // Inicio
-        populatePatientDropdown();
-        renderAgenda();
+        init();
     </script>
 </body>
 </html>

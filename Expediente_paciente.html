@@ -61,30 +61,38 @@
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
     </footer>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         // Mostrar fecha actual
         const dateElement = document.getElementById('current-date');
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateElement.textContent = new Date().toLocaleDateString('es-ES', dateOptions);
 
-        // Datos simulados (En una app real vendrían de una base de datos)
-        const patients = [
-            { id: 1, nombre: 'Juan', apellidos: 'Pérez Martínez', telefono: '600111222', sociedad: 'Asisa', clinica: 'Clínica Central' },
-            { id: 2, nombre: 'María', apellidos: 'García López', telefono: '600333444', sociedad: 'Sanitas', clinica: 'Centro Norte' }
-        ];
-
-        const appointments = [
-            { id: 1, pacienteId: 1, fecha: '2023-05-10', hora: '09:00', clinica: 'Clínica Central', obs: 'Sesión inicial', estado: 'completed', importe: 60.00 },
-            { id: 2, pacienteId: 1, fecha: '2023-05-24', hora: '11:00', clinica: 'Clínica Central', obs: 'Seguimiento TCC', estado: 'pending', importe: 60.00 },
-            { id: 3, pacienteId: 2, fecha: '2023-05-15', hora: '10:30', clinica: 'Centro Norte', obs: 'Evaluación', estado: 'completed', importe: 50.00 }
-        ];
-
-        // Lógica de carga
         const urlParams = new URLSearchParams(window.location.search);
-        const patientId = parseInt(urlParams.get('id'));
-        const patient = patients.find(p => p.id === patientId);
+        const patientId = urlParams.get('id');
 
-        if (patient) {
+        async function loadExpediente() {
+            if (!patientId) return;
+            
+            const docSnap = await getDoc(doc(db, "pacientes", patientId));
+            if (!docSnap.exists()) return;
+            const patient = docSnap.data();
+
             document.getElementById('expediente-titulo').textContent = `Expediente: ${patient.nombre} ${patient.apellidos}`;
             
             const ficha = document.getElementById('ficha-paciente');
@@ -95,7 +103,10 @@
             `;
 
             const historialTbody = document.getElementById('historial-citas');
-            const patientApps = appointments.filter(a => a.pacienteId === patientId);
+            // Buscamos citas por el nombre del paciente o ID si lo guardas así
+            const q = query(collection(db, "citas"), where("paciente", "==", `${patient.nombre} ${patient.apellidos}`));
+            const snapCitas = await getDocs(q);
+            const patientApps = snapCitas.docs.map(d => d.data());
             
             if (patientApps.length > 0) {
                 patientApps.forEach(a => {
@@ -114,12 +125,11 @@
                 historialTbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No hay citas registradas</td></tr>`;
             }
 
-            // Cálculo del resumen solicitado
             const realizadas = patientApps.filter(a => a.estado === 'completed').length;
             const pendientes = patientApps.filter(a => a.estado === 'pending').length;
             const pagado = patientApps
                 .filter(a => a.estado === 'completed')
-                .reduce((acc, a) => acc + (a.importe || 0), 0);
+                .reduce((acc, a) => acc + (parseFloat(a.importe) || 0), 0);
 
             const resumenDiv = document.getElementById('resumen-expediente');
             resumenDiv.style.display = 'block';
@@ -127,6 +137,7 @@
                 Sesiones realizadas: <strong>${realizadas}</strong>, Sesiones pendientes: <strong>${pendientes}</strong> &nbsp; | &nbsp; <strong>Importe pagado:</strong> ${pagado.toFixed(2)} €
             `;
         }
+        loadExpediente();
     </script>
 </body>
 </html>

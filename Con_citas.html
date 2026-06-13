@@ -95,24 +95,35 @@
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
     </footer>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const dateElement = document.getElementById('current-date');
         dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Generamos fechas dinámicas basadas en hoy para que los botones de meses devuelvan resultados siempre
-        const hoy = new Date();
-        const y = hoy.getFullYear();
-        const m = String(hoy.getMonth() + 1).padStart(2, '0');
-        const mPrev = String(hoy.getMonth()).padStart(2, '0'); // Simplificado para el ejemplo
+        let appointments = [];
 
-        const appointments = [
-            { id: 1, fecha: `${y}-${m}-10`, paciente: 'Juan Pérez', clinica: 'Clínica Central', sociedad: 'Asisa', importe: 60, estado: 'completed' },
-            { id: 2, fecha: `${y}-${m}-24`, paciente: 'Juan Pérez', clinica: 'Clínica Central', sociedad: 'Asisa', importe: 60, estado: 'pending' },
-            { id: 3, fecha: `${y}-${mPrev}-15`, paciente: 'Luis Gómez', clinica: 'Centro Norte', sociedad: 'Sanitas', importe: 50, estado: 'completed' },
-            { id: 4, fecha: '2026-01-05', paciente: 'María García', clinica: 'Centro Norte', sociedad: 'Adeslas', importe: 50, estado: 'confirmada' }
-        ];
+        async function loadAppointments() {
+            const snap = await getDocs(collection(db, "citas"));
+            appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            window.filterByMonth(0);
+        }
 
-        function renderData(data) {
+        window.renderData = function(data) {
             const tbody = document.getElementById('resultados-citas');
             const resumen = document.getElementById('resumen-citas');
             tbody.innerHTML = '';
@@ -127,10 +138,10 @@
                     const isDone = app.estado === 'completed';
                     if (isDone) {
                         realizadas++;
-                        importePagado += app.importe;
+                        importePagado += parseFloat(app.importe) || 0;
                     } else {
                         pendientes++;
-                        importePendiente += app.importe;
+                        importePendiente += parseFloat(app.importe) || 0;
                     }
 
                     tbody.innerHTML += `
@@ -153,7 +164,7 @@
             `;
         }
 
-        function filterByMonth(offset) {
+        window.filterByMonth = function(offset) {
             const now = new Date();
             const targetDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
             const year = targetDate.getFullYear();
@@ -168,7 +179,7 @@
             renderData(filtered);
         }
 
-        function handleSearch() {
+        window.handleSearch = function() {
             const desde = document.getElementById('fecha-desde').value;
             const hasta = document.getElementById('fecha-hasta').value;
             const clinicaFiltro = document.getElementById('filtro-clinica').value;
@@ -194,13 +205,12 @@
             renderData(filtered);
         }
 
-        function clearFilters() {
+        window.clearFilters = function() {
             document.getElementById('form-filtros-citas').reset();
-            renderData([]);
+            window.renderData([]);
         }
 
-        // Carga inicial con el mes actual
-        filterByMonth(0);
+        loadAppointments();
     </script>
 </body>
 </html>

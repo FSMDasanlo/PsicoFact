@@ -94,73 +94,83 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const dateElement = document.getElementById('current-date');
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', options);
 
-        let clinics = [
-            { id: 1, nombre: 'Clínica Central', contacto: 'Dr. Aranda', direccion: 'Calle Principal 10', telefono: '912345678', email: 'central@psicofact.com', importe: '60.00' },
-            { id: 2, nombre: 'Centro Norte', contacto: 'Dra. Méndez', direccion: 'Av. Norte 55', telefono: '913456789', email: 'norte@psicofact.com', importe: '50.00' }
-        ];
-
-        let currentPage = 1;
-        const itemsPerPage = 10;
-        let sortField = 'nombre';
-        let sortDirection = 'asc';
+        let clinics = [];
         let editingId = null;
 
-        function renderTable() {
-            const tbody = document.getElementById('clinics-body');
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            let filtered = clinics.filter(c => c.nombre.toLowerCase().includes(searchTerm) || c.contacto.toLowerCase().includes(searchTerm));
-            filtered.sort((a, b) => {
-                let valA = a[sortField].toLowerCase(), valB = b[sortField].toLowerCase();
-                return sortDirection === 'asc' ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
-            });
-            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+        async function loadClinics() {
+            const querySnapshot = await getDocs(collection(db, "clinicas"));
+            clinics = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderTable();
+        }
 
+        window.renderTable = function() {
+            const tbody = document.getElementById('clinics-body');
             tbody.innerHTML = '';
-            pageItems.forEach(c => {
+            clinics.forEach(c => {
                 tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.importe} €</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editClinic(${c.id})">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic(${c.id})">🗑️</a>
                     </td></tr>`;
             });
-            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
-            document.getElementById('prev-page').disabled = currentPage === 1;
-            document.getElementById('next-page').disabled = currentPage === totalPages;
         }
 
-        function handleSearch() { currentPage = 1; renderTable(); }
-        function handleSort(field) { sortDirection = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc'; sortField = field; renderTable(); }
-        function changePage(delta) { currentPage += delta; renderTable(); }
-        function openModal(title = "Nueva Clínica") {
+        window.openModal = function(title = "Nueva Clínica") {
             const modal = document.getElementById('modalClinica');
             modal.querySelector('h2').textContent = title;
             if (title === "Nueva Clínica") { document.getElementById('form-clinica').reset(); editingId = null; }
             modal.style.display = 'flex';
         }
-        function closeModal() { document.getElementById('modalClinica').style.display = 'none'; }
-        function editClinic(id) {
+        window.closeModal = function() { document.getElementById('modalClinica').style.display = 'none'; }
+        
+        window.editClinic = function(id) {
             const c = clinics.find(c => c.id === id);
             editingId = id;
             ['nombre', 'contacto', 'direccion', 'telefono', 'email', 'importe'].forEach(f => document.getElementById(f).value = c[f]);
             openModal("Editar Clínica");
         }
-        function deleteClinic(id) { if (confirm("¿Eliminar esta clínica?")) { clinics = clinics.filter(c => c.id !== id); renderTable(); } }
+        
+        window.deleteClinic = async function(id) { 
+            if (confirm("¿Eliminar esta clínica?")) { 
+                await deleteDoc(doc(db, "clinicas", id));
+                loadClinics();
+            } 
+        }
+
         document.getElementById('form-clinica').onsubmit = (e) => {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
-            editingId ? clinics[clinics.findIndex(c => c.id === editingId)] = {id: editingId, ...data} : clinics.push({id: Date.now(), ...data});
-            renderTable(); closeModal();
+            if (editingId) {
+                await updateDoc(doc(db, "clinicas", editingId), data);
+            } else {
+                await addDoc(collection(db, "clinicas"), data);
+            }
+            loadClinics(); closeModal();
         };
+
         window.onclick = (e) => { if (e.target == document.getElementById('modalClinica')) closeModal(); }
-        renderTable();
+        loadClinics();
     </script>
 </body>
 </html>
