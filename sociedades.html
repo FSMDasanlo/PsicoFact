@@ -76,74 +76,91 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e",
+            measurementId: "G-CNG232R6TW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const dateElement = document.getElementById('current-date');
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        let societies = [
-            { id: 1, nombre: 'Asisa', telefono: '900101010' },
-            { id: 2, nombre: 'Adeslas', telefono: '900202020' },
-            { id: 3, nombre: 'Sanitas', telefono: '900303030' }
-        ];
-
-        let currentPage = 1;
-        const itemsPerPage = 10;
-        let sortField = 'nombre';
-        let sortDirection = 'asc';
+        let societies = [];
         let editingId = null;
 
-        function renderTable() {
-            const tbody = document.getElementById('societies-body');
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            let filtered = societies.filter(s => s.nombre.toLowerCase().includes(searchTerm));
-            filtered.sort((a, b) => {
-                let valA = a[sortField].toLowerCase(), valB = b[sortField].toLowerCase();
-                return sortDirection === 'asc' ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
-            });
-            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-            const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-            tbody.innerHTML = '';
-            pageItems.forEach(s => {
-                tbody.innerHTML += `<tr><td>${s.nombre}</td><td>${s.telefono}</td>
-                    <td style="text-align: center;">
-                        <a href="javascript:void(0)" class="action-icon" onclick="editSociety(${s.id})">✏️</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="deleteSociety(${s.id})">🗑️</a>
-                    </td></tr>`;
-            });
-            document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
-            document.getElementById('prev-page').disabled = currentPage === 1;
-            document.getElementById('next-page').disabled = currentPage === totalPages;
+        async function loadSocieties() {
+            const q = query(collection(db, "sociedades"), orderBy("nombre"));
+            const querySnapshot = await getDocs(q);
+            societies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderTable();
         }
 
-        function handleSearch() { currentPage = 1; renderTable(); }
-        function handleSort(field) { sortDirection = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc'; sortField = field; renderTable(); }
-        function changePage(delta) { currentPage += delta; renderTable(); }
-        function openModal(title = "Nueva Sociedad") {
+        window.renderTable = function() {
+            const tbody = document.getElementById('societies-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filtered = societies.filter(s => s.nombre.toLowerCase().includes(searchTerm));
+
+            tbody.innerHTML = '';
+            filtered.forEach(s => {
+                tbody.innerHTML += `<tr><td>${s.nombre}</td><td>${s.telefono}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editSociety('${s.id}')">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteSociety('${s.id}')">🗑️</a>
+                    </td></tr>`;
+            });
+        }
+
+        window.handleSearch = () => renderTable();
+        window.handleSort = () => {}; 
+        window.changePage = () => {};
+
+        window.openModal = function(title = "Nueva Sociedad") {
             const modal = document.getElementById('modalSociedad');
             modal.querySelector('h2').textContent = title;
             if (title === "Nueva Sociedad") { document.getElementById('form-sociedad').reset(); editingId = null; }
             modal.style.display = 'flex';
         }
-        function closeModal() { document.getElementById('modalSociedad').style.display = 'none'; }
-        function editSociety(id) {
+        window.closeModal = () => document.getElementById('modalSociedad').style.display = 'none';
+
+        window.editSociety = function(id) {
             const s = societies.find(s => s.id === id);
             editingId = id;
             document.getElementById('nombre').value = s.nombre;
             document.getElementById('telefono').value = s.telefono;
             openModal("Editar Sociedad");
         }
-        function deleteSociety(id) { if (confirm("¿Eliminar esta sociedad?")) { societies = societies.filter(s => s.id !== id); renderTable(); } }
-        document.getElementById('form-sociedad').onsubmit = (e) => {
+
+        window.deleteSociety = async function(id) {
+            if (confirm("¿Está seguro de que desea eliminar esta sociedad?")) {
+                await deleteDoc(doc(db, "sociedades", id));
+                loadSocieties();
+            }
+        }
+
+        document.getElementById('form-sociedad').onsubmit = async (e) => {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
-            editingId ? societies[societies.findIndex(s => s.id === editingId)] = {id: editingId, ...data} : societies.push({id: Date.now(), ...data});
-            renderTable(); closeModal();
+            if (editingId) {
+                await updateDoc(doc(db, "sociedades", editingId), data);
+            } else {
+                await addDoc(collection(db, "sociedades"), data);
+            }
+            loadSocieties(); closeModal();
         };
+
         window.onclick = (e) => { if (e.target == document.getElementById('modalSociedad')) closeModal(); }
-        renderTable();
+        loadSocieties();
     </script>
 </body>
 </html>
