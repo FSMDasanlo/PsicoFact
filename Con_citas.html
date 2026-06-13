@@ -131,10 +131,10 @@
         async function loadAppointments() {
             const snap = await getDocs(collection(db, "citas"));
             appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            window.filterByMonth(0);
+            filterByMonth(0);
         }
 
-        window.renderData = function(data) {
+        function renderData(data) {
             const tbody = document.getElementById('resultados-citas');
             const resumen = document.getElementById('resumen-citas');
             tbody.innerHTML = '';
@@ -161,7 +161,7 @@
                             <td>${app.paciente}</td>
                             <td>${app.clinica}</td>
                             <td>${app.sociedad}</td>
-                            <td>${app.importe.toFixed(2)} €</td>
+                            <td>${(parseFloat(app.importe) || 0).toFixed(2)} €</td>
                             <td><span class="status-pill ${app.estado}">${app.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
                         </tr>`;
                 });
@@ -174,31 +174,35 @@
                 <div><small>Importe Pendiente</small><br><strong>${importePendiente.toFixed(2)} €</strong></div>
             `;
         }
+        window.renderData = renderData;
 
-        window.filterByMonth = function(offset) {
+        function filterByMonth(offset) {
             const now = new Date();
             const targetDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
             const year = targetDate.getFullYear();
             const month = targetDate.getMonth();
             
             const filtered = appointments.filter(app => {
-                const parts = app.fecha.split('-');
+                if (!app.fecha) return false;
+                const parts = String(app.fecha).split('-');
                 const appYear = parseInt(parts[0]);
                 const appMonth = parseInt(parts[1]) - 1; // 0-indexed
                 return appYear === year && appMonth === month;
             });
             renderData(filtered);
         }
+        window.filterByMonth = filterByMonth;
 
-        window.handleSearch = function() {
+        function handleSearch() {
             const desde = document.getElementById('fecha-desde').value;
             const hasta = document.getElementById('fecha-hasta').value;
             const clinicaFiltro = document.getElementById('filtro-clinica').value;
             const sociedadFiltro = document.getElementById('filtro-sociedad').value;
             
             const filtered = appointments.filter(app => {
+                if (!app.fecha) return false;
                 // Usamos split para evitar desfases de horas/zonas horarias en la comparación
-                const parts = app.fecha.split('-');
+                const parts = String(app.fecha).split('-');
                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
 
                 let cumpleFecha = true;
@@ -215,11 +219,13 @@
             });
             renderData(filtered);
         }
+        window.handleSearch = handleSearch;
 
-        window.clearFilters = function() {
+        function clearFilters() {
             document.getElementById('form-filtros-citas').reset();
-            window.renderData([]);
+            renderData([]);
         }
+        window.clearFilters = clearFilters;
 
         loadAppointments();
     </script>
