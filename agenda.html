@@ -84,6 +84,7 @@
                 </div>
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
+                    <button type="button" class="btn-turquesa" style="background: var(--turquesa);" onclick="addToGoogleCalendar()">Añadir a Google Calendar</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeAppointmentModal()">Cancelar</button>
                 </div>
             </form>
@@ -265,6 +266,46 @@
             loadDailyAppointments(); closeAppointmentModal();
         };
 
+        function addToGoogleCalendar() {
+            const fecha = document.getElementById('fecha').value;
+            const hora = document.getElementById('hora').value;
+            const paciente = document.getElementById('paciente-select').value;
+            const clinica = document.getElementById('clinica-cita').value;
+            const obs = document.getElementById('obs-cita').value;
+
+            if (!fecha || !hora || !paciente) {
+                showToast("Rellene al menos Fecha, Hora y Paciente para añadir al calendario.", "error");
+                return;
+            }
+
+            // Parse date and time
+            const startDateTime = new Date(`${fecha}T${hora}`);
+            // Assuming a standard 60-minute appointment duration
+            const endDateTime = new Date(startDateTime.getTime() + (60 * 60 * 1000)); 
+
+            // Format for Google Calendar (YYYYMMDDTHHMMSS)
+            const formatDateTime = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+            };
+
+            const formattedStart = formatDateTime(startDateTime);
+            const formattedEnd = formatDateTime(endDateTime);
+
+            const title = `${paciente} - Cita PsicoFact`;
+            const details = `Observaciones: ${obs || 'N/A'}\nClínica: ${clinica || 'N/A'}`;
+            const location = clinica || '';
+
+            const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${formattedStart}/${formattedEnd}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&sf=true&output=xml`;
+
+            window.open(googleCalendarUrl, '_blank');
+        }
+
         // Exponer funciones al objeto window para acceso desde el HTML
         window.openAppointmentModal = openAppointmentModal;
         window.closeAppointmentModal = closeAppointmentModal;
@@ -275,6 +316,7 @@
         window.getStatusLabel = getStatusLabel;
         window.populatePatientDropdown = populatePatientDropdown;
         window.renderAgenda = renderAgenda;
+        window.addToGoogleCalendar = addToGoogleCalendar;
 
         init();
     </script>
