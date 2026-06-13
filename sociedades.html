@@ -94,6 +94,24 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
         const dateElement = document.getElementById('current-date');
         dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -145,6 +163,7 @@
         window.deleteSociety = async function(id) {
             if (confirm("¿Está seguro de que desea eliminar esta sociedad?")) {
                 await deleteDoc(doc(db, "sociedades", id));
+                showToast("Sociedad eliminada");
                 loadSocieties();
             }
         }
@@ -154,8 +173,10 @@
             const data = Object.fromEntries(new FormData(e.target));
             if (editingId) {
                 await updateDoc(doc(db, "sociedades", editingId), data);
+                showToast("Sociedad actualizada");
             } else {
                 await addDoc(collection(db, "sociedades"), data);
+                showToast("Sociedad guardada");
             }
             loadSocieties(); closeModal();
         };

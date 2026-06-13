@@ -139,11 +139,14 @@ footer {
     margin-bottom: 1.5rem;
     border-bottom: 2px solid var(--azul-primario);
     padding-bottom: 1rem;
+    gap: 10px;
+    flex-wrap: wrap; /* Permite que los botones bajen si no caben */
 }
 
 .agenda-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 500px; /* Evita que la tabla se colapse demasiado en móviles */
 }
 
 .agenda-table th {
@@ -182,6 +185,7 @@ footer {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
 }
 
 .btn-turquesa {
@@ -354,9 +358,10 @@ footer {
 
 /* Estilos para Factura */
 .invoice-box {
+    width: 100%;
     max-width: 800px;
     margin: auto;
-    padding: 30px;
+    padding: 20px;
     border: 1px solid #eee;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
     font-size: 14px;
@@ -364,6 +369,7 @@ footer {
     color: #333;
     background: #fff;
     text-align: left;
+    overflow-x: auto;
 }
 
 .invoice-box table {

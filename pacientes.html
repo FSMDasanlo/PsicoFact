@@ -115,6 +115,24 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
         const dateElement = document.getElementById('current-date');
         dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -191,6 +209,7 @@
         async function deletePatient(id) {
             if (confirm("¿Está seguro de que desea eliminar este paciente?")) {
                 await deleteDoc(doc(db, "pacientes", id));
+                showToast("Paciente eliminado");
                 loadData();
             }
         }
@@ -198,7 +217,13 @@
         document.getElementById('form-paciente').onsubmit = async function(e) {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
-            editingId ? await updateDoc(doc(db, "pacientes", editingId), data) : await addDoc(collection(db, "pacientes"), data);
+            if (editingId) {
+                await updateDoc(doc(db, "pacientes", editingId), data);
+                showToast("Paciente actualizado");
+            } else {
+                await addDoc(collection(db, "pacientes"), data);
+                showToast("Paciente registrado");
+            }
             loadData(); closeModal();
         };
 

@@ -231,6 +231,15 @@
         window.generarPrevisualizacion = async function() {
             try {
                 const mes = document.getElementById('mes-elegido').value;
+
+                // Validación: No permitir meses que aún no han terminado
+                const hoy = new Date();
+                const periodoActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+                if (mes >= periodoActual) {
+                    showToast("Solo se pueden facturar meses ya finalizados.", "error");
+                    return;
+                }
+
                 const sociedad = document.getElementById('select-sociedad').value;
                 const clinica = document.getElementById('select-clinica').value;
 
@@ -283,7 +292,7 @@
                 document.getElementById('fac-num').textContent = numFactura;
                 document.getElementById('fac-fecha').textContent = lastDay;
                 
-                const infoCliente = `<strong>${clinicData.nombre}</strong><br>${clinicData.direccion || ''}<br>Att: ${clinicData.contacto || ''}`;
+                const infoCliente = `<strong>${clinicData.nombre}</strong><br>${clinicData.cif ? 'CIF/NIF: ' + clinicData.cif + '<br>' : ''}${clinicData.direccion || ''}<br>Att: ${clinicData.contacto || ''}`;
                 document.getElementById('fac-cliente').innerHTML = infoCliente;
 
                 const itemsTable = document.getElementById('fac-items');
