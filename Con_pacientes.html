@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultas de pacientes - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2>Consultas de pacientes</h2>
+            <a href="consultas.html" class="back-link">&larr; Volver</a>
+        </div>
+
+        <!-- Tarjeta de Filtros de Búsqueda -->
+        <section class="agenda-container" style="margin-bottom: 2rem;">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Filtros de búsqueda</h3>
+            <form id="form-busqueda" class="form-grid">
+                <div class="form-group">
+                    <label for="filtro-nombre">Nombre o Apellidos</label>
+                    <input type="text" id="filtro-nombre" placeholder="Ej: Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="filtro-clinica">Clínica</label>
+                    <select id="filtro-clinica">
+                        <option value="">Todas las clínicas</option>
+                        <option value="Clínica Central">Clínica Central</option>
+                        <option value="Centro Norte">Centro Norte</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filtro-sociedad">Sociedad</label>
+                    <select id="filtro-sociedad">
+                        <option value="">Todas las sociedades</option>
+                        <option value="Asisa">Asisa</option>
+                        <option value="Sanitas">Sanitas</option>
+                    </select>
+                </div>
+                <div class="form-actions" style="align-items: flex-end;">
+                    <button type="button" class="btn-turquesa" style="flex: 1; cursor: pointer;" onclick="handleSearch()">Buscar</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="clearFilters()">Limpiar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Tabla de Resultados -->
+        <section class="agenda-container">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Resultados</h3>
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Teléfono</th>
+                        <th>Sociedad</th>
+                        <th>Clínica</th>
+                        <th style="text-align: center;">Expediente</th>
+                    </tr>
+                </thead>
+                <tbody id="resultados-busqueda">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date();
+        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+
+        // Datos de pacientes (Simulados para la consulta)
+        const patients = [
+            { id: 1, nombre: 'Juan', apellidos: 'Pérez Martínez', telefono: '600111222', sociedad: 'Asisa', clinica: 'Clínica Central' },
+            { id: 2, nombre: 'María', apellidos: 'García López', telefono: '600333444', sociedad: 'Sanitas', clinica: 'Centro Norte' },
+            { id: 3, nombre: 'Carlos', apellidos: 'Sánchez Ruiz', telefono: '600555666', sociedad: 'Adeslas', clinica: 'Clínica Central' },
+            { id: 4, nombre: 'Ana', apellidos: 'Ramírez Ortiz', telefono: '600777888', sociedad: 'Asisa', clinica: 'Centro Norte' }
+        ];
+
+        function handleSearch() {
+            const nombreFiltro = document.getElementById('filtro-nombre').value.toLowerCase();
+            const clinicaFiltro = document.getElementById('filtro-clinica').value;
+            const sociedadFiltro = document.getElementById('filtro-sociedad').value;
+            const tbody = document.getElementById('resultados-busqueda');
+
+            // Filtrado lógico
+            const resultados = patients.filter(p => {
+                const fullName = (p.nombre + " " + p.apellidos).toLowerCase();
+                const cumpleNombre = fullName.includes(nombreFiltro);
+                const cumpleClinica = clinicaFiltro === "" || p.clinica === clinicaFiltro;
+                const cumpleSociedad = sociedadFiltro === "" || p.sociedad === sociedadFiltro;
+                
+                return cumpleNombre && cumpleClinica && cumpleSociedad;
+            });
+
+            renderResults(resultados);
+        }
+
+        function clearFilters() {
+            document.getElementById('form-busqueda').reset();
+            const tbody = document.getElementById('resultados-busqueda');
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td></tr>`;
+        }
+
+        function renderResults(lista) {
+            const tbody = document.getElementById('resultados-busqueda');
+            tbody.innerHTML = '';
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No se encontraron pacientes con esos filtros</td></tr>`;
+                return;
+            }
+
+            lista.forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${p.nombre} ${p.apellidos}</td>
+                    <td>${p.telefono}</td>
+                    <td>${p.sociedad}</td>
+                    <td>${p.clinica}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="verExpediente(${p.id})" title="Ver Expediente">👁️</a>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function verExpediente(id) {
+            window.location.href = `Expediente_paciente.html?id=${id}`;
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultas de Citas - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2>Consultas de citas</h2>
+            <a href="consultas.html" class="back-link">&larr; Volver</a>
+        </div>
+
+        <!-- Tarjeta de Filtros -->
+        <section class="agenda-container" style="margin-bottom: 2rem;">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Filtros y Navegación</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="btn-turquesa" onclick="filterByMonth(-1)">Mes anterior</button>
+                <button class="btn-turquesa" onclick="filterByMonth(0)">Mes Actual</button>
+                <button class="btn-turquesa" onclick="filterByMonth(1)">Próximo mes</button>
+            </div>
+
+            <form id="form-filtros-citas" class="form-grid">
+                <div class="form-group">
+                    <label for="fecha-desde">Desde</label>
+                    <input type="date" id="fecha-desde">
+                </div>
+                <div class="form-group">
+                    <label for="fecha-hasta">Hasta</label>
+                    <input type="date" id="fecha-hasta">
+                </div>
+                <div class="form-actions" style="align-items: flex-end;">
+                    <button type="button" class="btn-turquesa" style="flex: 1;" onclick="handleSearch()">Buscar por rango</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="clearFilters()">Limpiar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Resumen Financiero/Operativo -->
+        <section id="resumen-citas" class="agenda-container" style="margin-bottom: 2rem; background-color: #f1faff; border-left: 5px solid var(--azul-primario); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+            <!-- Se rellena con JS -->
+        </section>
+
+        <!-- Tabla de Resultados -->
+        <section class="agenda-container">
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Paciente</th>
+                        <th>Clínica</th>
+                        <th>Importe</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="resultados-citas">
+                    <!-- Se rellena con JS -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script>
+        const dateElement = document.getElementById('current-date');
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Generamos fechas dinámicas basadas en hoy para que los botones de meses devuelvan resultados siempre
+        const hoy = new Date();
+        const y = hoy.getFullYear();
+        const m = String(hoy.getMonth() + 1).padStart(2, '0');
+        const mPrev = String(hoy.getMonth()).padStart(2, '0'); // Simplificado para el ejemplo
+
+        const appointments = [
+            { id: 1, fecha: `${y}-${m}-10`, paciente: 'Juan Pérez', clinica: 'Clínica Central', importe: 60, estado: 'completed' },
+            { id: 2, fecha: `${y}-${m}-24`, paciente: 'Juan Pérez', clinica: 'Clínica Central', importe: 60, estado: 'pending' },
+            { id: 3, fecha: `${y}-${mPrev}-15`, paciente: 'Luis Gómez', clinica: 'Centro Norte', importe: 50, estado: 'completed' },
+            { id: 4, fecha: '2026-01-05', paciente: 'María García', clinica: 'Centro Norte', importe: 50, estado: 'confirmada' }
+        ];
+
+        function renderData(data) {
+            const tbody = document.getElementById('resultados-citas');
+            const resumen = document.getElementById('resumen-citas');
+            tbody.innerHTML = '';
+
+            let realizadas = 0, importePagado = 0, pendientes = 0, importePendiente = 0;
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No hay citas para este periodo</td></tr>`;
+            } else {
+                data.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                data.forEach(app => {
+                    const isDone = app.estado === 'completed';
+                    if (isDone) {
+                        realizadas++;
+                        importePagado += app.importe;
+                    } else {
+                        pendientes++;
+                        importePendiente += app.importe;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${app.fecha}</td>
+                            <td>${app.paciente}</td>
+                            <td>${app.clinica}</td>
+                            <td>${app.importe.toFixed(2)} €</td>
+                            <td><span class="status-pill ${app.estado}">${app.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
+                        </tr>`;
+                });
+            }
+
+            resumen.innerHTML = `
+                <div><small>Sesiones Realizadas</small><br><strong>${realizadas}</strong></div>
+                <div><small>Total Pagado</small><br><strong>${importePagado.toFixed(2)} €</strong></div>
+                <div><small>Sesiones Pendientes</small><br><strong>${pendientes}</strong></div>
+                <div><small>Importe Pendiente</small><br><strong>${importePendiente.toFixed(2)} €</strong></div>
+            `;
+        }
+
+        function filterByMonth(offset) {
+            const now = new Date();
+            const targetDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+            const year = targetDate.getFullYear();
+            const month = targetDate.getMonth();
+            
+            const filtered = appointments.filter(app => {
+                const parts = app.fecha.split('-');
+                const appYear = parseInt(parts[0]);
+                const appMonth = parseInt(parts[1]) - 1; // 0-indexed
+                return appYear === year && appMonth === month;
+            });
+            renderData(filtered);
+        }
+
+        function handleSearch() {
+            const desde = document.getElementById('fecha-desde').value;
+            const hasta = document.getElementById('fecha-hasta').value;
+            
+            if (!desde || !hasta) {
+                alert("Por favor, seleccione ambas fechas para el rango.");
+                return;
+            }
+
+            const dDesde = new Date(desde);
+            const dHasta = new Date(hasta);
+
+            const filtered = appointments.filter(app => {
+                // Usamos split para evitar desfases de horas/zonas horarias en la comparación
+                const parts = app.fecha.split('-');
+                const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                return d >= dDesde && d <= dHasta;
+            });
+            renderData(filtered);
+        }
+
+        function clearFilters() {
+            document.getElementById('form-filtros-citas').reset();
+            renderData([]);
+        }
+
+        // Carga inicial con el mes actual
+        filterByMonth(0);
+    </script>
+</body>
+</html>

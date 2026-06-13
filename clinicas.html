@@ -39,6 +39,7 @@
                         <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
                         <th class="sortable" onclick="handleSort('contacto')">Responsable</th>
                         <th>Teléfono</th>
+                        <th>Importe</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -81,6 +82,10 @@
                     <label for="direccion">Dirección</label>
                     <input type="text" id="direccion" name="direccion">
                 </div>
+                <div class="form-group">
+                    <label for="importe">Importe por sesión (€)</label>
+                    <input type="number" id="importe" name="importe" step="0.01">
+                </div>
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Clínica</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
@@ -96,8 +101,8 @@
         dateElement.textContent = today.toLocaleDateString('es-ES', options);
 
         let clinics = [
-            { id: 1, nombre: 'Clínica Central', contacto: 'Dr. Aranda', direccion: 'Calle Principal 10', telefono: '912345678', email: 'central@psicofact.com' },
-            { id: 2, nombre: 'Centro Norte', contacto: 'Dra. Méndez', direccion: 'Av. Norte 55', telefono: '913456789', email: 'norte@psicofact.com' }
+            { id: 1, nombre: 'Clínica Central', contacto: 'Dr. Aranda', direccion: 'Calle Principal 10', telefono: '912345678', email: 'central@psicofact.com', importe: '60.00' },
+            { id: 2, nombre: 'Centro Norte', contacto: 'Dra. Méndez', direccion: 'Av. Norte 55', telefono: '913456789', email: 'norte@psicofact.com', importe: '50.00' }
         ];
 
         let currentPage = 1;
@@ -120,7 +125,7 @@
 
             tbody.innerHTML = '';
             pageItems.forEach(c => {
-                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td>
+                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.importe} €</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editClinic(${c.id})">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic(${c.id})">🗑️</a>
@@ -144,7 +149,7 @@
         function editClinic(id) {
             const c = clinics.find(c => c.id === id);
             editingId = id;
-            ['nombre', 'contacto', 'direccion', 'telefono', 'email'].forEach(f => document.getElementById(f).value = c[f]);
+            ['nombre', 'contacto', 'direccion', 'telefono', 'email', 'importe'].forEach(f => document.getElementById(f).value = c[f]);
             openModal("Editar Clínica");
         }
         function deleteClinic(id) { if (confirm("¿Eliminar esta clínica?")) { clinics = clinics.filter(c => c.id !== id); renderTable(); } }

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expediente del Paciente - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2 id="expediente-titulo">Expediente: Cargando...</h2>
+            <a href="Con_pacientes.html" class="back-link">&larr; Volver</a>
+        </div>
+
+        <!-- Ficha del Paciente -->
+        <section class="agenda-container" style="margin-bottom: 2rem;">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Datos Personales</h3>
+            <div id="ficha-paciente" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <!-- Se rellena con JS -->
+            </div>
+        </section>
+
+        <!-- Historial de Citas -->
+        <section class="agenda-container">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Historial de Citas</h3>
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Clínica</th>
+                        <th>Observaciones</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="historial-citas">
+                    <!-- Se rellena con JS -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Resumen del Expediente -->
+        <div id="resumen-expediente" class="agenda-container" style="margin-top: 1.5rem; background-color: #f1faff; border-left: 5px solid var(--azul-primario); display: none;">
+            <!-- Se rellena con JS -->
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script>
+        // Mostrar fecha actual
+        const dateElement = document.getElementById('current-date');
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateElement.textContent = new Date().toLocaleDateString('es-ES', dateOptions);
+
+        // Datos simulados (En una app real vendrían de una base de datos)
+        const patients = [
+            { id: 1, nombre: 'Juan', apellidos: 'Pérez Martínez', telefono: '600111222', sociedad: 'Asisa', clinica: 'Clínica Central' },
+            { id: 2, nombre: 'María', apellidos: 'García López', telefono: '600333444', sociedad: 'Sanitas', clinica: 'Centro Norte' }
+        ];
+
+        const appointments = [
+            { id: 1, pacienteId: 1, fecha: '2023-05-10', hora: '09:00', clinica: 'Clínica Central', obs: 'Sesión inicial', estado: 'completed', importe: 60.00 },
+            { id: 2, pacienteId: 1, fecha: '2023-05-24', hora: '11:00', clinica: 'Clínica Central', obs: 'Seguimiento TCC', estado: 'pending', importe: 60.00 },
+            { id: 3, pacienteId: 2, fecha: '2023-05-15', hora: '10:30', clinica: 'Centro Norte', obs: 'Evaluación', estado: 'completed', importe: 50.00 }
+        ];
+
+        // Lógica de carga
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = parseInt(urlParams.get('id'));
+        const patient = patients.find(p => p.id === patientId);
+
+        if (patient) {
+            document.getElementById('expediente-titulo').textContent = `Expediente: ${patient.nombre} ${patient.apellidos}`;
+            
+            const ficha = document.getElementById('ficha-paciente');
+            ficha.innerHTML = `
+                <div><strong>Teléfono:</strong><br>${patient.telefono}</div>
+                <div><strong>Sociedad:</strong><br>${patient.sociedad}</div>
+                <div><strong>Clínica:</strong><br>${patient.clinica}</div>
+            `;
+
+            const historialTbody = document.getElementById('historial-citas');
+            const patientApps = appointments.filter(a => a.pacienteId === patientId);
+            
+            if (patientApps.length > 0) {
+                patientApps.forEach(a => {
+                    const estadoLabel = a.estado === 'completed' ? 'Realizada' : 'Pendiente';
+                    historialTbody.innerHTML += `
+                        <tr>
+                            <td>${a.fecha}</td>
+                            <td>${a.hora}</td>
+                            <td>${a.clinica}</td>
+                            <td><small>${a.obs}</small></td>
+                            <td><span class="status-pill ${a.estado}">${estadoLabel}</span></td>
+                        </tr>
+                    `;
+                });
+            } else {
+                historialTbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No hay citas registradas</td></tr>`;
+            }
+
+            // Cálculo del resumen solicitado
+            const realizadas = patientApps.filter(a => a.estado === 'completed').length;
+            const pendientes = patientApps.filter(a => a.estado === 'pending').length;
+            const pagado = patientApps
+                .filter(a => a.estado === 'completed')
+                .reduce((acc, a) => acc + (a.importe || 0), 0);
+
+            const resumenDiv = document.getElementById('resumen-expediente');
+            resumenDiv.style.display = 'block';
+            resumenDiv.innerHTML = `
+                Sesiones realizadas: <strong>${realizadas}</strong>, Sesiones pendientes: <strong>${pendientes}</strong> &nbsp; | &nbsp; <strong>Importe pagado:</strong> ${pagado.toFixed(2)} €
+            `;
+        }
+    </script>
+</body>
+</html>
