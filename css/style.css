@@ -143,6 +143,45 @@ footer {
         font-size: 0.85rem;
         line-height: 1.2;
     }
+
+    .agenda-container {
+        padding: 1rem;
+    }
+
+    .agenda-table {
+        min-width: 0;
+        display: block;
+    }
+
+    .agenda-table thead {
+        display: none; /* Ocultamos cabecera en móvil para ganar espacio */
+    }
+
+    .agenda-table tbody, .agenda-table tr, .agenda-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .agenda-table tr {
+        margin-bottom: 1.2rem;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 10px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .agenda-table td {
+        padding: 8px 5px;
+        border-bottom: 1px solid #eee;
+        text-align: left !important;
+    }
+
+    .agenda-table td:last-child {
+        border-bottom: none;
+        text-align: center !important;
+        padding-top: 15px;
+    }
 }
 
 /* Estilos para la sección de Agenda */
@@ -152,6 +191,7 @@ footer {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     text-align: left;
+    overflow-x: auto; /* Asegura que nada se desborde fuera del contenedor */
 }
 
 .agenda-header {
