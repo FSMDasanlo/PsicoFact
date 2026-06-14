@@ -116,74 +116,6 @@ footer {
     text-align: center;
 }
 
-/* Mobile adjustments */
-@media (max-width: 600px) {
-    .navbar {
-        padding: 0.8rem 1rem;
-    }
-    .container {
-        margin: 1rem auto;
-    }
-    .main-menu {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    .menu-card {
-        padding: 1.2rem;
-    }
-    .menu-card .icon {
-        font-size: 1.8rem;
-        margin-bottom: 0.3rem;
-    }
-    .menu-card h2 {
-        font-size: 1.2rem;
-        margin-bottom: 0.2rem;
-    }
-    .menu-card p {
-        font-size: 0.85rem;
-        line-height: 1.2;
-    }
-
-    .agenda-container {
-        padding: 1rem;
-    }
-
-    .agenda-table {
-        min-width: 0;
-        display: block;
-    }
-
-    .agenda-table thead {
-        display: none; /* Ocultamos cabecera en móvil para ganar espacio */
-    }
-
-    .agenda-table tbody, .agenda-table tr, .agenda-table td {
-        display: block;
-        width: 100%;
-    }
-
-    .agenda-table tr {
-        margin-bottom: 1.2rem;
-        border: 1px solid #ddd;
-        border-radius: 12px;
-        padding: 10px;
-        background-color: #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .agenda-table td {
-        padding: 8px 5px;
-        border-bottom: 1px solid #eee;
-        text-align: left !important;
-    }
-
-    .agenda-table td:last-child {
-        border-bottom: none;
-        text-align: center !important;
-        padding-top: 15px;
-    }
-}
-
 /* Estilos para la sección de Agenda */
 .agenda-container {
     background-color: var(--blanco);
@@ -502,3 +434,75 @@ footer {
 .toast.success { border-left-color: var(--turquesa); }
 .toast.error { border-left-color: #e74c3c; }
 .toast.info { border-left-color: var(--azul-primario); }
+
+/* --- MEDIA QUERIES (Al final para asegurar que sobrescriban correctamente) --- */
+@media (max-width: 600px) {
+    .navbar {
+        padding: 0.8rem 1rem;
+    }
+    .container {
+        margin: 1rem auto;
+        width: 100%;
+        padding: 0 10px;
+    }
+    .main-menu {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .menu-card {
+        padding: 1.2rem;
+    }
+    .menu-card .icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.3rem;
+    }
+    .menu-card h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.2rem;
+    }
+    .menu-card p {
+        font-size: 0.85rem;
+        line-height: 1.2;
+    }
+
+    .agenda-container {
+        padding: 1rem;
+    }
+
+    .agenda-table {
+        min-width: 0 !important; /* Forzamos que ignore el min-width de 500px */
+        display: block;
+        width: 100%;
+    }
+
+    .agenda-table thead {
+        display: none; 
+    }
+
+    .agenda-table tbody, .agenda-table tr, .agenda-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .agenda-table tr {
+        margin-bottom: 1.2rem;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 10px;
+        background-color: #fff;
+    }
+
+    .agenda-table td {
+        padding: 8px 5px;
+        border-bottom: 1px solid #eee;
+        text-align: left !important;
+        word-wrap: break-word; /* Evita que textos largos rompan la tarjeta */
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr; /* Una sola columna en formularios móviles */
+    }
+    .full-width {
+        grid-column: span 1;
+    }
+}
