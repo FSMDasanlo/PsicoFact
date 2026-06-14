@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facturas - PsicoFact</title>
+    <title>Histórico de Facturas - PsicoFact</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Librería para generar PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-
     <header class="navbar">
         <div class="logo-container">
             <a href="index.html" style="text-decoration: none;">
@@ -21,123 +18,88 @@
     </header>
 
     <main class="container">
-        <div class="agenda-header">
-            <h2>Gestión de Facturas</h2>
-            <div class="agenda-actions">
-                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
-                <a href="consultas.html" class="back-link">&larr; Volver</a>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: center;">
-            <button class="btn-turquesa" onclick="showSection('nueva')">Nueva Factura</button>
-            <button class="btn-turquesa" onclick="showSection('consultar')">Consultar Facturas</button>
-        </div>
-
-        <!-- SECCIÓN NUEVA FACTURA -->
-        <section id="sec-nueva" class="agenda-container">
-            <h3 style="margin-bottom: 1rem;">Generar Nueva Factura</h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Periodo</label>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <button class="btn-turquesa" style="font-size: 0.8rem;" onclick="setMonth(-1)">Mes Anterior</button>
-                        <button class="btn-turquesa" style="font-size: 0.8rem;" onclick="setMonth(0)">Mes Actual</button>
-                        <span id="display-periodo" style="margin-left: 10px; font-weight: 600; color: var(--azul-oscuro); font-size: 0.85rem;"></span>
-                    </div>
-                    <input type="hidden" id="mes-elegido">
-                </div>
-                <div class="form-group">
-                    <label>Sociedad (Filtro)</label>
-                    <select id="select-sociedad" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Clínica</label>
-                    <select id="select-clinica" required></select>
-                </div>
-                <div class="form-actions" style="align-items: flex-end;">
-                    <button class="btn-turquesa" onclick="generarPrevisualizacion()">Generar Factura</button>
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Historico de facturas</h2>
+                <div class="agenda-actions" style="display: flex; gap: 10px;">
+                    <button class="btn-turquesa" onclick="openInvoiceModal()" style="border:none; cursor:pointer;">+ Nueva Factura</button>
+                    <button class="btn-turquesa" onclick="exportToCSV()" style="border:none; cursor:pointer;">Exportar CSV</button>
+                    <select id="filtro-ano" onchange="loadInvoices()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Cualquier Año...</option>
+                    </select>
+                    <select id="filtro-cliente" onchange="loadInvoices()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Todas las Clínicas...</option>
+                    </select>
+                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 </div>
             </div>
 
-            <div id="preview-container" class="hidden">
-                <div id="invoice-to-print" class="invoice-box" style="margin-top: 30px;">
-                    <table cellpadding="0" cellspacing="0">
-                        <tr class="top">
-                            <td colspan="2">
-                                <table>
-                                    <tr>
-                                        <td>
-                                            <strong>Felipe Poblet</strong><br>
-                                            NIF:06620771Z<br>
-                                            Cuenta: ZZZZ-AAAA-OOOO
-                                        </td>
-                                        <td style="text-align: right;">
-                                            Factura #: <span id="fac-num"></span><br>
-                                            Fecha: <span id="fac-fecha"></span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr class="information">
-                            <td colspan="2">
-                                <table>
-                                    <tr>
-                                        <td>
-                                            <strong>Cliente:</strong><br>
-                                            <span id="fac-cliente"></span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr class="heading">
-                            <td>Sesión / Paciente</td>
-                            <td style="text-align: right;">Importe</td>
-                        </tr>
-                        <tbody id="fac-items"></tbody>
-                        <tr class="total">
-                            <td></td>
-                            <td>Subtotal: <span id="fac-subtotal"></span> €</td>
-                        </tr>
-                        <tr class="total">
-                            <td></td>
-                            <td>IVA (10%): <span id="fac-iva"></span> €</td>
-                        </tr>
-                        <tr class="total">
-                            <td></td>
-                            <td>Total: <span id="fac-total"></span> €</td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="margin-top: 20px; text-align: center;">
-                    <button class="btn-turquesa" onclick="guardarYDescargarPDF()">Guardar y Descargar PDF</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECCIÓN CONSULTAR -->
-        <section id="sec-consultar" class="agenda-container hidden">
-            <h3 style="margin-bottom: 1rem;">Histórico de Facturas</h3>
             <table class="agenda-table">
                 <thead>
+                    <tr id="resumen-totales" style="background-color: #f8f9fa; border-bottom: 2px solid var(--azul-primario);">
+                        <td colspan="3" style="text-align: right; font-weight: 600; color: var(--azul-oscuro);">TOTALES SELECCIÓN:</td>
+                        <td id="total-base-sum" style="font-weight: bold; color: var(--azul-primario);">0.00 €</td>
+                        <td id="total-iva-sum" style="font-weight: bold; color: var(--turquesa);">0.00 €</td>
+                        <td id="total-final-sum" style="font-weight: bold; color: var(--azul-oscuro); background: #eee;">0.00 €</td>
+                    </tr>
                     <tr>
-                        <th>Nº Factura</th>
                         <th>Fecha</th>
-                        <th>Cliente</th>
+                        <th>Paciente</th>
+                        <th>Clínica</th>
+                        <th>Base Imp.</th>
+                        <th>IVA (21%)</th>
                         <th>Total</th>
-                        <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="lista-facturas"></tbody>
+                <tbody id="invoices-body"></tbody>
             </table>
-        </section>
+        </div>
     </main>
+
+    <!-- Modal para Nueva Factura -->
+    <div id="modalFactura" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Generar Nueva Factura</h2>
+                <span class="close-modal" onclick="closeInvoiceModal()">&times;</span>
+            </div>
+            <form id="form-factura" class="form-grid">
+                <div class="form-group">
+                    <label for="fecha">Fecha</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+                <div class="form-group">
+                    <label for="paciente-select">Paciente</label>
+                    <select id="paciente-select" name="paciente" required onchange="handlePatientChange()">
+                        <option value="">Seleccione un paciente...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="clinica-factura">Clínica</label>
+                    <input type="text" id="clinica-factura" name="clinica" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label for="importe-factura">Importe (€)</label>
+                    <input type="number" id="importe-factura" name="importe" step="0.01" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="obs-factura">Observaciones / Concepto</label>
+                    <textarea id="obs-factura" name="observaciones" rows="2"></textarea>
+                </div>
+                <input type="hidden" name="estado" value="completed">
+                <input type="hidden" id="sociedad-factura" name="sociedad">
+                
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar y Contabilizar</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeInvoiceModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, getDoc, doc, query, where, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -152,253 +114,165 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let clinicsMaster = [];
-        function showToast(message, type = 'success') {
-            let container = document.getElementById('toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toast-container';
-                document.body.appendChild(container);
-            }
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => container.removeChild(toast), 300);
-            }, 3500);
-        }
-
-        let currentInvoiceData = null;
+        let currentInvoices = [];
+        let patientsMaster = [];
+        let clinicsMasterData = [];
 
         async function init() {
-            const snapS = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));
-            const snapC = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
-            const sSel = document.getElementById('select-sociedad');
-            const cSel = document.getElementById('select-clinica');
-            sSel.innerHTML = '<option value="">Todas las sociedades</option>';
-            cSel.innerHTML = '<option value="">Seleccione...</option>';
-            clinicsMaster = snapC.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            snapS.forEach(doc => sSel.innerHTML += `<option value="${doc.data().nombre}">${doc.data().nombre}</option>`);
-            clinicsMaster.forEach(c => cSel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`);
-            setMonth(0);
+            // Fecha actual en el navbar
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            // Llenar selector de años 2026 - 2060
+            const yearSelect = document.getElementById('filtro-ano');
+            for (let y = 2026; y <= 2060; y++) {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                yearSelect.appendChild(opt);
+            }
+
+            // Llenar selector de clínicas (clientes)
+            const snapClinics = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
+            clinicsMasterData = snapClinics.docs.map(d => d.data());
+            const clientSelect = document.getElementById('filtro-cliente');
+            clinicsMasterData.forEach(clinic => {
+                const opt = document.createElement('option');
+                opt.value = clinic.nombre; opt.textContent = clinic.nombre;
+                clientSelect.appendChild(opt);
+            });
+
+            // Llenar pacientes para el modal
+            const snapP = await getDocs(collection(db, "pacientes"));
+            patientsMaster = snapP.docs.map(d => d.data());
+            const pSelect = document.getElementById('paciente-select');
+            patientsMaster.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = `${p.nombre} ${p.apellidos}`;
+                opt.textContent = `${p.nombre} ${p.apellidos}`;
+                pSelect.appendChild(opt);
+            });
+
+            loadInvoices();
         }
 
-        window.setMonth = function(offset) {
-            const d = new Date();
-            const target = new Date(d.getFullYear(), d.getMonth() + offset, 1);
-            const y = target.getFullYear();
-            const m = String(target.getMonth() + 1).padStart(2, '0');
-            const periodo = `${y}-${m}`;
-            document.getElementById('mes-elegido').value = periodo;
-            
-            // Limpiar previsualización si existe al cambiar de mes
-            document.getElementById('preview-container').classList.add('hidden');
-            currentInvoiceData = null;
+        function handlePatientChange() {
+            const selectedName = document.getElementById('paciente-select').value;
+            const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
+            if (patient) {
+                document.getElementById('clinica-factura').value = patient.clinica;
+                document.getElementById('sociedad-factura').value = patient.sociedad || '';
+                const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
+                document.getElementById('importe-factura').value = clinicData ? parseFloat(clinicData.importe) : '';
+            }
+        }
 
-            const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            const display = document.getElementById('display-periodo');
-            if(display) display.textContent = `${nombresMeses[target.getMonth()]} ${y}`;
-        };
+        function openInvoiceModal() {
+            document.getElementById('form-factura').reset();
+            document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modalFactura').style.display = 'flex';
+        }
 
-        window.showSection = async function(section) {
-            document.getElementById('sec-nueva').classList.toggle('hidden', section !== 'nueva');
-            document.getElementById('sec-consultar').classList.toggle('hidden', section !== 'consultar');
-            if(section === 'consultar') loadInvoices();
+        function closeInvoiceModal() {
+            document.getElementById('modalFactura').style.display = 'none';
+        }
+
+        document.getElementById('form-factura').onsubmit = async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            data.hora = new Date().toLocaleTimeString('es-ES', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            await addDoc(collection(db, "citas"), data);
+            closeInvoiceModal();
+            loadInvoices();
         };
 
         async function loadInvoices() {
-            const snap = await getDocs(query(collection(db, "facturas"), orderBy("numero", "desc")));
-            const tbody = document.getElementById('lista-facturas');
-            tbody.innerHTML = '';
-            snap.forEach(d => {
-                const f = d.data();
-                tbody.innerHTML += `<tr>
-                    <td>${f.numero}</td>
-                    <td>${f.fecha}</td>
-                    <td>${f.cliente}</td>
-                    <td>${f.total.toFixed(2)} €</td>
-                    <td style="text-align: center;">
-                        <a href="javascript:void(0)" class="action-icon" onclick="reimprimirFactura('${d.id}')" title="Reimprimir PDF">🖨️</a>
-                        <a href="javascript:void(0)" class="action-icon" onclick="eliminarFactura('${d.id}')" title="Eliminar Factura">🗑️</a>
-                    </td>
-                </tr>`;
-            });
+            const selectedYear = document.getElementById('filtro-ano').value;
+            const selectedClinic = document.getElementById('filtro-cliente').value;
+            const tbody = document.getElementById('invoices-body');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Buscando facturas...</td></tr>';
+
+            // Filtramos citas con estado 'completed' (Realizadas)
+            let q = query(collection(db, "citas"), where("estado", "==", "completed"));
+            if (selectedClinic) {
+                q = query(collection(db, "citas"), where("estado", "==", "completed"), where("clinica", "==", selectedClinic));
+            }
+
+            const snap = await getDocs(q);
+            let data = snap.docs.map(d => d.data());
+
+            // Filtrado manual por año en JS
+            if (selectedYear) {
+                data = data.filter(c => c.fecha && c.fecha.startsWith(selectedYear));
+            }
+
+            // Ordenar por fecha descendente
+            data.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+            currentInvoices = data;
+            renderTable(data);
         }
 
-        window.generarPrevisualizacion = async function() {
-            try {
-                const mes = document.getElementById('mes-elegido').value;
+        function renderTable(items) {
+            const tbody = document.getElementById('invoices-body');
+            tbody.innerHTML = '';
+            let sumBase = 0;
 
-                // Validación: No permitir meses que aún no han terminado
-                const hoy = new Date();
-                const periodoActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-                if (mes >= periodoActual) {
-                    showToast("Solo se pueden facturar meses ya finalizados.", "error");
-                    return;
-                }
+            items.forEach(item => {
+                const base = parseFloat(item.importe) || 0;
+                const iva = base * 0.21;
+                const total = base + iva;
+                sumBase += base;
 
-                const sociedad = document.getElementById('select-sociedad').value;
-                const clinica = document.getElementById('select-clinica').value;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.fecha}</td>
+                        <td>${item.paciente}</td>
+                        <td>${item.clinica}</td>
+                        <td>${base.toFixed(2)} €</td>
+                        <td>${iva.toFixed(2)} €</td>
+                        <td><strong>${total.toFixed(2)} €</strong></td>
+                    </tr>`;
+            });
 
-                const clinicData = clinicsMaster.find(c => c.nombre === clinica);
-                if (!clinica) {
-                    showToast("Seleccione una Clínica", "error");
-                    return;
-                }
+            const sumIva = sumBase * 0.21;
+            const sumTotal = sumBase + sumIva;
+            document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
+            document.getElementById('total-iva-sum').textContent = sumIva.toFixed(2) + ' €';
+            document.getElementById('total-final-sum').textContent = sumTotal.toFixed(2) + ' €';
+        }
 
-                // Obtener citas del mes, sociedad y clinica (estado completed)
-                // NOTA: Esta consulta requiere un índice compuesto en Firestore
-                let constraints = [
-                    where("clinica", "==", clinica), 
-                    where("estado", "==", "completed")
-                ];
-
-                if (sociedad) {
-                    constraints.push(where("sociedad", "==", sociedad));
-                }
-                
-                const q = query(collection(db, "citas"), ...constraints);
-                
-                const snap = await getDocs(q);
-                const citas = snap.docs.map(d => d.data()).filter(c => c.fecha && c.fecha.startsWith(mes));
-
-                if (citas.length === 0) {
-                    showToast("No hay sesiones finalizadas en el periodo elegido.", "error");
-                    return;
-                }
-
-                // Correlativo Factura
-                const facSnap = await getDocs(query(collection(db, "facturas"), orderBy("numero", "desc"), limit(1)));
-                let nextNum = 1;
-                if (!facSnap.empty) {
-                    const lastNumStr = facSnap.docs[0].data().numero.split('-').pop();
-                    nextNum = parseInt(lastNumStr) + 1;
-                }
-                const numFactura = `FP-2026-${String(nextNum).padStart(3, '0')}`;
-
-                // Fecha factura (Ultimo dia del mes)
-                const parts = mes.split('-');
-                const lastDay = new Date(parts[0], parts[1], 0).toLocaleDateString('es-ES');
-
-                // Cálculos
-                const subtotal = citas.reduce((acc, c) => acc + (parseFloat(c.importe) || 0), 0);
-                const iva = subtotal * 0.10;
-                const total = subtotal + iva;
-
-                // Render
-                document.getElementById('fac-num').textContent = numFactura;
-                document.getElementById('fac-fecha').textContent = lastDay;
-                
-                const infoCliente = `<strong>${clinicData.nombre}</strong><br>${clinicData.cif ? 'CIF/NIF: ' + clinicData.cif + '<br>' : ''}${clinicData.direccion || ''}<br>Att: ${clinicData.contacto || ''}`;
-                document.getElementById('fac-cliente').innerHTML = infoCliente;
-
-                const itemsTable = document.getElementById('fac-items');
-                itemsTable.innerHTML = '';
-                citas.sort((a,b) => a.fecha.localeCompare(b.fecha)).forEach(c => {
-                    itemsTable.innerHTML += `<tr class="item"><td>${c.fecha} - ${c.paciente}</td><td style="text-align: right;">${parseFloat(c.importe).toFixed(2)} €</td></tr>`;
-                });
-
-                document.getElementById('fac-subtotal').textContent = subtotal.toFixed(2);
-                document.getElementById('fac-iva').textContent = iva.toFixed(2);
-                document.getElementById('fac-total').textContent = total.toFixed(2);
-
-                currentInvoiceData = {
-                    numero: numFactura,
-                    fecha: lastDay,
-                    cliente: infoCliente,
-                    clinica: clinica,
-                    subtotal: subtotal,
-                    iva: iva,
-                    total: total,
-                    items: citas.map(c => ({ fecha: c.fecha, paciente: c.paciente, importe: c.importe }))
-                };
-
-                document.getElementById('preview-container').classList.remove('hidden');
-                showToast("Previsualización generada", "success");
-            } catch (error) {
-                console.error(error);
-                showToast("Error al consultar citas. Compruebe los índices.", "error");
+        function exportToCSV() {
+            if (currentInvoices.length === 0) {
+                alert("No hay datos para exportar");
+                return;
             }
-        };
-
-        window.guardarYDescargarPDF = async function() {
-            if(!currentInvoiceData) return;
             
-            try {
-                // Guardar en Firestore
-                await addDoc(collection(db, "facturas"), currentInvoiceData);
-                
-                // Generar PDF
-                const element = document.getElementById('invoice-to-print');
-                const opt = {
-                    margin: 1,
-                    filename: `${currentInvoiceData.numero}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-                };
-                html2pdf().set(opt).from(element).save();
-                
-                showToast("Factura guardada y PDF generado.");
-                document.getElementById('preview-container').classList.add('hidden');
-                showSection('consultar');
-            } catch (e) {
-                console.error(e);
-                showToast("Error al guardar la factura.", "error");
-            }
-        };
+            let csv = "\uFEFF"; // BOM para soporte UTF-8 en Excel
+            csv += "Fecha;Paciente;Clinica;Base Imponible;IVA (21%);Total\n";
+            
+            currentInvoices.forEach(item => {
+                const base = parseFloat(item.importe) || 0;
+                const iva = base * 0.21;
+                const total = base + iva;
+                // Usamos punto y coma como separador y coma para decimales (formato común en España para Excel)
+                csv += `${item.fecha};${item.paciente};${item.clinica};${base.toFixed(2).replace('.', ',')};${iva.toFixed(2).replace('.', ',')};${total.toFixed(2).replace('.', ',')}\n`;
+            });
 
-        window.reimprimirFactura = async function(id) {
-            const docSnap = await getDoc(doc(db, "facturas", id));
-            if (!docSnap.exists()) return;
-            const f = docSnap.data();
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Facturas_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
-            // Rellenar visualización de la factura con los datos guardados
-            document.getElementById('fac-num').textContent = f.numero;
-            document.getElementById('fac-fecha').textContent = f.fecha;
-            document.getElementById('fac-cliente').innerHTML = f.cliente;
-            const itemsTable = document.getElementById('fac-items');
-            itemsTable.innerHTML = '';
-            if (f.items) {
-                f.items.sort((a,b) => a.fecha.localeCompare(b.fecha)).forEach(c => {
-                    itemsTable.innerHTML += `<tr class="item"><td>${c.fecha} - ${c.paciente}</td><td style="text-align: right;">${parseFloat(c.importe).toFixed(2)} €</td></tr>`;
-                });
-            }
-            document.getElementById('fac-subtotal').textContent = f.subtotal.toFixed(2);
-            document.getElementById('fac-iva').textContent = f.iva.toFixed(2);
-            document.getElementById('fac-total').textContent = f.total.toFixed(2);
-
-            // Generar el PDF directamente
-            const element = document.getElementById('invoice-to-print');
-            const opt = {
-                margin: 1,
-                filename: `${f.numero}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
-        };
-
-        window.eliminarFactura = async function(id) {
-            if (confirm("¿Está seguro de que desea eliminar esta factura del historial? Esta acción no se puede deshacer.")) {
-                try {
-                    await deleteDoc(doc(db, "facturas", id));
-                    showToast("Factura eliminada correctamente.");
-                    loadInvoices(); // Recargar la lista
-                } catch (e) {
-                    console.error("Error al eliminar la factura: ", e);
-                    showToast("Error al eliminar la factura.", "error");
-                }
-            }
-        };
-
-        // Fecha Navbar
-        const dateElement = document.getElementById('current-date');
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        // Exponer la función al objeto window para que sea accesible desde el onchange del HTML
+        window.loadInvoices = loadInvoices;
+        window.exportToCSV = exportToCSV;
+        window.openInvoiceModal = openInvoiceModal;
+        window.closeInvoiceModal = closeInvoiceModal;
+        window.handlePatientChange = handlePatientChange;
 
         init();
     </script>
