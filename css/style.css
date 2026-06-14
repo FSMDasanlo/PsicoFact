@@ -118,8 +118,30 @@ footer {
 
 /* Mobile adjustments */
 @media (max-width: 600px) {
+    .navbar {
+        padding: 0.8rem 1rem;
+    }
+    .container {
+        margin: 1rem auto;
+    }
     .main-menu {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .menu-card {
+        padding: 1.2rem;
+    }
+    .menu-card .icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.3rem;
+    }
+    .menu-card h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.2rem;
+    }
+    .menu-card p {
+        font-size: 0.85rem;
+        line-height: 1.2;
     }
 }
 
