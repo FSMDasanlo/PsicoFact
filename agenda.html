@@ -145,7 +145,9 @@
         }
 
         const dateElement = document.getElementById('current-date');
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
+        dateElement.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
         let patientsMaster = [];
         let clinicsMasterData = [];

@@ -44,7 +44,7 @@
                         <th>Fecha</th>
                         <th>Hora</th>
                         <th>Clínica</th>
-                        <th>Observaciones</th>
+                        <th>Observaciones <a href="javascript:void(0)" onclick="showAllNotes()" title="Ver resumen de notas" style="text-decoration:none; margin-left:5px;">📄</a></th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -59,6 +59,25 @@
             <!-- Se rellena con JS -->
         </div>
     </main>
+
+    <!-- Modal para Resumen de Notas -->
+    <div id="modalNotas" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="agenda-header">
+                <h2>Resumen de Evolución</h2>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <a href="javascript:void(0)" onclick="printNotes()" title="Imprimir" style="text-decoration:none; font-size: 1.4rem;">🖨️</a>
+                    <button class="btn-turquesa" onclick="copyNotes()" style="padding: 5px 12px; font-size: 0.85rem;">Copiar Texto</button>
+                    <span class="close-modal" onclick="closeNotesModal()">&times;</span>
+                </div>
+            </div>
+            <div id="notas-content" style="white-space: pre-wrap; margin-top: 1.5rem; max-height: 500px; overflow-y: auto; text-align: left; line-height: 1.8; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
+            </div>
+            <div class="form-actions full-width" style="justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-turquesa" onclick="closeNotesModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
     <footer>
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
@@ -84,10 +103,14 @@
         // Mostrar fecha actual
         const dateElement = document.getElementById('current-date');
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', dateOptions);
+        const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
+        dateElement.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
+
+        let patientAppsData = [];
+        let currentPatientName = "";
 
         async function loadExpediente() {
             if (!patientId) return;
@@ -95,6 +118,7 @@
             const docSnap = await getDoc(doc(db, "pacientes", patientId));
             if (!docSnap.exists()) return;
             const patient = docSnap.data();
+            currentPatientName = `${patient.nombre} ${patient.apellidos}`;
 
             document.getElementById('expediente-titulo').textContent = `Expediente: ${patient.nombre} ${patient.apellidos}`;
             
@@ -110,8 +134,10 @@
             // Buscamos citas por el nombre del paciente o ID si lo guardas así
             const q = query(collection(db, "citas"), where("paciente", "==", `${patient.nombre} ${patient.apellidos}`));
             const snapCitas = await getDocs(q);
-            const patientApps = snapCitas.docs.map(d => d.data());
+            const patientApps = snapCitas.docs.map(d => d.data()).sort((a, b) => b.fecha.localeCompare(a.fecha));
             
+            patientAppsData = patientApps;
+
             if (patientApps.length > 0) {
                 patientApps.forEach(a => {
                     const estadoLabel = a.estado === 'completed' ? 'Realizada' : 'Pendiente';
@@ -142,6 +168,52 @@
             `;
         }
         loadExpediente();
+
+        window.showAllNotes = function() {
+            const content = document.getElementById('notas-content');
+            if (patientAppsData.length === 0) {
+                content.innerHTML = "<em>No hay citas registradas para este paciente.</em>";
+            } else {
+                let html = `<h3 style="margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Paciente: ${currentPatientName}</h3>`;
+                html += patientAppsData.map(a => {
+                    const obs = a.observaciones || a.obs || 'Sin observaciones';
+                    return `<strong>${a.fecha}</strong> / ${obs}`;
+                }).join('<br>');
+                content.innerHTML = html;
+            }
+            document.getElementById('modalNotas').style.display = 'flex';
+        }
+
+        window.copyNotes = function() {
+            const contentText = document.getElementById('notas-content').innerText;
+            navigator.clipboard.writeText(contentText).then(() => {
+                alert("Resumen copiado al portapapeles");
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+            });
+        }
+
+        window.printNotes = function() {
+            const content = document.getElementById('notas-content').innerHTML;
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Resumen de Evolución - ' + currentPatientName + '<\/title>');
+            printWindow.document.write('<style>body{font-family: "Segoe UI", Tahoma, sans-serif; line-height: 1.6; padding: 40px; color: #333;} h3{border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;} strong{color: #2c3e50;}<\/style>');
+            printWindow.document.write('<\/head><body>');
+            printWindow.document.write(content);
+            printWindow.document.write('<\/body><\/html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        window.closeNotesModal = function() {
+            document.getElementById('modalNotas').style.display = 'none';
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalNotas');
+            if (event.target == modal) closeNotesModal();
+        }
     </script>
 </body>
 </html>

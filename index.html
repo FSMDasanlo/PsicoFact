@@ -51,7 +51,8 @@
         const dateElement = document.getElementById('current-date');
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        const dateStr = today.toLocaleDateString('es-ES', options);
+        dateElement.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
     </script>
 
 </body>
