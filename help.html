@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayuda - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .help-section { margin-bottom: 2.5rem; text-align: left; }
+        .help-section h3 { color: var(--azul-primario); border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 1rem; }
+        .help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .help-card { background: #fff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--turquesa); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .icon-legend { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .icon-box { background: #eee; padding: 5px 10px; border-radius: 4px; font-size: 1.2rem; min-width: 45px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2>Guía de Usuario</h2>
+            <div class="agenda-actions">
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="index.html" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <div class="agenda-container">
+            <section class="help-section">
+                <h3>Módulos Principales</h3>
+                <div class="help-grid">
+                    <div class="help-card">
+                        <h4>📅 Agenda</h4>
+                        <p>Gestión diaria de pacientes. Permite crear citas, marcar asistencia y sincronizar con Google Calendar. Incluye detección de conflictos horarios (30 min).</p>
+                    </div>
+                    <div class="help-card">
+                        <h4>👤 Consultas</h4>
+                        <p>Acceso al histórico. Incluye el <strong>Expediente del Paciente</strong> con sus datos personales y listado completo de sesiones.</p>
+                    </div>
+                    <div class="help-card">
+                        <h4>💰 Facturas</h4>
+                        <p>Visualización de ingresos. Calcula automáticamente la Base Imponible e IVA (21%) de las sesiones realizadas. Permite exportar a Excel (CSV).</p>
+                    </div>
+                    <div class="help-card">
+                        <h4>⚙️ Configuración</h4>
+                        <p>Gestión de "Datos Maestros": Alta y edición de Clínicas, Sociedades médicas y Pacientes recurrentes.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <h3>Leyenda de Iconos y Botones</h3>
+                <div class="help-grid">
+                    <div class="help-card">
+                        <div class="icon-legend"><span class="icon-box">🏠</span> <span>Ir a la portada principal.</span></div>
+                        <div class="icon-legend"><span class="icon-box">✏️</span> <span>Editar el registro seleccionado.</span></div>
+                        <div class="icon-legend"><span class="icon-box">🗑️</span> <span>Eliminar permanentemente.</span></div>
+                    </div>
+                    <div class="help-card">
+                        <div class="icon-legend"><span class="icon-box">✅ / ⚪</span> <span>Cambiar estado: Realizada / Pendiente.</span></div>
+                        <div class="icon-legend"><span class="icon-box">👁️</span> <span>Ver detalle o historial completo (Expediente).</span></div>
+                        <div class="icon-legend"><span class="icon-box">🔍</span> <span>Buscador en tiempo real.</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <h3>Preguntas Frecuentes</h3>
+                <div class="help-card" style="border-left-color: var(--azul-primario);">
+                    <p><strong>¿Cómo genero una factura?</strong><br>
+                    Las facturas se generan automáticamente a partir de las citas marcadas como <strong>"Realizadas"</strong>. Ve a la sección de Facturas para ver el resumen y exportar.</p>
+                    <br>
+                    <p><strong>¿Cómo añado una cita a mi móvil?</strong><br>
+                    Al crear o editar una cita en la Agenda, pulsa el botón "Añadir a Google Calendar". Se abrirá tu calendario con los datos ya rellenos.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Soporte Técnico</p>
+    </footer>
+
+    <script>
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    </script>
+</body>
+</html>
