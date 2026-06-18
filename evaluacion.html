@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación Psicológica - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .eval-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--blanco);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--azul-primario);
+        }
+        .eval-section {
+            margin-bottom: 15px;
+            background: var(--blanco);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .eval-section summary {
+            padding: 1.2rem;
+            font-weight: 600;
+            color: var(--azul-oscuro);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1faff;
+            border-bottom: 2px solid #e1e8ed;
+            transition: all 0.3s;
+        }
+        .eval-section summary:hover { background: #e6f2ff; }
+        .eval-section summary::-webkit-details-marker { display: none; }
+        .eval-section summary::after {
+            content: '▼';
+            font-size: 0.8rem;
+            transition: transform 0.3s;
+        }
+        .eval-section[open] summary {
+            background: var(--azul-primario);
+            color: white;
+        }
+        .eval-section[open] summary::after { 
+            transform: rotate(180deg);
+            color: white;
+        }
+        
+        .eval-content {
+            padding: 1.5rem;
+            background: #fafafa;
+        }
+        .question-block { margin-bottom: 1.5rem; }
+        .question-block label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: var(--azul-oscuro); 
+            font-size: 0.95rem;
+        }
+        .question-block textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .emotion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .emotion-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .eval-diagnosis-card {
+            margin-top: 25px;
+            margin-bottom: 15px;
+            background: var(--blanco);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            border-left: 5px solid var(--turquesa); /* Un color diferente para destacar */
+        }
+        .eval-diagnosis-card h3 {
+            color: var(--azul-oscuro);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="header-date" id="current-date"></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="img/Psia.png" alt="Logo" style="width: 55px; height: auto;">
+                <h2>Nueva Evaluación Clínica</h2>
+            </div>
+            <div class="agenda-actions">
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="javascript:history.back()" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <!-- Cabecera de Datos -->
+        <div class="eval-header-info">
+            <div><strong>Paciente:</strong> <span id="nombre-paciente">Cargando...</span></div>
+            <div><strong>Edad:</strong> <span id="edad-paciente">--</span></div>
+            <div><strong>Fecha:</strong> <input type="date" id="fecha-evaluacion" style="border:none; font-weight:600; font-family:inherit;"></div>
+        </div>
+
+        <form id="form-evaluacion">
+            <!-- 1. Motivo de consulta -->
+            <details class="eval-section" open>
+                <summary>1. Motivo de consulta</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>¿Por qué busca ayuda y qué le preocupa? (Inicio, expectativas e iniciativa)</label>
+                        <textarea name="motivo_general" rows="4" placeholder="Ej: El paciente refiere ansiedad al hablar en público desde hace 3 meses..."></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 2. Problema actual -->
+            <details class="eval-section">
+                <summary>2. Problema actual</summary>
+                <div class="eval-content">
+                    <div class="form-grid">
+                        <div class="question-block">
+                            <label>Inicio y Duración</label>
+                            <textarea name="problema_inicio" rows="2"></textarea>
+                        </div>
+                        <div class="question-block">
+                            <label>Frecuencia e Intensidad</label>
+                            <textarea name="problema_frecuencia" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="question-block">
+                        <label>Factores desencadenantes y Aliviantes</label>
+                        <textarea name="problema_factores" rows="3"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Evolución del problema</label>
+                        <textarea name="problema_evolucion" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 3. Estado emocional actual -->
+            <details class="eval-section">
+                <summary>3. Estado emocional actual</summary>
+                <div class="eval-content">
+                    <label style="font-weight:600; color:var(--azul-oscuro);">Emociones predominantes:</label>
+                    <div class="emotion-grid">
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="tristeza"> Tristeza</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="ansiedad"> Ansiedad</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="miedo"> Miedo</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="ira"> Ira</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="culpa"> Culpa</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="verguenza"> Vergüenza</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="alegria"> Alegría</label>
+                        <label class="emotion-item"><input type="checkbox" name="emocion" value="vacio"> Vacío</label>
+                    </div>
+                    <div class="question-block" style="margin-top:20px;">
+                        <label>Intensidad emocional (0-10):</label>
+                        <input type="range" name="emocion_intensidad" min="0" max="10" step="1" style="width:100%;" oninput="this.nextElementSibling.value = this.value">
+                        <output style="font-weight:bold; color:var(--azul-primario);">5</output>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 4. Síntomas psicológicos -->
+            <details class="eval-section">
+                <summary>4. Síntomas psicológicos</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Estado de ánimo (Depresión, Euforia, Irritabilidad)</label>
+                        <textarea name="sintomas_animo" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Ansiedad (Ataques de pánico, Fobias, Obsesiones)</label>
+                        <textarea name="sintomas_ansiedad" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Estrés (Burnout, Sobrecarga, Agobio)</label>
+                        <textarea name="sintomas_estres" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 5. Funcionamiento cognitivo -->
+            <details class="eval-section">
+                <summary>5. Funcionamiento cognitivo</summary>
+                <div class="eval-content">
+                    <div class="form-grid">
+                        <div class="question-block">
+                            <label>Atención y Concentración</label>
+                            <textarea name="cog_atencion" rows="2"></textarea>
+                        </div>
+                        <div class="question-block">
+                            <label>Memoria y Olvidos</label>
+                            <textarea name="cog_memoria" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="question-block">
+                        <label>Pensamiento (Rumiación, Catastrofismo, Rigidez)</label>
+                        <textarea name="cog_pensamiento" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Juicio y Realidad (Distorsiones, Desconexión)</label>
+                        <textarea name="cog_realidad" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 6. Conducta observable -->
+            <details class="eval-section">
+                <summary>6. Conducta observable</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Qué hace (Evitación, Aislamiento, Agresividad, Impulsividad, Riesgo, Compulsiones)</label>
+                        <textarea name="conducta_observable" rows="3"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 7. Sueño -->
+            <details class="eval-section">
+                <summary>7. Sueño</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Horas, Calidad, Insomnio, Pesadillas, Despertares</label>
+                        <textarea name="sueno_detalle" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 8. Alimentación -->
+            <details class="eval-section">
+                <summary>8. Alimentación</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Apetito, Peso, Atracones, Restricción</label>
+                        <textarea name="alimentacion_detalle" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 9. Energía y actividad -->
+            <details class="eval-section">
+                <summary>9. Energía y actividad</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Fatiga, Apatía, Hiperactividad, Motivación</label>
+                        <textarea name="energia_actividad" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 10. Relaciones sociales -->
+            <details class="eval-section">
+                <summary>10. Relaciones sociales</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Familia (Calidad, Conflictos)</label>
+                        <textarea name="rel_familia" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Pareja (Estabilidad, Comunicación)</label>
+                        <textarea name="rel_pareja" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Amigos (Apoyo, Aislamiento)</label>
+                        <textarea name="rel_amigos" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 11. Historia personal -->
+            <details class="eval-section">
+                <summary>11. Historia personal</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Infancia (Desarrollo, Vínculo, Traumas)</label>
+                        <textarea name="historia_infancia" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Adolescencia (Relaciones, Conducta)</label>
+                        <textarea name="historia_adolescencia" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Edad adulta (Trabajo, Estudios, Relaciones)</label>
+                        <textarea name="historia_adulta" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 12. Antecedentes familiares -->
+            <details class="eval-section">
+                <summary>12. Antecedentes familiares</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Depresión, Ansiedad, Bipolaridad, Adicciones, Suicidio, etc.</label>
+                        <textarea name="antecedentes_familiares" rows="3"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 13. Antecedentes médicos -->
+            <details class="eval-section">
+                <summary>13. Antecedentes médicos</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Enfermedades, Medicación, Neurología, Dolor crónico</label>
+                        <textarea name="antecedentes_medicos" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 14. Consumo de sustancias -->
+            <details class="eval-section">
+                <summary>14. Consumo de sustancias</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Alcohol, Cannabis, Cocaína, Benzodiacepinas (Frecuencia y cantidad)</label>
+                        <textarea name="consumo_sustancias" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 15. Eventos vitales significativos -->
+            <details class="eval-section">
+                <summary>15. Eventos vitales significativos</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Duelo, Divorcio, Desempleo, Enfermedad, Violencia</label>
+                        <textarea name="eventos_vitales" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 16. Autoestima y autoconcepto -->
+            <details class="eval-section">
+                <summary>16. Autoestima y autoconcepto</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Cómo se percibe, Fortalezas, Debilidades, Seguridad</label>
+                        <textarea name="autoestima_detalle" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 17. Recursos y fortalezas -->
+            <details class="eval-section">
+                <summary>17. Recursos y fortalezas</summary>
+                <div class="eval-content">
+                    <div class="question-block">
+                        <label>Resiliencia, HHSS, Inteligencia emocional, Apoyo, Motivación al cambio</label>
+                        <textarea name="recursos_fortalezas" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 18. Evaluación de riesgos -->
+            <details class="eval-section">
+                <summary>18. Evaluación de riesgos</summary>
+                <div class="eval-content" style="border: 2px solid #ffcccc; border-radius: 8px;">
+                    <div class="question-block">
+                        <label>Riesgo suicida (Ideas, Plan, Intentos)</label>
+                        <textarea name="riesgo_suicida" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Riesgo para terceros (Agresividad, Violencia)</label>
+                        <textarea name="riesgo_terceros" rows="2"></textarea>
+                    </div>
+                    <div class="question-block">
+                        <label>Autolesiones (Cortes, Golpes, Autodestrucción)</label>
+                        <textarea name="riesgo_autolesiones" rows="2"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 19. Evaluación funcional -->
+            <details class="eval-section">
+                <summary>19. Evaluación funcional</summary>
+                <div class="eval-content">
+                    <label style="font-weight:600; color:var(--azul-oscuro); margin-bottom: 10px; display: block;">Impacto en áreas de la vida:</label>
+                    <div style="overflow-x: auto;">
+                        <table class="agenda-table" style="min-width: 100%; border: 1px solid #ddd;">
+                            <thead>
+                                <tr>
+                                    <th>Área</th>
+                                    <th>Impacto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Trabajo</td><td><select name="func_trabajo"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                                <tr><td>Estudios</td><td><select name="func_estudios"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                                <tr><td>Pareja</td><td><select name="func_pareja"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                                <tr><td>Familia</td><td><select name="func_familia"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                                <tr><td>Social</td><td><select name="func_social"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                                <tr><td>Salud</td><td><select name="func_salud"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Diagnóstico (Separado e Independiente) -->
+            <div class="eval-diagnosis-card">
+                <h3>Diagnóstico</h3>
+                <button type="button" class="btn-ia" id="btn-generate-ia" onclick="generateAIDiagnosis()">✨ Generar Diagnóstico con IA</button>
+                <div class="question-block">
+                    <label>Impresión diagnóstica y codificación (Ej: CIE-10, DSM-5)</label>
+                    <textarea name="diagnostico_final" rows="4" placeholder="Escriba aquí el diagnóstico definitivo o las hipótesis diagnósticas..."></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions full-width" style="margin-top: 30px;">
+                <button type="submit" class="btn-turquesa" style="padding: 12px 30px; font-size: 1.1rem;">Guardar Evaluación</button>
+                <button type="button" class="btn-turquesa" style="background:#95a5a6;" onclick="window.print()">Imprimir Evaluación</button>
+            </div>
+        </form>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAiLogic, callPrompt } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-ai-logic.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk", authDomain: "psicofact-404ba.firebaseapp.com", projectId: "psicofact-404ba", storageBucket: "psicofact-404ba.firebasestorage.app", messagingSenderId: "216824213435", appId: "1:216824213435:web:282a094dbf842db8719e9e", measurementId: "G-CNG232R6TW"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Mostrar fecha actual
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
+        document.getElementById('current-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('id');
+
+        // Fecha hoy por defecto
+        document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0];
+
+        async function loadPatient() {
+            if (!patientId) return;
+            const docSnap = await getDoc(doc(db, "pacientes", patientId));
+            if (docSnap.exists()) {
+                const p = docSnap.data();
+                document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
+                if (p.fechaNacimiento) {
+                    const birth = new Date(p.fechaNacimiento);
+                    const age = new Date().getFullYear() - birth.getFullYear();
+                    document.getElementById('edad-paciente').textContent = `${age} años`;
+                }
+            }
+        }
+        loadPatient();
+
+        window.generateAIDiagnosis = async function() {
+            const form = document.getElementById('form-evaluacion');
+            const btn = document.getElementById('btn-generate-ia');
+            const formData = new FormData(form);
+            
+            // Recopilamos la info de forma estructurada
+            let evalText = "DATOS DE LA EVALUACIÓN:\n";
+            const dataMap = {};
+            
+            formData.forEach((value, key) => {
+                // Ignoramos campos vacíos, el botón de IA y el propio diagnóstico
+                if (!value || value === "" || key === 'diagnostico_final' || key === 'btn-generate-ia') return;
+                
+                if (!dataMap[key]) dataMap[key] = [];
+                dataMap[key].push(value);
+            });
+
+            if (Object.keys(dataMap).length === 0) {
+                alert("Por favor, rellena algunos campos de la evaluación antes de generar el diagnóstico.");
+                return;
+            }
+
+            for (const [key, values] of Object.entries(dataMap)) {
+                const formattedKey = key.replace(/_/g, ' ').toUpperCase();
+                evalText += `${formattedKey}: ${values.join(', ')}\n`;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "⌛ IA Procesando...";
+
+            try {
+                // Usamos el nuevo SDK de AI Logic directamente
+                const aiLogic = getAiLogic(app);
+                const response = await callPrompt(aiLogic, "generar-diagnostico", { evalData: evalText });
+                
+                document.getElementsByName('diagnostico_final')[0].value = response.data;
+                btn.disabled = false;
+                btn.textContent = "✨ Generar Diagnóstico con IA";
+
+            } catch (error) {
+                console.error("Error IA:", error);
+                alert("Error de la IA: " + (error.message || "Error desconocido"));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "✨ Generar Diagnóstico con IA";
+            }
+        }
+
+        document.getElementById('form-evaluacion').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            data.patientId = patientId;
+            data.createdAt = serverTimestamp();
+
+            await addDoc(collection(db, "evaluaciones_completas"), data);
+            alert("Evaluación guardada correctamente en el expediente.");
+        };
+    </script>
+</body>
+</html>

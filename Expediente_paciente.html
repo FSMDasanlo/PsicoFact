@@ -22,6 +22,7 @@
         <div class="agenda-header" style="text-align: left;">
             <h2 id="expediente-titulo">Expediente: Cargando...</h2>
             <div class="agenda-actions">
+                <a href="#" id="link-evaluacion" title="Nueva Evaluación"><img src="img/Psia.png" alt="Evaluación" style="width: 28px; vertical-align: middle; margin-right: 5px;"></a>
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="Con_pacientes.html" class="back-link">&larr; Volver</a>
             </div>
@@ -108,6 +109,9 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
+
+        // Configurar enlace a evaluación
+        if (patientId) document.getElementById('link-evaluacion').href = `evaluacion.html?id=${patientId}`;
 
         let patientAppsData = [];
         let currentPatientName = "";
