@@ -75,6 +75,10 @@
                     <input type="tel" id="telefono" name="telefono" required>
                 </div>
                 <div class="form-group">
+                    <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                    <input type="date" id="fechaNacimiento" name="fechaNacimiento">
+                </div>
+                <div class="form-group">
                     <label for="sociedad">Sociedad</label>
                     <select id="sociedad" name="sociedad" required>
                         <option value="">Seleccione...</option>
@@ -199,7 +203,7 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['nombre', 'apellidos', 'telefono', 'sociedad', 'clinica', 'notas'].forEach(f => {
+            ['nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas'].forEach(f => {
                 const el = document.getElementById(f);
                 // Soporte para migración: si no existe 'notas', buscamos en el antiguo 'observaciones'
                 const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];

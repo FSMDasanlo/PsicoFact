@@ -6,6 +6,54 @@
     <title>Agenda - PsicoFact</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .calendar-month {
+            flex: 1;
+            min-width: 300px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .calendar-month h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: var(--azul-oscuro);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-day-header {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            text-align: center;
+            padding: 5px 0;
+        }
+        .calendar-day {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .calendar-day.has-appointment {
+            background-color: var(--turquesa);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .calendar-day.empty { cursor: default; }
+        .calendar-day.past {
+            background-color: #f0f0f0;
+            color: #a0a0a0;
+            cursor: default;
+        }
+    </style>
 </head>
 <body>
 
@@ -21,7 +69,7 @@
     <main class="container">
         <div class="agenda-container">
             <div class="agenda-header">
-                <h2>Citas de Hoy</h2>
+                <h2><span id="agenda-title-text">Citas de Hoy</span> <a href="javascript:void(0)" onclick="showCalendarView(true)" title="Vista de calendario" style="text-decoration:none; margin-left:10px;">📅</a></h2>
                 <div class="agenda-actions">
                     <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openAppointmentModal()">Nueva Cita</button>
                     <a href="index.html" class="home-icon" title="Inicio">🏠</a>
@@ -61,6 +109,26 @@
             </table>
         </div>
     </main>
+
+    <!-- Modal para Vista Mensual -->
+    <div id="modalCalendario" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="agenda-header">
+                <h2>Vista Mensual de Sesiones</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-turquesa" onclick="changeCalendarMonth(-1)" style="padding: 5px 10px; cursor: pointer;">&larr;</button>
+                    <button class="btn-turquesa" onclick="changeCalendarMonth(1)" style="padding: 5px 10px; cursor: pointer;">&rarr;</button>
+                    <span class="close-modal" onclick="closeCalendarModal()" style="margin-left: 10px;">&times;</span>
+                </div>
+            </div>
+            <div id="calendar-container" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 20px;">
+                <!-- Meses se cargarán aquí -->
+            </div>
+            <div class="form-actions full-width" style="justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-turquesa" onclick="closeCalendarModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal para Nueva Cita -->
     <div id="modalCita" class="modal">
@@ -152,6 +220,7 @@
         let patientsMaster = [];
         let clinicsMasterData = [];
         let appointments = [];
+        let currentCalendarDate = new Date();
         let editingAppointmentId = null;
 
         async function init() {
@@ -202,19 +271,19 @@
         async function loadFilteredAppointments() {
             const paciente = document.getElementById('filtro-paciente').value;
             const estado = document.getElementById('filtro-estado').value;
-            const titleEl = document.querySelector('.agenda-header h2');
+            const titleEl = document.getElementById('agenda-title-text');
             
             let q;
             if (!paciente && !estado) {
                 const hoy = new Date().toISOString().split('T')[0];
                 q = query(collection(db, "citas"), where("fecha", "==", hoy));
-                titleEl.textContent = "Citas de Hoy";
+                if (titleEl) titleEl.textContent = "Citas de Hoy";
             } else {
                 let constraints = [];
                 if (paciente) constraints.push(where("paciente", "==", paciente));
                 if (estado) constraints.push(where("estado", "==", estado));
                 q = query(collection(db, "citas"), ...constraints);
-                titleEl.textContent = "Resultados de Búsqueda";
+                if (titleEl) titleEl.textContent = "Resultados de Búsqueda";
             }
             
             const snap = await getDocs(q);
@@ -256,12 +325,12 @@
             });
         }
 
-        function openAppointmentModal(title = "Nueva Cita") {
+        function openAppointmentModal(title = "Nueva Cita", preselectedDate = null) {
             const modal = document.getElementById('modalCita');
             modal.querySelector('h2').textContent = title;
             if (title === "Nueva Cita") {
                 document.getElementById('form-cita').reset();
-                document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+                document.getElementById('fecha').value = preselectedDate || new Date().toISOString().split('T')[0];
                 editingAppointmentId = null;
             }
             modal.style.display = 'flex';
@@ -355,6 +424,111 @@
             window.open(googleCalendarUrl, '_blank');
         }
 
+        async function showCalendarView(reset = false) {
+            if (reset) currentCalendarDate = new Date();
+            
+            const container = document.getElementById('calendar-container');
+            container.innerHTML = 'Cargando calendario...';
+            document.getElementById('modalCalendario').style.display = 'flex';
+
+            // Establecemos el primer día del mes de la fecha actual de navegación
+            const baseDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
+            const currentYear = baseDate.getFullYear();
+            const currentMonth = baseDate.getMonth();
+            
+            const nextMonthDate = new Date(currentYear, currentMonth + 1, 1);
+            const nextYear = nextMonthDate.getFullYear();
+            const nextMonth = nextMonthDate.getMonth();
+
+            // Query range: Del día 1 de este mes al último del siguiente
+            const startStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+            const lastDayNext = new Date(nextYear, nextMonth + 1, 0).getDate();
+            const endStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(lastDayNext).padStart(2, '0')}`;
+
+            const q = query(collection(db, "citas"), where("fecha", ">=", startStr), where("fecha", "<=", endStr));
+            const snap = await getDocs(q);
+            const citasCalendar = snap.docs.map(d => d.data());
+
+            container.innerHTML = '';
+            container.appendChild(renderMonth(currentYear, currentMonth, citasCalendar));
+            container.appendChild(renderMonth(nextYear, nextMonth, citasCalendar));
+        }
+        
+        window.changeCalendarMonth = function(offset) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+            showCalendarView();
+        }
+
+        function renderMonth(year, month, allCitas) {
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+            
+            const monthDiv = document.createElement('div');
+            monthDiv.className = 'calendar-month';
+            
+            const title = document.createElement('h3');
+            title.textContent = `${monthNames[month]} ${year}`;
+            monthDiv.appendChild(title);
+            
+            const grid = document.createElement('div');
+            grid.className = 'calendar-grid';
+            
+            // Cabeceras de días
+            dayNames.forEach(d => {
+                const h = document.createElement('div');
+                h.className = 'calendar-day-header';
+                h.textContent = d;
+                grid.appendChild(h);
+            });
+            
+            const firstDay = new Date(year, month, 1).getDay(); // 0 (Dom) a 6 (Sáb)
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Ajustar para que Lun sea 0
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Celdas vacías al inicio
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day empty';
+                grid.appendChild(empty);
+            }
+            
+            // Celdas de días
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+                
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalizar 'hoy' a inicio del día
+                const currentDayDate = new Date(year, month, day);
+
+                if (currentDayDate >= today) { // Solo si el día es hoy o futuro
+                    dayEl.onclick = () => {
+                        closeCalendarModal();
+                        openAppointmentModal("Nueva Cita", dateKey);
+                    };
+                } else {
+                    dayEl.classList.add('past'); // Añadir clase para días pasados
+                }
+
+                const dayCitas = allCitas.filter(c => c.fecha === dateKey);
+                
+                if (dayCitas.length > 0) {
+                    dayEl.classList.add('has-appointment');
+                    const tooltip = dayCitas.map(c => `${c.paciente} (${c.hora})`).join('\n');
+                    dayEl.title = tooltip;
+                }
+                
+                grid.appendChild(dayEl);
+            }
+            
+            monthDiv.appendChild(grid);
+            return monthDiv;
+        }
+
+        function closeCalendarModal() { document.getElementById('modalCalendario').style.display = 'none'; }
+
         // Exponer funciones al objeto window para acceso desde el HTML
         window.openAppointmentModal = openAppointmentModal;
         window.closeAppointmentModal = closeAppointmentModal;
@@ -367,6 +541,8 @@
         window.renderAgenda = renderAgenda;
         window.loadFilteredAppointments = loadFilteredAppointments;
         window.addToGoogleCalendar = addToGoogleCalendar;
+        window.showCalendarView = showCalendarView;
+        window.closeCalendarModal = closeCalendarModal;
 
         init();
     </script>

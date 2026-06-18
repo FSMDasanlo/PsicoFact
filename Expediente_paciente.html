@@ -112,6 +112,18 @@
         let patientAppsData = [];
         let currentPatientName = "";
 
+        function calculateAge(birthday) {
+            if (!birthday) return null;
+            const birthDate = new Date(birthday);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
         async function loadExpediente() {
             if (!patientId) return;
             
@@ -122,9 +134,13 @@
 
             document.getElementById('expediente-titulo').textContent = `Expediente: ${patient.nombre} ${patient.apellidos}`;
             
+            const age = calculateAge(patient.fechaNacimiento);
+            const ageDisplay = age !== null ? ` (${age} años)` : '';
+
             const ficha = document.getElementById('ficha-paciente');
             ficha.innerHTML = `
                 <div><strong>Teléfono:</strong><br>${patient.telefono}</div>
+                <div><strong>Fecha de Nacimiento:</strong><br>${patient.fechaNacimiento || 'No especificada'}${ageDisplay}</div>
                 <div><strong>Sociedad:</strong><br>${patient.sociedad}</div>
                 <div><strong>Clínica:</strong><br>${patient.clinica}</div>
                 <div class="full-width" style="margin-top:10px;"><strong>Notas:</strong><br>${patient.notas || patient.observaciones || 'Sin notas'}</div>
