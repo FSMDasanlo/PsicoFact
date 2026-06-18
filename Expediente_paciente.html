@@ -110,7 +110,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
 
-        // Configurar enlace a evaluación
+        // Configurar enlace a evaluación (asegurando que el ID del paciente se pasa)
         if (patientId) document.getElementById('link-evaluacion').href = `evaluacion.html?id=${patientId}`;
 
         let patientAppsData = [];

@@ -441,20 +441,22 @@
             <div class="form-actions full-width" style="margin-top: 30px;">
                 <button type="submit" class="btn-turquesa" style="padding: 12px 30px; font-size: 1.1rem;">Guardar Evaluación</button>
                 <button type="button" class="btn-turquesa" style="background:#95a5a6;" onclick="window.print()">Imprimir Evaluación</button>
+                <button type="button" class="btn-turquesa" style="background:#e74c3c;" onclick="clearForm()">Limpiar Formulario</button>
             </div>
         </form>
     </main>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAiLogic, callPrompt } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-ai-logic.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk", authDomain: "psicofact-404ba.firebaseapp.com", projectId: "psicofact-404ba", storageBucket: "psicofact-404ba.firebasestorage.app", messagingSenderId: "216824213435", appId: "1:216824213435:web:282a094dbf842db8719e9e", measurementId: "G-CNG232R6TW"
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         // Mostrar fecha actual
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -464,66 +466,159 @@
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
 
+        function calculateAge(birthday) {
+            if (!birthday) return null;
+            const birthDate = new Date(birthday);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
         // Fecha hoy por defecto
         document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0];
 
-        async function loadPatient() {
-            if (!patientId) return;
-            const docSnap = await getDoc(doc(db, "pacientes", patientId));
-            if (docSnap.exists()) {
-                const p = docSnap.data();
-                document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
-                if (p.fechaNacimiento) {
-                    const birth = new Date(p.fechaNacimiento);
-                    const age = new Date().getFullYear() - birth.getFullYear();
-                    document.getElementById('edad-paciente').textContent = `${age} años`;
+        async function loadPatient(id) {
+            if (!id) {
+                document.getElementById('nombre-paciente').textContent = "Error: ID de paciente no encontrado";
+                document.getElementById('edad-paciente').textContent = "--";
+                return;
+            }
+            try {
+                const docSnap = await getDoc(doc(db, "pacientes", id));
+                if (docSnap.exists()) {
+                    const p = docSnap.data();
+                    document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
+                    const age = calculateAge(p.fechaNacimiento);
+                    if (age !== null) {
+                        document.getElementById('edad-paciente').textContent = `${age} años`;
+                    } else {
+                        document.getElementById('edad-paciente').textContent = "No especificada";
+                    }
+                } else {
+                    document.getElementById('nombre-paciente').textContent = "Paciente no encontrado";
+                    document.getElementById('edad-paciente').textContent = "--";
                 }
+            } catch (error) {
+                console.error("Error al cargar paciente:", error);
+                document.getElementById('nombre-paciente').textContent = "Error al cargar";
+                document.getElementById('edad-paciente').textContent = "--";
             }
         }
-        loadPatient();
+
+        // Función de inicialización para asegurar que todo esté cargado
+        async function init() {
+            await loadPatient(patientId);
+        }
+        init();
 
         window.generateAIDiagnosis = async function() {
             const form = document.getElementById('form-evaluacion');
             const btn = document.getElementById('btn-generate-ia');
             const formData = new FormData(form);
             
-            // Recopilamos la info de forma estructurada
-            let evalText = "DATOS DE LA EVALUACIÓN:\n";
-            const dataMap = {};
-            
-            formData.forEach((value, key) => {
-                // Ignoramos campos vacíos, el botón de IA y el propio diagnóstico
-                if (!value || value === "" || key === 'diagnostico_final' || key === 'btn-generate-ia') return;
-                
-                if (!dataMap[key]) dataMap[key] = [];
-                dataMap[key].push(value);
-            });
+            // Construir datos estructurados
+            const evaluationData = {
+                motivo_consulta: formData.get('motivo_general') || "",
+                problema_actual: {
+                    inicio: formData.get('problema_inicio') || "",
+                    frecuencia_intensidad: formData.get('problema_frecuencia') || "",
+                    factores: formData.get('problema_factores') || "",
+                    evolucion: formData.get('problema_evolucion') || ""
+                },
+                estado_emocional: {
+                    emociones: Array.from(formData.getAll('emocion')).join(", ") || "No especificado",
+                    intensidad: formData.get('emocion_intensidad') || "5"
+                },
+                sintomas_psicologicos: {
+                    animo: formData.get('sintomas_animo') || "",
+                    ansiedad: formData.get('sintomas_ansiedad') || "",
+                    estres: formData.get('sintomas_estres') || ""
+                },
+                funcionamiento_cognitivo: {
+                    atencion: formData.get('cog_atencion') || "",
+                    memoria: formData.get('cog_memoria') || "",
+                    pensamiento: formData.get('cog_pensamiento') || "",
+                    juicio_realidad: formData.get('cog_realidad') || ""
+                },
+                conducta_observable: formData.get('conducta_observable') || "",
+                sueno: formData.get('sueno_detalle') || "",
+                alimentacion: formData.get('alimentacion_detalle') || "",
+                energia_actividad: formData.get('energia_actividad') || "",
+                relaciones_sociales: {
+                    familia: formData.get('rel_familia') || "",
+                    pareja: formData.get('rel_pareja') || "",
+                    amigos: formData.get('rel_amigos') || ""
+                },
+                historia_personal: {
+                    infancia: formData.get('historia_infancia') || "",
+                    adolescencia: formData.get('historia_adolescencia') || "",
+                    edad_adulta: formData.get('historia_adulta') || ""
+                },
+                antecedentes: {
+                    familiares: formData.get('antecedentes_familiares') || "",
+                    medicos: formData.get('antecedentes_medicos') || ""
+                },
+                consumo_sustancias: formData.get('consumo_sustancias') || "",
+                eventos_vitales: formData.get('eventos_vitales') || "",
+                autoestima: formData.get('autoestima_detalle') || "",
+                recursos_fortalezas: formData.get('recursos_fortalezas') || "",
+                evaluacion_riesgos: {
+                    suicida: formData.get('riesgo_suicida') || "",
+                    terceros: formData.get('riesgo_terceros') || "",
+                    autolesiones: formData.get('riesgo_autolesiones') || ""
+                },
+                impacto_funcional: {
+                    trabajo: formData.get('func_trabajo') || "",
+                    estudios: formData.get('func_estudios') || "",
+                    pareja: formData.get('func_pareja') || "",
+                    familia: formData.get('func_familia') || "",
+                    social: formData.get('func_social') || "",
+                    salud: formData.get('func_salud') || ""
+                }
+            };
 
-            if (Object.keys(dataMap).length === 0) {
-                alert("Por favor, rellena algunos campos de la evaluación antes de generar el diagnóstico.");
+            // Limpiar campos vacíos
+            const cleanData = (obj) => {
+                return Object.fromEntries(
+                    Object.entries(obj).filter(([_, v]) => 
+                        v !== "" && v !== null && (typeof v !== 'object' || Object.keys(v).length > 0)
+                    )
+                );
+            };
+
+            const finalEvalData = cleanData(evaluationData);
+
+            if (Object.keys(finalEvalData).length < 1) {
+                alert("Por favor, rellena más campos de la evaluación antes de generar el diagnóstico.");
                 return;
             }
 
-            for (const [key, values] of Object.entries(dataMap)) {
-                const formattedKey = key.replace(/_/g, ' ').toUpperCase();
-                evalText += `${formattedKey}: ${values.join(', ')}\n`;
-            }
-
             btn.disabled = true;
-            btn.textContent = "⌛ IA Procesando...";
+            btn.textContent = "⌛ IA Analizando...";
 
             try {
-                // Usamos el nuevo SDK de AI Logic directamente
-                const aiLogic = getAiLogic(app);
-                const response = await callPrompt(aiLogic, "generar-diagnostico", { evalData: evalText });
+                // Importar Firebase Functions
+                const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js");
                 
-                document.getElementsByName('diagnostico_final')[0].value = response.data;
-                btn.disabled = false;
-                btn.textContent = "✨ Generar Diagnóstico con IA";
+                const functions = getFunctions(app);
+                const generarDiagnostico = httpsCallable(functions, 'generarDiagnostico');
+                
+                const response = await generarDiagnostico({ evaluationData: finalEvalData });
+                
+                if (response.data && response.data.diagnostico) {
+                    document.getElementsByName('diagnostico_final')[0].value = response.data.diagnostico;
+                    alert("✅ Diagnóstico generado exitosamente");
+                } else {
+                    alert("⚠️ Respuesta vacía de la IA");
+                }
 
             } catch (error) {
                 console.error("Error IA:", error);
-                alert("Error de la IA: " + (error.message || "Error desconocido"));
+                alert("❌ Error: " + (error.message || "Error desconocido"));
             } finally {
                 btn.disabled = false;
                 btn.textContent = "✨ Generar Diagnóstico con IA";
@@ -537,9 +632,23 @@
             data.patientId = patientId;
             data.createdAt = serverTimestamp();
 
-            await addDoc(collection(db, "evaluaciones_completas"), data);
-            alert("Evaluación guardada correctamente en el expediente.");
+            try {
+                await addDoc(collection(db, "evaluaciones_completas"), data);
+                alert("Evaluación guardada correctamente en el expediente.");
+                window.location.href = `Expediente_paciente.html?id=${patientId}`; // Redirigir al expediente
+            } catch (error) {
+                console.error("Error al guardar la evaluación:", error);
+                alert("Error al guardar la evaluación. Por favor, inténtelo de nuevo.");
+            }
         };
+
+        window.clearForm = function() {
+            document.getElementById('form-evaluacion').reset();
+            document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0]; // Resetear fecha a hoy
+            document.getElementsByName('emocion_intensidad')[0].value = 5; // Resetear slider a 5
+            document.querySelector('output').value = 5; // Actualizar output del slider
+            alert("Formulario limpiado.");
+        }
     </script>
 </body>
 </html>
