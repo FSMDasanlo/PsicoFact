@@ -119,6 +119,7 @@
                 <h2>Nueva Evaluación Clínica</h2>
             </div>
             <div class="agenda-actions">
+                <button type="button" class="btn-turquesa" id="btn-historial" onclick="openHistorialModal()" style="display:none; border:none; cursor:pointer;">📂 Recuperar Evaluación</button>
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="javascript:history.back()" class="back-link">&larr; Volver</a>
             </div>
@@ -128,7 +129,7 @@
         <div class="eval-header-info">
             <div><strong>Paciente:</strong> <span id="nombre-paciente">Cargando...</span></div>
             <div><strong>Edad:</strong> <span id="edad-paciente">--</span></div>
-            <div><strong>Fecha:</strong> <input type="date" id="fecha-evaluacion" style="border:none; font-weight:600; font-family:inherit;"></div>
+            <div><strong>Fecha:</strong> <input type="date" id="fecha-evaluacion" name="fecha_evaluacion" style="border:none; font-weight:600; font-family:inherit;"></div>
         </div>
 
         <form id="form-evaluacion">
@@ -444,12 +445,34 @@
                 <button type="button" class="btn-turquesa" style="background:#e74c3c;" onclick="clearForm()">Limpiar Formulario</button>
             </div>
         </form>
+
+        <!-- Modal para Historial de Evaluaciones -->
+        <div id="modalHistorial" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="agenda-header">
+                    <h2>Historial de Evaluaciones</h2>
+                    <span class="close-modal" onclick="closeHistorialModal()">&times;</span>
+                </div>
+                <div style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                    <table class="agenda-table" style="min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th style="text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historial-evaluaciones-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk", authDomain: "psicofact-404ba.firebaseapp.com", projectId: "psicofact-404ba", storageBucket: "psicofact-404ba.firebasestorage.app", messagingSenderId: "216824213435", appId: "1:216824213435:web:282a094dbf842db8719e9e", measurementId: "G-CNG232R6TW"
@@ -457,6 +480,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const functions = getFunctions(app, "us-central1");
 
         // Mostrar fecha actual
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -465,6 +489,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
+        let savedEvaluations = [];
 
         function calculateAge(birthday) {
             if (!birthday) return null;
@@ -512,8 +537,91 @@
         // Función de inicialización para asegurar que todo esté cargado
         async function init() {
             await loadPatient(patientId);
+            if (patientId) {
+                document.getElementById('btn-historial').style.display = 'inline-block';
+            }
         }
         init();
+
+        window.openHistorialModal = function() {
+            document.getElementById('modalHistorial').style.display = 'flex';
+            loadHistorialList();
+        };
+
+        window.closeHistorialModal = function() {
+            document.getElementById('modalHistorial').style.display = 'none';
+        };
+
+        async function loadHistorialList() {
+            const tbody = document.getElementById('historial-evaluaciones-body');
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Buscando historial...</td></tr>';
+            try {
+                const q = query(collection(db, "evaluaciones_completas"), where("patientId", "==", patientId));
+                const snap = await getDocs(q);
+                savedEvaluations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                savedEvaluations.sort((a, b) => (b.fecha_evaluacion || '').localeCompare(a.fecha_evaluacion || ''));
+                if (savedEvaluations.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">No hay evaluaciones guardadas para este paciente.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                savedEvaluations.forEach((ev, idx) => {
+                    tbody.innerHTML += `<tr>
+                        <td>${ev.fecha_evaluacion || 'Sin fecha'}</td>
+                        <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+                            <button type="button" class="btn-turquesa" style="padding: 4px 10px; font-size: 0.85rem;" onclick="selectEvaluation(${idx})" title="Cargar evaluación">Cargar</button>
+                            <button type="button" class="btn-turquesa" style="padding: 4px 10px; font-size: 0.85rem; background: #e74c3c;" onclick="deleteEvaluation('${ev.id}')" title="Eliminar evaluación">🗑️</button>
+                        </td>
+                    </tr>`;
+                });
+            } catch (error) {
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: red;">Error al obtener el historial.</td></tr>';
+            }
+        }
+
+        window.selectEvaluation = function(idx) {
+            const ev = savedEvaluations[idx];
+            if (!ev) return;
+            const form = document.getElementById('form-evaluacion');
+            form.reset();
+            Object.keys(ev).forEach(key => {
+                const el = form.elements[key];
+                if (!el) return;
+                if (el.type === 'checkbox') {
+                    el.checked = (el.value === ev[key]);
+                } else if (el instanceof RadioNodeList || el.length > 1) {
+                    Array.from(el).forEach(input => {
+                        if (input.type === 'checkbox' || input.type === 'radio') {
+                            input.checked = (input.value === ev[key]);
+                        }
+                    });
+                } else {
+                    el.value = ev[key];
+                }
+            });
+            const output = form.querySelector('output');
+            if (output && form.elements['emocion_intensidad']) {
+                output.value = form.elements['emocion_intensidad'].value;
+            }
+            closeHistorialModal();
+            alert("✅ Evaluación cargada en el formulario.");
+        };
+
+        window.deleteEvaluation = async function(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta evaluación del historial?")) {
+                try {
+                    await deleteDoc(doc(db, "evaluaciones_completas", id));
+                    // Actualizar la lista local y la UI
+                    savedEvaluations = savedEvaluations.filter(ev => ev.id !== id);
+                    loadHistorialList(); 
+                    alert("🗑️ Evaluación eliminada correctamente.");
+                } catch (error) {
+                    console.error("Error al eliminar:", error);
+                    alert("❌ No se pudo eliminar la evaluación.");
+                }
+            }
+        };
 
         window.generateAIDiagnosis = async function() {
             const form = document.getElementById('form-evaluacion');
@@ -601,12 +709,7 @@
             btn.textContent = "⌛ IA Analizando...";
 
             try {
-                // Importar Firebase Functions
-                const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js");
-                
-                const functions = getFunctions(app);
                 const generarDiagnostico = httpsCallable(functions, 'generarDiagnostico');
-                
                 const response = await generarDiagnostico({ evaluationData: finalEvalData });
                 
                 if (response.data && response.data.diagnostico) {
@@ -618,7 +721,11 @@
 
             } catch (error) {
                 console.error("Error IA:", error);
-                alert("❌ Error: " + (error.message || "Error desconocido"));
+                if (error.code === 'internal') {
+                    alert("❌ Error de conexión (CORS/IAM). Asegúrate de que la Cloud Function tenga permisos para 'allUsers' en el panel de Google Cloud y que sea una función de tipo 'onCall'.");
+                } else {
+                    alert("❌ Error: " + (error.message || "Error desconocido al contactar con la IA."));
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = "✨ Generar Diagnóstico con IA";
