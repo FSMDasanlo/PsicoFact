@@ -512,3 +512,8 @@ footer {
     color: #a0a0a0;
     cursor: default;
 }
+.calendar-day.past.has-appointment {
+    background-color: #f1c40f;
+    color: white;
+    cursor: help;
+}
