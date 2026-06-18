@@ -709,7 +709,7 @@
             btn.textContent = "⌛ IA Analizando...";
 
             try {
-                const generarDiagnostico = httpsCallable(functions, 'generarDiagnostico');
+                const generarDiagnostico = httpsCallable(functions, 'generar-diagnostico');
                 const response = await generarDiagnostico({ evaluationData: finalEvalData });
                 
                 if (response.data && response.data.diagnostico) {

@@ -2,7 +2,7 @@
  * Importa las funciones de Firebase y el SDK de Google Generative AI.
  * Asegúrate de que tu package.json en la carpeta 'functions' tenga estas dependencias.
  */
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const logger = require("firebase-functions/logger"); // Para logs en Cloud Functions
 
@@ -10,22 +10,38 @@ const logger = require("firebase-functions/logger"); // Para logs en Cloud Funct
 // ¡IMPORTANTE! No la pongas directamente aquí en producción.
 // Usa las variables de entorno de Firebase Functions:
 // firebase functions:config:set gemini.api_key="TU_API_KEY_DE_GEMINI"
-// Luego, accede a ella con process.env.GEMINI_API_KEY
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "TU_API_KEY_DE_GEMINI_AQUI_PARA_TESTS_LOCALES"; // Reemplaza con tu clave real para pruebas locales si no usas config
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+// En v2, se recomienda usar Secret Manager, pero process.env funciona si se configura correctamente.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "TU_API_KEY_REAL_AQUI"; 
 
-// Define la función `generarDiagnostico` como una función HTTPS Callable
-exports.generarDiagnostico = onCall(async (request) => {
-    logger.info("Iniciando generarDiagnostico Cloud Function", { structuredData: true });
+// Define la función `generar-diagnostico` como una función HTTPS Callable
+exports['generar-diagnostico'] = onCall({ 
+    cors: [
+        "http://127.0.0.1:5500", 
+        "http://localhost:5500", 
+        "https://psicofact-404ba.firebaseapp.com",
+        "https://psicofact-404ba.web.app"
+    ] 
+}, async (request) => {
+    logger.info("Iniciando generar-diagnostico Cloud Function", { structuredData: true });
 
     // Verifica que la solicitud contenga los datos de evaluación
     if (!request.data || !request.data.evaluationData) {
         logger.error("Datos de evaluación no proporcionados en la solicitud.");
-        throw new functions.https.HttpsError(
+        throw new HttpsError(
             "invalid-argument",
             "Se requiere 'evaluationData' para generar el diagnóstico."
         );
     }
+
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("TU_API_KEY")) {
+        logger.error("La clave de API de Gemini no está configurada correctamente.");
+        throw new HttpsError(
+            "failed-precondition",
+            "Error de configuración en el servidor (API Key faltante)."
+        );
+    }
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
     const evaluationData = request.data.evaluationData;
 
@@ -66,7 +82,7 @@ exports.generarDiagnostico = onCall(async (request) => {
 
     } catch (error) {
         logger.error("Error al generar diagnóstico con IA:", error);
-        throw new functions.https.HttpsError(
+        throw new HttpsError(
             "internal",
             "Error al generar el diagnóstico con IA.",
             error.message
