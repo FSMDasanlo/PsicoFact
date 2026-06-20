@@ -87,17 +87,35 @@
             font-size: 0.9rem;
         }
         .eval-diagnosis-card {
-            margin-top: 25px;
-            margin-bottom: 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
             background: var(--blanco);
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            padding: 1.5rem;
-            border-left: 5px solid var(--turquesa); /* Un color diferente para destacar */
+            padding: 1rem;
+            border-left: 5px solid var(--turquesa);
         }
         .eval-diagnosis-card h3 {
             color: var(--azul-oscuro);
-            margin-bottom: 1rem;
+            margin-bottom: 0.7rem;
+            font-size: 1rem;
+        }
+        .btn-promp {
+            background: linear-gradient(to right, #17a2b8, #138496);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(23, 162, 184, 0.3);
+        }
+        .btn-promp:hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 10px rgba(23, 162, 184, 0.4);
         }
     </style>
 </head>
@@ -431,11 +449,15 @@
 
             <!-- Diagnóstico (Separado e Independiente) -->
             <div class="eval-diagnosis-card">
-                <h3>Diagnóstico</h3>
-                <button type="button" class="btn-ia" id="btn-generate-ia" onclick="generateAIDiagnosis()">✨ Generar Diagnóstico con IA</button>
+                <h3>Diagnóstico con IA (Gemini)</h3>
+                <button type="button" class="btn-promp" id="btn-generate-ia" onclick="generateAIDiagnosis()">Generar prompt de síntomas</button>
                 <div class="question-block">
-                    <label>Impresión diagnóstica y codificación (Ej: CIE-10, DSM-5)</label>
-                    <textarea name="diagnostico_final" rows="4" placeholder="Escriba aquí el diagnóstico definitivo o las hipótesis diagnósticas..."></textarea>
+                    <label>Síntomas para análisis</label>
+                    <textarea name="sintomas" rows="4" placeholder="Escriba aquí los síntomas o haga clic en 'Generar prompt de síntomas' para compilar la evaluación..."></textarea>
+                </div>
+                <div class="question-block" style="margin-top: 15px;">
+                    <label>Diagnóstico (Elaborado por Gemini)</label>
+                    <textarea name="diagnostico_final" rows="4" placeholder="El diagnóstico de Gemini se mostrará aquí..."></textarea>
                 </div>
             </div>
             
@@ -585,7 +607,21 @@
             if (!ev) return;
             const form = document.getElementById('form-evaluacion');
             form.reset();
+
+            // Adaptación para migración de datos de evaluaciones antiguas
+            let sintomasVal = ev.sintomas || "";
+            let diagnosticoVal = ev.diagnostico_final || "";
+
+            // Si el valor guardado en 'diagnostico_final' parece ser un prompt estructurado antiguo, lo movemos a 'sintomas'
+            if (diagnosticoVal && (diagnosticoVal.includes("=== INFORMACIÓN DE EVALUACIÓN ESTRUCTURADA ===") || diagnosticoVal.includes("[MOTIVO DE CONSULTA]"))) {
+                sintomasVal = diagnosticoVal;
+                diagnosticoVal = "";
+            }
+
             Object.keys(ev).forEach(key => {
+                // Saltamos la asignación directa de sintomas y diagnostico_final para hacerlo de forma manual e inteligente abajo
+                if (key === 'sintomas' || key === 'diagnostico_final') return;
+
                 const el = form.elements[key];
                 if (!el) return;
                 if (el.type === 'checkbox') {
@@ -600,6 +636,15 @@
                     el.value = ev[key];
                 }
             });
+
+            // Asignamos manualmente los valores correspondientes
+            if (form.elements['sintomas']) {
+                form.elements['sintomas'].value = sintomasVal;
+            }
+            if (form.elements['diagnostico_final']) {
+                form.elements['diagnostico_final'].value = diagnosticoVal;
+            }
+
             const output = form.querySelector('output');
             if (output && form.elements['emocion_intensidad']) {
                 output.value = form.elements['emocion_intensidad'].value;
@@ -623,113 +668,80 @@
             }
         };
 
-        window.generateAIDiagnosis = async function() {
+        window.generateAIDiagnosis = function() {
             const form = document.getElementById('form-evaluacion');
-            const btn = document.getElementById('btn-generate-ia');
             const formData = new FormData(form);
+            const sintomasField = document.getElementsByName('sintomas')[0];
             
-            // Construir datos estructurados
-            const evaluationData = {
-                motivo_consulta: formData.get('motivo_general') || "",
-                problema_actual: {
-                    inicio: formData.get('problema_inicio') || "",
-                    frecuencia_intensidad: formData.get('problema_frecuencia') || "",
-                    factores: formData.get('problema_factores') || "",
-                    evolucion: formData.get('problema_evolucion') || ""
-                },
-                estado_emocional: {
-                    emociones: Array.from(formData.getAll('emocion')).join(", ") || "No especificado",
-                    intensidad: formData.get('emocion_intensidad') || "5"
-                },
-                sintomas_psicologicos: {
-                    animo: formData.get('sintomas_animo') || "",
-                    ansiedad: formData.get('sintomas_ansiedad') || "",
-                    estres: formData.get('sintomas_estres') || ""
-                },
-                funcionamiento_cognitivo: {
-                    atencion: formData.get('cog_atencion') || "",
-                    memoria: formData.get('cog_memoria') || "",
-                    pensamiento: formData.get('cog_pensamiento') || "",
-                    juicio_realidad: formData.get('cog_realidad') || ""
-                },
-                conducta_observable: formData.get('conducta_observable') || "",
-                sueno: formData.get('sueno_detalle') || "",
-                alimentacion: formData.get('alimentacion_detalle') || "",
-                energia_actividad: formData.get('energia_actividad') || "",
-                relaciones_sociales: {
-                    familia: formData.get('rel_familia') || "",
-                    pareja: formData.get('rel_pareja') || "",
-                    amigos: formData.get('rel_amigos') || ""
-                },
-                historia_personal: {
-                    infancia: formData.get('historia_infancia') || "",
-                    adolescencia: formData.get('historia_adolescencia') || "",
-                    edad_adulta: formData.get('historia_adulta') || ""
-                },
-                antecedentes: {
-                    familiares: formData.get('antecedentes_familiares') || "",
-                    medicos: formData.get('antecedentes_medicos') || ""
-                },
-                consumo_sustancias: formData.get('consumo_sustancias') || "",
-                eventos_vitales: formData.get('eventos_vitales') || "",
-                autoestima: formData.get('autoestima_detalle') || "",
-                recursos_fortalezas: formData.get('recursos_fortalezas') || "",
-                evaluacion_riesgos: {
-                    suicida: formData.get('riesgo_suicida') || "",
-                    terceros: formData.get('riesgo_terceros') || "",
-                    autolesiones: formData.get('riesgo_autolesiones') || ""
-                },
-                impacto_funcional: {
-                    trabajo: formData.get('func_trabajo') || "",
-                    estudios: formData.get('func_estudios') || "",
-                    pareja: formData.get('func_pareja') || "",
-                    familia: formData.get('func_familia') || "",
-                    social: formData.get('func_social') || "",
-                    salud: formData.get('func_salud') || ""
-                }
-            };
+            // Compilar datos de la evaluación en formato estructurado
+            const prompt = `=== INFORMACIÓN DE EVALUACIÓN ESTRUCTURADA ===
 
-            // Limpiar campos vacíos
-            const cleanData = (obj) => {
-                return Object.fromEntries(
-                    Object.entries(obj).filter(([_, v]) => 
-                        v !== "" && v !== null && (typeof v !== 'object' || Object.keys(v).length > 0)
-                    )
-                );
-            };
+[MOTIVO DE CONSULTA]
+${formData.get('motivo_general') || '(Sin respuesta)'}
 
-            const finalEvalData = cleanData(evaluationData);
+[PROBLEMA ACTUAL]
+Inicio y Duración: ${formData.get('problema_inicio') || '(Sin respuesta)'}
+Frecuencia e Intensidad: ${formData.get('problema_frecuencia') || '(Sin respuesta)'}
+Factores Desencadenantes/Aliviantes: ${formData.get('problema_factores') || '(Sin respuesta)'}
+Evolución: ${formData.get('problema_evolucion') || '(Sin respuesta)'}
 
-            if (Object.keys(finalEvalData).length < 1) {
-                alert("Por favor, rellena más campos de la evaluación antes de generar el diagnóstico.");
-                return;
-            }
+[ESTADO EMOCIONAL]
+Emociones: ${Array.from(formData.getAll('emocion')).join(', ') || 'No especificadas'}
+Intensidad: ${formData.get('emocion_intensidad') || '5'}/10
 
-            btn.disabled = true;
-            btn.textContent = "⌛ IA Analizando...";
+[SÍNTOMAS PSICOLÓGICOS]
+Estado de Ánimo: ${formData.get('sintomas_animo') || '(Sin respuesta)'}
+Ansiedad: ${formData.get('sintomas_ansiedad') || '(Sin respuesta)'}
+Estrés/Presión: ${formData.get('sintomas_estres') || '(Sin respuesta)'}
 
-            try {
-                const generarDiagnostico = httpsCallable(functions, 'generar-diagnostico');
-                const response = await generarDiagnostico({ evaluationData: finalEvalData });
-                
-                if (response.data && response.data.diagnostico) {
-                    document.getElementsByName('diagnostico_final')[0].value = response.data.diagnostico;
-                    alert("✅ Diagnóstico generado exitosamente");
-                } else {
-                    alert("⚠️ Respuesta vacía de la IA");
-                }
+[FUNCIONAMIENTO COGNITIVO]
+Atención: ${formData.get('cog_atencion') || '(Sin respuesta)'}
+Memoria: ${formData.get('cog_memoria') || '(Sin respuesta)'}
+Pensamiento: ${formData.get('cog_pensamiento') || '(Sin respuesta)'}
+Juicio de Realidad: ${formData.get('cog_realidad') || '(Sin respuesta)'}
 
-            } catch (error) {
-                console.error("Error IA:", error);
-                if (error.code === 'internal') {
-                    alert("❌ Error de conexión (CORS/IAM). Asegúrate de que la Cloud Function tenga permisos para 'allUsers' en el panel de Google Cloud y que sea una función de tipo 'onCall'.");
-                } else {
-                    alert("❌ Error: " + (error.message || "Error desconocido al contactar con la IA."));
-                }
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "✨ Generar Diagnóstico con IA";
-            }
+[CONDUCTA Y HÁBITOS]
+Conducta Observable: ${formData.get('conducta_observable') || '(Sin respuesta)'}
+Sueño: ${formData.get('sueno_detalle') || '(Sin respuesta)'}
+Alimentación: ${formData.get('alimentacion_detalle') || '(Sin respuesta)'}
+Energía/Actividad: ${formData.get('energia_actividad') || '(Sin respuesta)'}
+
+[RELACIONES SOCIALES]
+Familia: ${formData.get('rel_familia') || '(Sin respuesta)'}
+Pareja: ${formData.get('rel_pareja') || '(Sin respuesta)'}
+Amigos: ${formData.get('rel_amigos') || '(Sin respuesta)'}
+
+[HISTORIA PERSONAL]
+Infancia: ${formData.get('historia_infancia') || '(Sin respuesta)'}
+Adolescencia: ${formData.get('historia_adolescencia') || '(Sin respuesta)'}
+Edad Adulta: ${formData.get('historia_adulta') || '(Sin respuesta)'}
+
+[ANTECEDENTES]
+Antecedentes Familiares: ${formData.get('antecedentes_familiares') || '(Sin respuesta)'}
+Antecedentes Médicos: ${formData.get('antecedentes_medicos') || '(Sin respuesta)'}
+Consumo de Sustancias: ${formData.get('consumo_sustancias') || '(Sin respuesta)'}
+
+[EVENTOS Y RECURSOS]
+Eventos Vitales Importantes: ${formData.get('eventos_vitales') || '(Sin respuesta)'}
+Autoestima: ${formData.get('autoestima_detalle') || '(Sin respuesta)'}
+Recursos/Fortalezas: ${formData.get('recursos_fortalezas') || '(Sin respuesta)'}
+
+[EVALUACIÓN DE RIESGOS]
+Riesgo Suicida: ${formData.get('riesgo_suicida') || '(Sin respuesta)'}
+Riesgo para Terceros: ${formData.get('riesgo_terceros') || '(Sin respuesta)'}
+Autolesiones: ${formData.get('riesgo_autolesiones') || '(Sin respuesta)'}
+
+[IMPACTO FUNCIONAL]
+Trabajo: ${formData.get('func_trabajo') || 'No especificado'}
+Estudios: ${formData.get('func_estudios') || 'No especificado'}
+Pareja: ${formData.get('func_pareja') || 'No especificado'}
+Familia: ${formData.get('func_familia') || 'No especificado'}
+Social: ${formData.get('func_social') || 'No especificado'}
+Salud: ${formData.get('func_salud') || 'No especificado'}
+
+=============================================`;
+            
+            sintomasField.value = prompt;
         }
 
         document.getElementById('form-evaluacion').onsubmit = async (e) => {
