@@ -645,6 +645,9 @@
                 form.elements['diagnostico_final'].value = diagnosticoVal;
             }
 
+            // fecha_evaluacion está fuera del <form>, hay que restaurarla directamente
+            document.getElementById('fecha-evaluacion').value = ev.fecha_evaluacion || '';
+
             const output = form.querySelector('output');
             if (output && form.elements['emocion_intensidad']) {
                 output.value = form.elements['emocion_intensidad'].value;
@@ -750,6 +753,8 @@ Salud: ${formData.get('func_salud') || 'No especificado'}
             const data = Object.fromEntries(formData);
             data.patientId = patientId;
             data.createdAt = serverTimestamp();
+            // El input de fecha está fuera del <form>, hay que leerlo explícitamente
+            data.fecha_evaluacion = document.getElementById('fecha-evaluacion').value;
 
             try {
                 await addDoc(collection(db, "evaluaciones_completas"), data);
