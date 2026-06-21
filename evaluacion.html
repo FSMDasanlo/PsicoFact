@@ -167,6 +167,118 @@
             text-align: right;
             margin-top: 3px;
         }
+
+        /* ===== PANEL LATERAL ADJETIVOS ===== */
+        #adj-panel {
+            position: fixed;
+            top: 0;
+            right: -310px;
+            width: 300px;
+            height: 100vh;
+            background: #fff;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+            z-index: 1002;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        #adj-panel.open { right: 0; }
+        #adj-tab {
+            position: absolute;
+            left: -34px;
+            top: 45%;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            background: var(--azul-primario, #2980b9);
+            color: #fff;
+            padding: 18px 9px;
+            cursor: pointer;
+            border-radius: 0 8px 8px 0;
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            user-select: none;
+            box-shadow: -3px 2px 8px rgba(0,0,0,0.15);
+        }
+        #adj-tab:hover { background: #1a6496; }
+        #adj-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px 10px;
+            border-bottom: 2px solid #e8f0fe;
+            flex-shrink: 0;
+        }
+        #adj-header h3 { margin: 0; font-size: 0.95rem; color: var(--azul-oscuro, #1a3a5c); }
+        #adj-close {
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #999;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        #adj-close:hover { background: #f0f0f0; color: #333; }
+        #adj-content {
+            overflow-y: auto;
+            flex: 1;
+            padding: 10px 12px 20px;
+        }
+        #adj-content::-webkit-scrollbar { width: 5px; }
+        #adj-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        .adj-group {
+            margin-bottom: 6px;
+            border: 1px solid #e1eaf5;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .adj-group summary {
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--azul-oscuro, #1a3a5c);
+            cursor: pointer;
+            background: #f4f8ff;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .adj-group summary::-webkit-details-marker { display: none; }
+        .adj-group summary::after { content: '▸'; font-size: 0.75rem; color: #888; }
+        .adj-group[open] summary { background: #deeeff; color: var(--azul-primario, #2980b9); }
+        .adj-group[open] summary::after { content: '▾'; }
+        .adj-words { padding: 8px 10px 10px; display: flex; flex-wrap: wrap; gap: 5px; background: #fff; }
+        .adj-word {
+            display: inline-block;
+            padding: 4px 11px;
+            background: #f0f7ff;
+            border: 1px solid #c5ddf5;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            color: #2c5f8a;
+            transition: all 0.15s;
+        }
+        .adj-word:hover { background: var(--azul-primario, #2980b9); color: #fff; border-color: transparent; transform: scale(1.05); }
+        #adj-toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(70px);
+            background: #27ae60;
+            color: #fff;
+            padding: 9px 22px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            z-index: 2000;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #adj-toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
@@ -527,6 +639,68 @@
             </div>
         </form>
 
+        <!-- Panel lateral deslizante de adjetivos -->
+        <div id="adj-panel">
+            <div id="adj-tab" onclick="toggleAdjPanel()" title="Banco de adjetivos">📋 ADJETIVOS</div>
+            <div id="adj-header">
+                <h3>🗂️ Banco de adjetivos</h3>
+                <span id="adj-close" onclick="toggleAdjPanel()" title="Cerrar">✕</span>
+            </div>
+            <div id="adj-content">
+
+                <details class="adj-group" open>
+                    <summary>😊 Estados positivos</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Alegre</span><span class="adj-word" onclick="copyAdj(this)">Feliz</span><span class="adj-word" onclick="copyAdj(this)">Contento</span><span class="adj-word" onclick="copyAdj(this)">Entusiasmado</span><span class="adj-word" onclick="copyAdj(this)">Motivado</span><span class="adj-word" onclick="copyAdj(this)">Optimista</span><span class="adj-word" onclick="copyAdj(this)">Esperanzado</span><span class="adj-word" onclick="copyAdj(this)">Satisfecho</span><span class="adj-word" onclick="copyAdj(this)">Tranquilo</span><span class="adj-word" onclick="copyAdj(this)">Sereno</span><span class="adj-word" onclick="copyAdj(this)">Relajado</span><span class="adj-word" onclick="copyAdj(this)">Confiado</span><span class="adj-word" onclick="copyAdj(this)">Seguro</span><span class="adj-word" onclick="copyAdj(this)">Animado</span><span class="adj-word" onclick="copyAdj(this)">Eufórico</span><span class="adj-word" onclick="copyAdj(this)">Agradecido</span><span class="adj-word" onclick="copyAdj(this)">Inspirado</span><span class="adj-word" onclick="copyAdj(this)">Ilusionado</span><span class="adj-word" onclick="copyAdj(this)">Cariñoso</span><span class="adj-word" onclick="copyAdj(this)">Compasivo</span><span class="adj-word" onclick="copyAdj(this)">Empático</span><span class="adj-word" onclick="copyAdj(this)">Afable</span><span class="adj-word" onclick="copyAdj(this)">Sociable</span><span class="adj-word" onclick="copyAdj(this)">Vital</span><span class="adj-word" onclick="copyAdj(this)">Energético</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>😔 Estados negativos</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Triste</span><span class="adj-word" onclick="copyAdj(this)">Deprimido</span><span class="adj-word" onclick="copyAdj(this)">Melancólico</span><span class="adj-word" onclick="copyAdj(this)">Desanimado</span><span class="adj-word" onclick="copyAdj(this)">Abatido</span><span class="adj-word" onclick="copyAdj(this)">Desesperanzado</span><span class="adj-word" onclick="copyAdj(this)">Apático</span><span class="adj-word" onclick="copyAdj(this)">Indiferente</span><span class="adj-word" onclick="copyAdj(this)">Irritable</span><span class="adj-word" onclick="copyAdj(this)">Enfadado</span><span class="adj-word" onclick="copyAdj(this)">Furioso</span><span class="adj-word" onclick="copyAdj(this)">Hostil</span><span class="adj-word" onclick="copyAdj(this)">Resentido</span><span class="adj-word" onclick="copyAdj(this)">Frustrado</span><span class="adj-word" onclick="copyAdj(this)">Decepcionado</span><span class="adj-word" onclick="copyAdj(this)">Culpable</span><span class="adj-word" onclick="copyAdj(this)">Avergonzado</span><span class="adj-word" onclick="copyAdj(this)">Humillado</span><span class="adj-word" onclick="copyAdj(this)">Inseguro</span><span class="adj-word" onclick="copyAdj(this)">Vulnerable</span><span class="adj-word" onclick="copyAdj(this)">Rechazado</span><span class="adj-word" onclick="copyAdj(this)">Solo</span><span class="adj-word" onclick="copyAdj(this)">Aislado</span><span class="adj-word" onclick="copyAdj(this)">Desconectado</span><span class="adj-word" onclick="copyAdj(this)">Vacío</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>😰 Ansiedad y estrés</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Ansioso</span><span class="adj-word" onclick="copyAdj(this)">Nervioso</span><span class="adj-word" onclick="copyAdj(this)">Preocupado</span><span class="adj-word" onclick="copyAdj(this)">Inquieto</span><span class="adj-word" onclick="copyAdj(this)">Agobiado</span><span class="adj-word" onclick="copyAdj(this)">Estresado</span><span class="adj-word" onclick="copyAdj(this)">Tenso</span><span class="adj-word" onclick="copyAdj(this)">Sobrecargado</span><span class="adj-word" onclick="copyAdj(this)">Alarmado</span><span class="adj-word" onclick="copyAdj(this)">Asustado</span><span class="adj-word" onclick="copyAdj(this)">Temeroso</span><span class="adj-word" onclick="copyAdj(this)">Aterrado</span><span class="adj-word" onclick="copyAdj(this)">Hipervigilante</span><span class="adj-word" onclick="copyAdj(this)">Impaciente</span><span class="adj-word" onclick="copyAdj(this)">Incómodo</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>🧠 Estados cognitivos</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Confundido</span><span class="adj-word" onclick="copyAdj(this)">Desorientado</span><span class="adj-word" onclick="copyAdj(this)">Indeciso</span><span class="adj-word" onclick="copyAdj(this)">Dubitativo</span><span class="adj-word" onclick="copyAdj(this)">Perplejo</span><span class="adj-word" onclick="copyAdj(this)">Concentrado</span><span class="adj-word" onclick="copyAdj(this)">Reflexivo</span><span class="adj-word" onclick="copyAdj(this)">Pensativo</span><span class="adj-word" onclick="copyAdj(this)">Lúcido</span><span class="adj-word" onclick="copyAdj(this)">Clarividente</span><span class="adj-word" onclick="copyAdj(this)">Distraído</span><span class="adj-word" onclick="copyAdj(this)">Saturado</span><span class="adj-word" onclick="copyAdj(this)">Bloqueado</span><span class="adj-word" onclick="copyAdj(this)">Desbordado</span><span class="adj-word" onclick="copyAdj(this)">Obsesivo</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>🤝 Estados sociales</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Querido</span><span class="adj-word" onclick="copyAdj(this)">Aceptado</span><span class="adj-word" onclick="copyAdj(this)">Valorado</span><span class="adj-word" onclick="copyAdj(this)">Comprendido</span><span class="adj-word" onclick="copyAdj(this)">Acompañado</span><span class="adj-word" onclick="copyAdj(this)">Protegido</span><span class="adj-word" onclick="copyAdj(this)">Celoso</span><span class="adj-word" onclick="copyAdj(this)">Dependiente</span><span class="adj-word" onclick="copyAdj(this)">Desconfiado</span><span class="adj-word" onclick="copyAdj(this)">Suspicaz</span><span class="adj-word" onclick="copyAdj(this)">Manipulado</span><span class="adj-word" onclick="copyAdj(this)">Abandonado</span><span class="adj-word" onclick="copyAdj(this)">Ignorado</span><span class="adj-word" onclick="copyAdj(this)">Marginado</span><span class="adj-word" onclick="copyAdj(this)">Intimidado</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>⚡ Activación y energía</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Cansado</span><span class="adj-word" onclick="copyAdj(this)">Exhausto</span><span class="adj-word" onclick="copyAdj(this)">Fatigado</span><span class="adj-word" onclick="copyAdj(this)">Somnoliento</span><span class="adj-word" onclick="copyAdj(this)">Letárgico</span><span class="adj-word" onclick="copyAdj(this)">Activo</span><span class="adj-word" onclick="copyAdj(this)">Dinámico</span><span class="adj-word" onclick="copyAdj(this)">Inquieto</span><span class="adj-word" onclick="copyAdj(this)">Hiperactivo</span><span class="adj-word" onclick="copyAdj(this)">Revitalizado</span>
+                    </div>
+                </details>
+
+                <details class="adj-group">
+                    <summary>🌌 Estados existenciales</summary>
+                    <div class="adj-words">
+                        <span class="adj-word" onclick="copyAdj(this)">Pleno</span><span class="adj-word" onclick="copyAdj(this)">Realizado</span><span class="adj-word" onclick="copyAdj(this)">Equilibrado</span><span class="adj-word" onclick="copyAdj(this)">En paz</span><span class="adj-word" onclick="copyAdj(this)">Vacío</span><span class="adj-word" onclick="copyAdj(this)">Perdido</span><span class="adj-word" onclick="copyAdj(this)">Desorientado</span><span class="adj-word" onclick="copyAdj(this)">Desesperado</span><span class="adj-word" onclick="copyAdj(this)">Trascendente</span><span class="adj-word" onclick="copyAdj(this)">Con propósito</span><span class="adj-word" onclick="copyAdj(this)">Desmotivado</span><span class="adj-word" onclick="copyAdj(this)">Estancado</span><span class="adj-word" onclick="copyAdj(this)">Alienado</span><span class="adj-word" onclick="copyAdj(this)">Desvinculado</span><span class="adj-word" onclick="copyAdj(this)">Reconectado</span>
+                    </div>
+                </details>
+
+            </div>
+        </div>
+        <div id="adj-toast">✓ Copiado</div>
+
         <!-- Modal pantalla completa diagnóstico IA -->
         <div id="modal-diag">
             <div id="modal-diag-inner">
@@ -553,7 +727,7 @@
                     <table class="agenda-table" style="min-width: 100%;">
                         <thead>
                             <tr>
-                                <th>Fecha</th>
+                                <th>Evaluación</th>
                                 <th style="text-align: center;">Acción</th>
                             </tr>
                         </thead>
@@ -659,7 +833,7 @@
                 const q = query(uCol("evaluaciones_completas"), where("patientId", "==", patientId));
                 const snap = await getDocs(q);
                 savedEvaluations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                savedEvaluations.sort((a, b) => (b.fecha_evaluacion || '').localeCompare(a.fecha_evaluacion || ''));
+                savedEvaluations.sort((a, b) => (b.numero || 0) - (a.numero || 0) || (b.fecha_evaluacion || '').localeCompare(a.fecha_evaluacion || ''));
                 if (savedEvaluations.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">No hay evaluaciones guardadas para este paciente.</td></tr>';
                     return;
@@ -667,7 +841,7 @@
                 tbody.innerHTML = '';
                 savedEvaluations.forEach((ev, idx) => {
                     tbody.innerHTML += `<tr>
-                        <td>${ev.fecha_evaluacion || 'Sin fecha'}</td>
+                        <td><strong>#${ev.numero || '?'}</strong> &mdash; ${ev.fecha_evaluacion || 'Sin fecha'}</td>
                         <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
                             <button type="button" class="btn-turquesa" style="padding: 4px 10px; font-size: 0.85rem;" onclick="selectEvaluation(${idx})" title="Cargar evaluación">Cargar</button>
                             <button type="button" class="btn-turquesa" style="padding: 4px 10px; font-size: 0.85rem; background: #e74c3c;" onclick="deleteEvaluation('${ev.id}')" title="Eliminar evaluación">🗑️</button>
@@ -966,6 +1140,11 @@ Salud: ${formData.get('func_salud') || 'No especificado'}
             data.fecha_evaluacion = document.getElementById('fecha-evaluacion').value;
 
             try {
+                // Calcular número consecutivo de evaluaciones del paciente
+                const qCount = query(uCol("evaluaciones_completas"), where("patientId", "==", patientId));
+                const countSnap = await getDocs(qCount);
+                data.numero = countSnap.size + 1;
+
                 await addDoc(uCol("evaluaciones_completas"), data);
                 alert("Evaluación guardada correctamente en el expediente.");
                 window.location.href = `Expediente_paciente.html?id=${patientId}`; // Redirigir al expediente
@@ -982,6 +1161,35 @@ Salud: ${formData.get('func_salud') || 'No especificado'}
             document.querySelector('output').value = 5; // Actualizar output del slider
             alert("Formulario limpiado.");
         }
+
+        // ===== PANEL LATERAL ADJETIVOS =====
+        window.toggleAdjPanel = function() {
+            document.getElementById('adj-panel').classList.toggle('open');
+        };
+
+        window.copyAdj = function(el) {
+            const word = el.textContent.trim();
+            navigator.clipboard.writeText(word).then(() => {
+                const toast = document.getElementById('adj-toast');
+                toast.textContent = `✓ "${word}" copiado`;
+                toast.classList.add('show');
+                clearTimeout(toast._t);
+                toast._t = setTimeout(() => toast.classList.remove('show'), 2000);
+            }).catch(() => {
+                // Fallback para contextos sin permisos de portapapeles
+                const tmp = document.createElement('textarea');
+                tmp.value = word;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand('copy');
+                document.body.removeChild(tmp);
+                const toast = document.getElementById('adj-toast');
+                toast.textContent = `✓ "${word}" copiado`;
+                toast.classList.add('show');
+                clearTimeout(toast._t);
+                toast._t = setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        };
     </script>
 </body>
 </html>
