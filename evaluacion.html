@@ -127,7 +127,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -493,7 +492,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js";
 
         const firebaseConfig = {
@@ -503,11 +502,11 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const functions = getFunctions(app, "us-central1");
+        let currentUid = null;
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
-        // Mostrar fecha actual
-        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
-        document.getElementById('current-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        // fecha eliminada
 
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
@@ -535,7 +534,7 @@
                 return;
             }
             try {
-                const docSnap = await getDoc(doc(db, "pacientes", id));
+                const docSnap = await getDoc(uDoc("pacientes", id));
                 if (docSnap.exists()) {
                     const p = docSnap.data();
                     document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
@@ -563,7 +562,12 @@
                 document.getElementById('btn-historial').style.display = 'inline-block';
             }
         }
-        init();
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            init();
+        });
 
         window.openHistorialModal = function() {
             document.getElementById('modalHistorial').style.display = 'flex';
@@ -578,7 +582,7 @@
             const tbody = document.getElementById('historial-evaluaciones-body');
             tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Buscando historial...</td></tr>';
             try {
-                const q = query(collection(db, "evaluaciones_completas"), where("patientId", "==", patientId));
+                const q = query(uCol("evaluaciones_completas"), where("patientId", "==", patientId));
                 const snap = await getDocs(q);
                 savedEvaluations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 savedEvaluations.sort((a, b) => (b.fecha_evaluacion || '').localeCompare(a.fecha_evaluacion || ''));
@@ -659,7 +663,7 @@
         window.deleteEvaluation = async function(id) {
             if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta evaluación del historial?")) {
                 try {
-                    await deleteDoc(doc(db, "evaluaciones_completas", id));
+                    await deleteDoc(uDoc("evaluaciones_completas", id));
                     // Actualizar la lista local y la UI
                     savedEvaluations = savedEvaluations.filter(ev => ev.id !== id);
                     loadHistorialList(); 
@@ -757,7 +761,7 @@ Salud: ${formData.get('func_salud') || 'No especificado'}
             data.fecha_evaluacion = document.getElementById('fecha-evaluacion').value;
 
             try {
-                await addDoc(collection(db, "evaluaciones_completas"), data);
+                await addDoc(uCol("evaluaciones_completas"), data);
                 alert("Evaluación guardada correctamente en el expediente.");
                 window.location.href = `Expediente_paciente.html?id=${patientId}`; // Redirigir al expediente
             } catch (error) {

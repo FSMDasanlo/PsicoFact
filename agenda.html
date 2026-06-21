@@ -68,7 +68,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -173,6 +172,7 @@
                     <label for="obs-cita">Observaciones</label>
                     <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
                 </div>
+                <input type="hidden" id="ref-cita" name="referenciaPaciente">
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
                     <button type="button" class="btn-turquesa" style="background: var(--turquesa);" onclick="addToGoogleCalendar()">Añadir a Google Calendar</button>
@@ -185,6 +185,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -198,6 +199,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
 
         function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
@@ -217,11 +222,6 @@
             }, 3500);
         }
 
-        const dateElement = document.getElementById('current-date');
-        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
-        dateElement.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-
         let patientsMaster = [];
         let clinicsMasterData = [];
         let appointments = [];
@@ -229,9 +229,9 @@
         let editingAppointmentId = null;
 
         async function init() {
-            const snapP = await getDocs(collection(db, "pacientes"));
+            const snapP = await getDocs(uCol("pacientes"));
             patientsMaster = snapP.docs.map(d => d.data());
-            const snapC = await getDocs(collection(db, "clinicas"));
+            const snapC = await getDocs(uCol("clinicas"));
             clinicsMasterData = snapC.docs.map(d => d.data());
             populatePatientDropdown();
             loadFilteredAppointments();
@@ -257,10 +257,12 @@
                 
                 const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
                 document.getElementById('importe-cita').value = clinicData ? parseFloat(clinicData.importe) : '';
+                document.getElementById('ref-cita').value = patient.referencia || '';
             } else {
                 document.getElementById('sociedad-cita').value = '';
                 document.getElementById('clinica-cita').value = '';
                 document.getElementById('importe-cita').value = '';
+                document.getElementById('ref-cita').value = '';
             }
         }
 
@@ -281,13 +283,13 @@
             let q;
             if (!paciente && !estado) {
                 const hoy = new Date().toISOString().split('T')[0];
-                q = query(collection(db, "citas"), where("fecha", "==", hoy));
+                q = query(uCol("citas"), where("fecha", "==", hoy));
                 if (titleEl) titleEl.textContent = "Citas de Hoy";
             } else {
                 let constraints = [];
                 if (paciente) constraints.push(where("paciente", "==", paciente));
                 if (estado) constraints.push(where("estado", "==", estado));
-                q = query(collection(db, "citas"), ...constraints);
+                q = query(uCol("citas"), ...constraints);
                 if (titleEl) titleEl.textContent = "Resultados de Búsqueda";
             }
             
@@ -346,12 +348,12 @@
             const app = appointments.find(a => a.id === id);
             if (!app) return;
             const nuevoEstado = app.estado === 'completed' ? 'pending' : 'completed';
-            await updateDoc(doc(db, "citas", id), { estado: nuevoEstado });
+            await updateDoc(uDoc("citas", id), { estado: nuevoEstado });
             loadFilteredAppointments();
         }
         async function deleteAppointment(id) {
             if (confirm('¿Está seguro de que desea eliminar esta cita?')) {
-                await deleteDoc(doc(db, "citas", id));
+                await deleteDoc(uDoc("citas", id));
                 loadFilteredAppointments();
             }
         }
@@ -363,6 +365,7 @@
                 if(el) el.value = app[f] || '';
             });
             document.getElementById('paciente-select').value = app.paciente;
+            document.getElementById('ref-cita').value = app.referenciaPaciente || '';
             openAppointmentModal("Editar Cita");
         }
         document.getElementById('form-cita').onsubmit = async function(e) {
@@ -385,7 +388,7 @@
                 return;
             }
 
-            editingAppointmentId ? await updateDoc(doc(db, "citas", editingAppointmentId), data) : await addDoc(collection(db, "citas"), { ...data, estado: 'pending' });
+            editingAppointmentId ? await updateDoc(uDoc("citas", editingAppointmentId), data) : await addDoc(uCol("citas"), { ...data, estado: 'pending' });
             loadFilteredAppointments(); closeAppointmentModal();
         };
 
@@ -450,7 +453,7 @@
             const lastDayNext = new Date(nextYear, nextMonth + 1, 0).getDate();
             const endStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(lastDayNext).padStart(2, '0')}`;
 
-            const q = query(collection(db, "citas"), where("fecha", ">=", startStr), where("fecha", "<=", endStr));
+            const q = query(uCol("citas"), where("fecha", ">=", startStr), where("fecha", "<=", endStr));
             const snap = await getDocs(q);
             const citasCalendar = snap.docs.map(d => d.data());
 
@@ -549,7 +552,11 @@
         window.showCalendarView = showCalendarView;
         window.closeCalendarModal = closeCalendarModal;
 
-        init();
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            init();
+        });
     </script>
 </body>
 </html>

@@ -15,7 +15,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -80,6 +79,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -93,6 +93,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
 
         function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
@@ -112,14 +116,11 @@
             }, 3500);
         }
 
-        const dateElement = document.getElementById('current-date');
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
         let societies = [];
         let editingId = null;
 
         async function loadSocieties() {
-            const q = query(collection(db, "sociedades"), orderBy("nombre"));
+            const q = query(uCol("sociedades"), orderBy("nombre"));
             const querySnapshot = await getDocs(q);
             societies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderTable();
@@ -162,7 +163,7 @@
 
         window.deleteSociety = async function(id) {
             if (confirm("¿Está seguro de que desea eliminar esta sociedad?")) {
-                await deleteDoc(doc(db, "sociedades", id));
+                await deleteDoc(uDoc("sociedades", id));
                 showToast("Sociedad eliminada");
                 loadSocieties();
             }
@@ -172,17 +173,22 @@
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
             if (editingId) {
-                await updateDoc(doc(db, "sociedades", editingId), data);
+                await updateDoc(uDoc("sociedades", editingId), data);
                 showToast("Sociedad actualizada");
             } else {
-                await addDoc(collection(db, "sociedades"), data);
+                await addDoc(uCol("sociedades"), data);
                 showToast("Sociedad guardada");
             }
             loadSocieties(); closeModal();
         };
 
         window.onclick = (e) => { if (e.target == document.getElementById('modalSociedad')) closeModal(); }
-        loadSocieties();
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            loadSocieties();
+        });
     </script>
 </body>
 </html>

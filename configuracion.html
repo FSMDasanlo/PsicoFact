@@ -15,7 +15,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -47,11 +46,21 @@
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
     </footer>
 
-    <script>
-        const dateElement = document.getElementById('current-date');
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const today = new Date();
-        dateElement.textContent = today.toLocaleDateString('es-ES', options);
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
+            authDomain: "psicofact-404ba.firebaseapp.com",
+            projectId: "psicofact-404ba",
+            storageBucket: "psicofact-404ba.firebasestorage.app",
+            messagingSenderId: "216824213435",
+            appId: "1:216824213435:web:282a094dbf842db8719e9e"
+        };
+        const auth = getAuth(initializeApp(firebaseConfig));
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'index.html';
+        });
     </script>
 
 </body>

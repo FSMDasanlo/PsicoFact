@@ -15,7 +15,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -39,6 +38,7 @@
                     <tr>
                         <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
                         <th class="sortable" onclick="handleSort('apellidos')">Apellidos</th>
+                        <th>Referencia</th>
                         <th>Teléfono</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
@@ -62,6 +62,10 @@
                 <span class="close-modal" onclick="closeModal()">&times;</span>
             </div>
             <form id="form-paciente" class="form-grid">
+                <div class="form-group">
+                    <label for="referencia">Referencia (auto)</label>
+                    <input type="text" id="referencia" name="referencia" readonly style="background-color:#f0f0f0; font-weight:600; letter-spacing:1px;">
+                </div>
                 <div class="form-group">
                     <label for="nombre">Nombre</label>
                     <input type="text" id="nombre" name="nombre" required>
@@ -105,6 +109,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -118,6 +123,50 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+
+        // ── Generar referencia de paciente: 3 iniciales + número consecutivo desde 1001 ──
+        function getInitials(nombre, apellidos) {
+            const n = (nombre.trim().split(/\s+/)[0] || '').charAt(0).toUpperCase();
+            const parts = apellidos.trim().split(/\s+/);
+            const a1 = (parts[0] || '').charAt(0).toUpperCase();
+            const a2 = parts.length > 1
+                ? (parts[1] || '').charAt(0).toUpperCase()
+                : (parts[0] || '').charAt(1).toUpperCase();
+            return `${n}${a1}${a2 || 'X'}`;
+        }
+
+        async function generateReferencia(nombre, apellidos) {
+            const initials = getInitials(nombre, apellidos);
+            const snap = await getDocs(uCol("pacientes"));
+            let maxNum = 1000;
+            snap.docs.forEach(d => {
+                const ref = d.data().referencia || '';
+                const parts = ref.split('-');
+                if (parts.length === 2) {
+                    const num = parseInt(parts[1], 10);
+                    if (!isNaN(num) && num > maxNum) maxNum = num;
+                }
+            });
+            return `${initials}-${maxNum + 1}`;
+        }
+
+        // Autocompletar referencia al escribir nombre/apellidos (se registra después de que editingId esté declarado)
+        function setupRefListeners() {
+            ['nombre', 'apellidos'].forEach(field => {
+                document.getElementById(field).addEventListener('blur', async () => {
+                    if (editingId) return; // Solo en alta nueva
+                    const nombre = document.getElementById('nombre').value.trim();
+                    const apellidos = document.getElementById('apellidos').value.trim();
+                    if (nombre && apellidos) {
+                        document.getElementById('referencia').value = await generateReferencia(nombre, apellidos);
+                    }
+                });
+            });
+        }
 
         function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
@@ -137,16 +186,13 @@
             }, 3500);
         }
 
-        const dateElement = document.getElementById('current-date');
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
         let patients = [];
         let editingId = null;
 
         async function loadData() {
             // Cargar Clínicas y Sociedades desde Firestore para los desplegables
-            const snapshotClinicas = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
-            const snapshotSociedades = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));
+            const snapshotClinicas = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
+            const snapshotSociedades = await getDocs(query(uCol("sociedades"), orderBy("nombre")));
             
             const selectClinica = document.getElementById('clinica');
             const selectSociedad = document.getElementById('sociedad');
@@ -163,7 +209,7 @@
             });
 
             // Cargar Pacientes
-            const querySnapshot = await getDocs(collection(db, "pacientes"));
+            const querySnapshot = await getDocs(uCol("pacientes"));
             patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderTable();
         }
@@ -180,6 +226,7 @@
                 tbody.innerHTML += `<tr>
                     <td>${p.nombre}</td>
                     <td>${p.apellidos}</td>
+                    <td><strong>${p.referencia || '-'}</strong></td>
                     <td>${p.telefono || '-'}</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editPatient('${p.id}')" title="Editar">✏️</a>
@@ -203,9 +250,8 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas'].forEach(f => {
+            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas'].forEach(f => {
                 const el = document.getElementById(f);
-                // Soporte para migración: si no existe 'notas', buscamos en el antiguo 'observaciones'
                 const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];
                 if (el) el.value = value || '';
             });
@@ -214,7 +260,7 @@
 
         async function deletePatient(id) {
             if (confirm("¿Está seguro de que desea eliminar este paciente?")) {
-                await deleteDoc(doc(db, "pacientes", id));
+                await deleteDoc(uDoc("pacientes", id));
                 showToast("Paciente eliminado");
                 loadData();
             }
@@ -224,10 +270,14 @@
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
             if (editingId) {
-                await updateDoc(doc(db, "pacientes", editingId), data);
+                await updateDoc(uDoc("pacientes", editingId), data);
                 showToast("Paciente actualizado");
             } else {
-                await addDoc(collection(db, "pacientes"), data);
+                // Generar referencia si no tiene ya
+                if (!data.referencia) {
+                    data.referencia = await generateReferencia(data.nombre || '', data.apellidos || '');
+                }
+                await addDoc(uCol("pacientes"), data);
                 showToast("Paciente registrado");
             }
             loadData(); closeModal();
@@ -245,7 +295,12 @@
         window.deletePatient = deletePatient;
         window.renderTable = renderTable;
 
-        loadData();
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            setupRefListeners();
+            loadData();
+        });
     </script>
 </body>
 </html>

@@ -14,7 +14,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -78,6 +77,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             // ... (Tus datos de config)
@@ -86,16 +86,17 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
 
         let currentInvoices = [];
         let clinicsMasterData = [];
         let excludedIds = []; // Nueva lista para rastrear sesiones a desvincular
 
         async function init() {
-            // Fecha actual en el navbar
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const dateStr = new Date().toLocaleDateString('es-ES', dateOptions);
-            document.getElementById('current-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+            // fecha eliminada
 
             // Llenar selector de años 2026 - 2060
             const yearSelect = document.getElementById('filtro-ano');
@@ -106,7 +107,7 @@
             }
 
             // Llenar selector de clínicas (clientes)
-            const snapClinics = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
+            const snapClinics = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
             clinicsMasterData = snapClinics.docs.map(d => d.data());
             const clientSelect = document.getElementById('filtro-cliente');
             clinicsMasterData.forEach(clinic => {
@@ -130,7 +131,7 @@
             excludedIds = []; // Limpiamos exclusiones al cargar una factura nueva
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Cargando factura...</td></tr>';
 
-            const q = query(collection(db, "citas"), where("n_factura", "==", ref));
+            const q = query(uCol("citas"), where("n_factura", "==", ref));
             const snap = await getDocs(q);
             currentInvoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             
@@ -175,7 +176,7 @@
                 newInvoiceRef = existingRef;
             } else {
                 // Si es una factura totalmente nueva, buscamos el siguiente número
-                const q = query(collection(db, "citas"), 
+                const q = query(uCol("citas"), 
                     where("n_factura", ">=", `FP-${year}-`),
                     where("n_factura", "<=", `FP-${year}-\uf8ff`)
                 );
@@ -195,14 +196,14 @@
             // Solo para las sesiones que SÍ se van a facturar
             for (const item of printableInvoices) {
                 if (item.id) {
-                    await updateDoc(doc(db, "citas", item.id), { n_factura: newInvoiceRef });
+                    await updateDoc(uDoc("citas", item.id), { n_factura: newInvoiceRef });
                 }
             }
 
             // NUEVO: Disociar las sesiones excluidas en la base de datos
             // A las sesiones que se excluyeron, les quitamos el número de factura
             for (const id of excludedIds) {
-                await updateDoc(doc(db, "citas", id), { n_factura: "" });
+                await updateDoc(uDoc("citas", id), { n_factura: "" });
             }
 
             // Ahora que la BD está actualizada, podemos imprimir y luego recargar la tabla
@@ -227,7 +228,7 @@
                 btnEmitir.style.display = 'none';
 
                 // Cargar todas las referencias globales si no hay clínica seleccionada (nada más cargar la página)
-                const qGlobal = query(collection(db, "citas"), where("estado", "==", "completed"));
+                const qGlobal = query(uCol("citas"), where("estado", "==", "completed"));
                 const snapGlobal = await getDocs(qGlobal);
                 
                 const globalData = snapGlobal.docs.map(d => d.data());
@@ -257,7 +258,7 @@
             btnDeshacer.style.display = 'none';
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Buscando facturas...</td></tr>';
 
-            let q = query(collection(db, "citas"), 
+            let q = query(uCol("citas"), 
                 where("estado", "==", "completed"), 
                 where("clinica", "==", selectedClinic)
             );
@@ -326,7 +327,7 @@
                     <tr ${rowStyle}>
                         <td style="font-weight: 600; color: var(--azul-oscuro);">${item.n_factura || '---'}</td>
                         <td>${item.fecha}</td>
-                        <td>${item.paciente}</td>
+                        <td>${item.referenciaPaciente || item.paciente}</td>
                         <td>${item.clinica}</td>
                         <td>${base.toFixed(2)} €</td>
                         <td>${iva.toFixed(2)} €</td>
@@ -360,7 +361,7 @@
                 const base = total / 1.21;
                 const iva = total - base;
                 // Usamos punto y coma como separador y coma para decimales (formato común en España para Excel)
-                csv += `${item.n_factura || ''};${item.fecha};${item.paciente};${item.clinica};${base.toFixed(2).replace('.', ',')};${iva.toFixed(2).replace('.', ',')};${total.toFixed(2).replace('.', ',')}\n`;
+                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${base.toFixed(2).replace('.', ',')};${iva.toFixed(2).replace('.', ',')};${total.toFixed(2).replace('.', ',')}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -394,7 +395,7 @@
                 const b = t / 1.21; // Mostramos la base imponible en cada línea de la factura
                 rowsHtml += `
                     <tr class="item">
-                        <td>${item.fecha} - Sesión Psicología (${item.paciente})<\/td>
+                        <td>${item.fecha} - Sesión Psicología (${item.referenciaPaciente || item.paciente})<\/td>
                         <td style="text-align:right;">${b.toFixed(2)} €<\/td>
                     <\/tr>`;
             });
@@ -446,7 +447,11 @@
         window.undoExclusions = undoExclusions;
         window.triggerFilePicker = triggerFilePicker;
 
-        init();
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            init();
+        });
     </script>
 </body>
 </html>

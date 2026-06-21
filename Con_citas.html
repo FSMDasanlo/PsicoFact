@@ -15,7 +15,6 @@
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
         </div>
-        <div class="header-date" id="current-date"></div>
     </header>
 
     <main class="container">
@@ -75,7 +74,7 @@
                 <thead>
                     <tr>
                         <th>Fecha</th>
-                        <th>Paciente</th>
+                        <th>Referencia / Paciente</th>
                         <th>Clínica</th>
                         <th>Sociedad</th>
                         <th>Importe</th>
@@ -96,6 +95,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -109,6 +109,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
         function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
@@ -129,8 +132,8 @@
         }
 
         async function loadFilters() {
-            const snapshotClinicas = await getDocs(query(collection(db, "clinicas"), orderBy("nombre")));
-            const snapshotSociedades = await getDocs(query(collection(db, "sociedades"), orderBy("nombre")));
+            const snapshotClinicas = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
+            const snapshotSociedades = await getDocs(query(uCol("sociedades"), orderBy("nombre")));
             
             const selectClinica = document.getElementById('filtro-clinica');
             const selectSociedad = document.getElementById('filtro-sociedad');
@@ -142,15 +145,11 @@
                 selectSociedad.innerHTML += `<option value="${s.data().nombre}">${s.data().nombre}</option>`;
             });
         }
-        loadFilters();
-
-        const dateElement = document.getElementById('current-date');
-        dateElement.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         let appointments = [];
 
         async function loadAppointments() {
-            const snap = await getDocs(collection(db, "citas"));
+            const snap = await getDocs(uCol("citas"));
             appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             filterByMonth(0);
         }
@@ -179,7 +178,7 @@
                     tbody.innerHTML += `
                         <tr>
                             <td>${app.fecha}</td>
-                            <td>${app.paciente}</td>
+                            <td><strong>${app.referenciaPaciente || app.paciente}</strong></td>
                             <td>${app.clinica}</td>
                             <td>${app.sociedad}</td>
                             <td>${(parseFloat(app.importe) || 0).toFixed(2)} €</td>
@@ -248,7 +247,12 @@
         }
         window.clearFilters = clearFilters;
 
-        loadAppointments();
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            loadFilters();
+            loadAppointments();
+        });
     </script>
 </body>
 </html>

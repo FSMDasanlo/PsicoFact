@@ -252,7 +252,6 @@
             <div class="logo-container">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </div>
-            <div class="header-date" id="current-date"></div>
             <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
         </header>
 
@@ -414,11 +413,7 @@
         // ── Logout ──
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-        // ── Fecha actual ──
-        const dateElement = document.getElementById('current-date');
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = new Date().toLocaleDateString('es-ES', options);
-        dateElement.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
     </script>
 
 </body>
