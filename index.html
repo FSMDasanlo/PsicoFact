@@ -252,6 +252,7 @@
             <div class="logo-container">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </div>
+            <span id="user-name" style="color:rgba(255,255,255,0.90); font-size:0.88rem; font-weight:600; margin-right:0.5rem;"></span>
             <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
         </header>
 
@@ -270,7 +271,7 @@
                 <a href="configuracion.html" class="menu-card">
                     <div class="icon">⚙️</div>
                     <h2>Configuración</h2>
-                    <p>Ajustes de la aplicación</p>
+                    <p>Datos maestros de la aplicación</p>
                 </a>
                 <a href="help.html" class="menu-card" style="border-bottom-color: var(--turquesa);">
                     <div class="icon">❓</div>
@@ -291,6 +292,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
                  onAuthStateChanged, signOut }
             from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCUgTAvRE0IhFq3snlwPIwTkZn7eJU6Tyk",
@@ -304,6 +306,7 @@
 
         const app  = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db   = getFirestore(app);
 
         // ── Elementos ──
         const authScreen   = document.getElementById('auth-screen');
@@ -338,13 +341,23 @@
         document.getElementById('back-from-register').addEventListener('click', () => showView(viewHome));
 
         // ── Estado de autenticación ──
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 authScreen.style.display = 'none';
                 appWrapper.style.display = 'block';
+                // Cargar nombre del facultativo
+                try {
+                    const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                    const nameEl = document.getElementById('user-name');
+                    if (nameEl && snap.exists()) {
+                        const d = snap.data();
+                        nameEl.textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                    }
+                } catch(e) { console.error(e); }
             } else {
                 authScreen.style.display = 'flex';
                 appWrapper.style.display = 'none';
+                document.getElementById('user-name').textContent = '';
                 showView(viewHome);
             }
         });
