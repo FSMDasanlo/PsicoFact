@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .calendar-month {
+            flex: 1;
+            min-width: 300px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .calendar-month h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: var(--azul-oscuro);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-day-header {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            text-align: center;
+            padding: 5px 0;
+        }
+        .calendar-day {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .calendar-day.has-appointment {
+            background-color: var(--turquesa);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .calendar-day.empty { cursor: default; }
+        .calendar-day.past {
+            background-color: #f0f0f0;
+            color: #a0a0a0;
+            cursor: default;
+        }
+        .calendar-day.past.has-appointment {
+            background-color: #f1c40f; /* Amarillo para sesiones pasadas */
+            color: white;
+            cursor: help;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2><span id="agenda-title-text">Citas de Hoy</span> <a href="javascript:void(0)" onclick="showCalendarView(true)" title="Vista de calendario" style="text-decoration:none; margin-left:10px;">📅</a></h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openAppointmentModal()">Nueva Cita</button>
+                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                    <a href="index.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+            
+            <!-- Filtros de búsqueda -->
+            <div class="filters-section" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                    <label for="filtro-paciente" style="font-size: 0.85rem; font-weight: 600; color: var(--azul-oscuro);">Filtrar por Paciente</label>
+                    <select id="filtro-paciente" onchange="loadFilteredAppointments()" style="width: 100%;">
+                        <option value="">Cualquier paciente...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                    <label for="filtro-estado" style="font-size: 0.85rem; font-weight: 600; color: var(--azul-oscuro);">Estado</label>
+                    <select id="filtro-estado" onchange="loadFilteredAppointments()" style="width: 100%;">
+                        <option value="">Cualquier estado</option>
+                        <option value="pending">Pendiente</option>
+                        <option value="completed">Realizada</option>
+                    </select>
+                </div>
+            </div>
+
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Paciente (Sociedad)</th>
+                        <th>Clínica / Observaciones</th>
+                        <th>Estado</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="agenda-body"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal para Vista Mensual -->
+    <div id="modalCalendario" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="agenda-header">
+                <h2>Vista Mensual de Sesiones</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-turquesa" onclick="changeCalendarMonth(-1)" style="padding: 5px 10px; cursor: pointer;">&larr;</button>
+                    <button class="btn-turquesa" onclick="changeCalendarMonth(1)" style="padding: 5px 10px; cursor: pointer;">&rarr;</button>
+                    <span class="close-modal" onclick="closeCalendarModal()" style="margin-left: 10px;">&times;</span>
+                </div>
+            </div>
+            <div id="calendar-container" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 20px;">
+                <!-- Meses se cargarán aquí -->
+            </div>
+            <div class="form-actions full-width" style="justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-turquesa" onclick="closeCalendarModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Nueva Cita -->
+    <div id="modalCita" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nueva Cita</h2>
+                <span class="close-modal" onclick="closeAppointmentModal()">&times;</span>
+            </div>
+            <form id="form-cita" class="form-grid">
+                <div class="form-group">
+                    <label for="fecha">Fecha</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+                <div class="form-group">
+                    <label for="hora">Hora</label>
+                    <input type="time" id="hora" name="hora" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="paciente-select">Paciente</label>
+                    <select id="paciente-select" name="paciente" required onchange="handlePatientChange()">
+                        <option value="">Seleccione un paciente...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sociedad-cita">Sociedad</label>
+                    <input type="text" id="sociedad-cita" name="sociedad" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label for="clinica-cita">Clínica</label>
+                    <input type="text" id="clinica-cita" name="clinica" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label for="importe-cita">Importe (€)</label>
+                    <input type="number" id="importe-cita" name="importe" step="0.01">
+                </div>
+                <div class="form-group full-width">
+                    <label for="obs-cita">Observaciones</label>
+                    <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
+                </div>
+                <input type="hidden" id="ref-cita" name="referenciaPaciente">
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Cita</button>
+                    <button type="button" class="btn-turquesa" style="background: var(--turquesa);" onclick="addToGoogleCalendar()">Añadir a Google Calendar</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeAppointmentModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
+        let patientsMaster = [];
+        let clinicsMasterData = [];
+        let appointments = [];
+        let currentCalendarDate = new Date();
+        let editingAppointmentId = null;
+
+        async function init() {
+            const snapP = await getDocs(uCol("pacientes"));
+            patientsMaster = snapP.docs.map(d => d.data());
+            const snapC = await getDocs(uCol("clinicas"));
+            clinicsMasterData = snapC.docs.map(d => d.data());
+            populatePatientDropdown();
+            loadFilteredAppointments();
+        }
+
+        function populatePatientDropdown() {
+            const select = document.getElementById('paciente-select');
+            const filterSelect = document.getElementById('filtro-paciente');
+            let optionsHtml = '';
+            patientsMaster.forEach(p => {
+                optionsHtml += `<option value="${p.nombre} ${p.apellidos}">${p.nombre} ${p.apellidos}</option>`;
+            });
+            select.innerHTML = '<option value="">Seleccione un paciente...</option>' + optionsHtml;
+            filterSelect.innerHTML = '<option value="">Cualquier paciente...</option>' + optionsHtml;
+        }
+
+        function handlePatientChange() {
+            const selectedName = document.getElementById('paciente-select').value;
+            const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
+            if (patient) {
+                document.getElementById('sociedad-cita').value = patient.sociedad;
+                document.getElementById('clinica-cita').value = patient.clinica;
+                
+                const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
+                document.getElementById('importe-cita').value = clinicData ? parseFloat(clinicData.importe) : '';
+                document.getElementById('ref-cita').value = patient.referencia || '';
+            } else {
+                document.getElementById('sociedad-cita').value = '';
+                document.getElementById('clinica-cita').value = '';
+                document.getElementById('importe-cita').value = '';
+                document.getElementById('ref-cita').value = '';
+            }
+        }
+
+        function getStatusLabel(estado) {
+            const labels = {
+                'confirmada': 'Confirmada',
+                'pending': 'Pendiente',
+                'completed': 'Realizada'
+            };
+            return labels[estado] || 'Pendiente';
+        }
+
+        async function loadFilteredAppointments() {
+            const paciente = document.getElementById('filtro-paciente').value;
+            const estado = document.getElementById('filtro-estado').value;
+            const titleEl = document.getElementById('agenda-title-text');
+            
+            let q;
+            if (!paciente && !estado) {
+                const hoy = new Date().toISOString().split('T')[0];
+                q = query(uCol("citas"), where("fecha", "==", hoy));
+                if (titleEl) titleEl.textContent = "Citas de Hoy";
+            } else {
+                let constraints = [];
+                if (paciente) constraints.push(where("paciente", "==", paciente));
+                if (estado) constraints.push(where("estado", "==", estado));
+                q = query(uCol("citas"), ...constraints);
+                if (titleEl) titleEl.textContent = "Resultados de Búsqueda";
+            }
+            
+            const snap = await getDocs(q);
+            appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderAgenda();
+        }
+
+        function renderAgenda() {
+            const tbody = document.getElementById('agenda-body');
+            tbody.innerHTML = '';
+            
+            // Ordenar por Fecha y luego por Hora
+            appointments.sort((a, b) => {
+                if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+                return a.hora.localeCompare(b.hora);
+            });
+
+            const isFiltering = document.getElementById('filtro-paciente').value || document.getElementById('filtro-estado').value;
+
+            appointments.forEach(app => {
+                const isCompleted = app.estado === 'completed';
+                const checkIcon = isCompleted ? '✅' : '⚪';
+                const row = document.createElement('tr');
+                if (isCompleted) row.classList.add('row-completed');
+                
+                const timeInfo = isFiltering ? `${app.fecha}<br><strong>${app.hora}</strong>` : app.hora;
+
+                row.innerHTML = `
+                    <td>${timeInfo}</td>
+                    <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
+                    <td>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
+                    <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment('${app.id}')" title="${isCompleted ? 'Marcar como Pendiente' : 'Marcar como Realizada'}">${checkIcon}</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="editAppointment('${app.id}')" title="Editar">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteAppointment('${app.id}')" title="Eliminar">🗑️</a>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openAppointmentModal(title = "Nueva Cita", preselectedDate = null) {
+            const modal = document.getElementById('modalCita');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nueva Cita") {
+                document.getElementById('form-cita').reset();
+                document.getElementById('fecha').value = preselectedDate || new Date().toISOString().split('T')[0];
+                editingAppointmentId = null;
+            }
+            modal.style.display = 'flex';
+        }
+        function closeAppointmentModal() { document.getElementById('modalCita').style.display = 'none'; }
+        
+        async function completeAppointment(id) {
+            const app = appointments.find(a => a.id === id);
+            if (!app) return;
+            const nuevoEstado = app.estado === 'completed' ? 'pending' : 'completed';
+            await updateDoc(uDoc("citas", id), { estado: nuevoEstado });
+            loadFilteredAppointments();
+        }
+        async function deleteAppointment(id) {
+            if (confirm('¿Está seguro de que desea eliminar esta cita?')) {
+                await deleteDoc(uDoc("citas", id));
+                loadFilteredAppointments();
+            }
+        }
+        function editAppointment(id) {
+            const app = appointments.find(a => a.id === id);
+            editingAppointmentId = id;
+            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'observaciones'].forEach(f => {
+                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : f))));
+                if(el) el.value = app[f] || '';
+            });
+            document.getElementById('paciente-select').value = app.paciente;
+            document.getElementById('ref-cita').value = app.referenciaPaciente || '';
+            openAppointmentModal("Editar Cita");
+        }
+        document.getElementById('form-cita').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            // Validación de conflicto (30 minutos)
+            const nuevaFechaHora = new Date(`${data.fecha}T${data.hora}`);
+            const conflicto = appointments.find(app => {
+                if (app.id === editingAppointmentId) return false;
+                if (app.fecha !== data.fecha) return false;
+                const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
+                const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
+                return diferenciaMs < (30 * 60 * 1000); // 30 minutos en ms
+            });
+
+            if (conflicto) {
+                showToast(`Conflicto: Cita existente a las ${conflicto.hora} con ${conflicto.paciente}.`, 'error');
+                return;
+            }
+
+            editingAppointmentId ? await updateDoc(uDoc("citas", editingAppointmentId), data) : await addDoc(uCol("citas"), { ...data, estado: 'pending' });
+            loadFilteredAppointments(); closeAppointmentModal();
+        };
+
+        function addToGoogleCalendar() {
+            const fecha = document.getElementById('fecha').value;
+            const hora = document.getElementById('hora').value;
+            const paciente = document.getElementById('paciente-select').value;
+            const clinica = document.getElementById('clinica-cita').value;
+            const obs = document.getElementById('obs-cita').value;
+
+            if (!fecha || !hora || !paciente) {
+                showToast("Rellene al menos Fecha, Hora y Paciente para añadir al calendario.", "error");
+                return;
+            }
+
+            // Parse date and time
+            const startDateTime = new Date(`${fecha}T${hora}`);
+            // Assuming a standard 60-minute appointment duration
+            const endDateTime = new Date(startDateTime.getTime() + (60 * 60 * 1000)); 
+
+            // Format for Google Calendar (YYYYMMDDTHHMMSS)
+            const formatDateTime = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+            };
+
+            const formattedStart = formatDateTime(startDateTime);
+            const formattedEnd = formatDateTime(endDateTime);
+
+            const title = `${paciente} - Cita PsicoFact`;
+            const details = `Observaciones: ${obs || 'N/A'}\nClínica: ${clinica || 'N/A'}`;
+            const location = clinica || '';
+
+            const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${formattedStart}/${formattedEnd}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&sf=true&output=xml`;
+
+            window.open(googleCalendarUrl, '_blank');
+        }
+
+        async function showCalendarView(reset = false) {
+            if (reset) currentCalendarDate = new Date();
+            
+            const container = document.getElementById('calendar-container');
+            container.innerHTML = 'Cargando calendario...';
+            document.getElementById('modalCalendario').style.display = 'flex';
+
+            // Establecemos el primer día del mes de la fecha actual de navegación
+            const baseDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
+            const currentYear = baseDate.getFullYear();
+            const currentMonth = baseDate.getMonth();
+            
+            const nextMonthDate = new Date(currentYear, currentMonth + 1, 1);
+            const nextYear = nextMonthDate.getFullYear();
+            const nextMonth = nextMonthDate.getMonth();
+
+            // Query range: Del día 1 de este mes al último del siguiente
+            const startStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+            const lastDayNext = new Date(nextYear, nextMonth + 1, 0).getDate();
+            const endStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(lastDayNext).padStart(2, '0')}`;
+
+            const q = query(uCol("citas"), where("fecha", ">=", startStr), where("fecha", "<=", endStr));
+            const snap = await getDocs(q);
+            const citasCalendar = snap.docs.map(d => d.data());
+
+            container.innerHTML = '';
+            container.appendChild(renderMonth(currentYear, currentMonth, citasCalendar));
+            container.appendChild(renderMonth(nextYear, nextMonth, citasCalendar));
+        }
+        
+        window.changeCalendarMonth = function(offset) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+            showCalendarView();
+        }
+
+        function renderMonth(year, month, allCitas) {
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+            
+            const monthDiv = document.createElement('div');
+            monthDiv.className = 'calendar-month';
+            
+            const title = document.createElement('h3');
+            title.textContent = `${monthNames[month]} ${year}`;
+            monthDiv.appendChild(title);
+            
+            const grid = document.createElement('div');
+            grid.className = 'calendar-grid';
+            
+            // Cabeceras de días
+            dayNames.forEach(d => {
+                const h = document.createElement('div');
+                h.className = 'calendar-day-header';
+                h.textContent = d;
+                grid.appendChild(h);
+            });
+            
+            const firstDay = new Date(year, month, 1).getDay(); // 0 (Dom) a 6 (Sáb)
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Ajustar para que Lun sea 0
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Celdas vacías al inicio
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day empty';
+                grid.appendChild(empty);
+            }
+            
+            // Celdas de días
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+                
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalizar 'hoy' a inicio del día
+                const currentDayDate = new Date(year, month, day);
+
+                if (currentDayDate >= today) { // Solo si el día es hoy o futuro
+                    dayEl.onclick = () => {
+                        closeCalendarModal();
+                        openAppointmentModal("Nueva Cita", dateKey);
+                    };
+                } else {
+                    dayEl.classList.add('past'); // Añadir clase para días pasados
+                }
+
+                const dayCitas = allCitas.filter(c => c.fecha === dateKey);
+                
+                if (dayCitas.length > 0) {
+                    dayEl.classList.add('has-appointment');
+                    const tooltip = dayCitas.map(c => `${c.paciente} (${c.hora})`).join('\n');
+                    dayEl.title = tooltip;
+                }
+                
+                grid.appendChild(dayEl);
+            }
+            
+            monthDiv.appendChild(grid);
+            return monthDiv;
+        }
+
+        function closeCalendarModal() { document.getElementById('modalCalendario').style.display = 'none'; }
+
+        // Exponer funciones al objeto window para acceso desde el HTML
+        window.openAppointmentModal = openAppointmentModal;
+        window.closeAppointmentModal = closeAppointmentModal;
+        window.handlePatientChange = handlePatientChange;
+        window.completeAppointment = completeAppointment;
+        window.editAppointment = editAppointment;
+        window.deleteAppointment = deleteAppointment;
+        window.getStatusLabel = getStatusLabel;
+        window.populatePatientDropdown = populatePatientDropdown;
+        window.renderAgenda = renderAgenda;
+        window.loadFilteredAppointments = loadFilteredAppointments;
+        window.addToGoogleCalendar = addToGoogleCalendar;
+        window.showCalendarView = showCalendarView;
+        window.closeCalendarModal = closeCalendarModal;
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            init();
+        });
+    </script>
+</body>
+</html>

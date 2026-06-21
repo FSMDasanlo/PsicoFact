@@ -1,0 +1,107 @@
+[debug] [2026-06-18T17:19:39.762Z] ----------------------------------------------------------------------
+[debug] [2026-06-18T17:19:39.765Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\jesus\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2026-06-18T17:19:39.765Z] CLI Version:   15.21.0
+[debug] [2026-06-18T17:19:39.765Z] Platform:      win32
+[debug] [2026-06-18T17:19:39.765Z] Node Version:  v24.13.1
+[debug] [2026-06-18T17:19:39.765Z] Detected Agent: unknown
+[debug] [2026-06-18T17:19:39.765Z] Time:          Thu Jun 18 2026 19:19:39 GMT+0200 (hora de verano de Europa central)
+[debug] [2026-06-18T17:19:39.765Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\PROYECTOS-WEB\GitHub\PsicoFact
+
+Before we get started, keep in mind:
+
+  * You are currently outside your home directory
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-06-18T17:21:42.296Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-06-18T17:21:42.296Z] > authorizing via signed-in user (jesus.samperruiz@gmail.com)
+[debug] [2026-06-18T17:21:42.298Z] Checked if tokens are valid: false, expires at: 1777322501792
+[debug] [2026-06-18T17:21:42.298Z] Checked if tokens are valid: false, expires at: 1777322501792
+[debug] [2026-06-18T17:21:42.299Z] > refreshing access token with scopes: []
+[debug] [2026-06-18T17:21:42.301Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-06-18T17:21:42.301Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-18T17:21:42.548Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-06-18T17:21:42.548Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-18T17:21:42.606Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=100
+[debug] [2026-06-18T17:21:43.558Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-06-18T17:21:43.558Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2026-06-18T17:22:57.174Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (C:\Users\jesus\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\@inquirer\core\dist\commonjs\lib\create-prompt.js:101:37)
+    at Interface.emit (node:events:508:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+    at ReadStream.emit (node:events:520:35)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-06-18T17:23:09.693Z] ----------------------------------------------------------------------
+[debug] [2026-06-18T17:23:09.696Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\jesus\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2026-06-18T17:23:09.696Z] CLI Version:   15.21.0
+[debug] [2026-06-18T17:23:09.696Z] Platform:      win32
+[debug] [2026-06-18T17:23:09.696Z] Node Version:  v24.13.1
+[debug] [2026-06-18T17:23:09.696Z] Detected Agent: unknown
+[debug] [2026-06-18T17:23:09.696Z] Time:          Thu Jun 18 2026 19:23:09 GMT+0200 (hora de verano de Europa central)
+[debug] [2026-06-18T17:23:09.696Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\PROYECTOS-WEB\GitHub\PsicoFact
+
+Before we get started, keep in mind:
+
+  * You are currently outside your home directory
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[info] i  If you want to create a project in a Google Cloud organization or folder, please use "firebase projects:create" instead, and return to this command when you've created the project. 
+[debug] [2026-06-18T17:23:51.477Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-06-18T17:23:51.477Z] > authorizing via signed-in user (jesus.samperruiz@gmail.com)
+[debug] [2026-06-18T17:24:38.859Z] Checked if tokens are valid: true, expires at: 1781806901548
+[debug] [2026-06-18T17:24:38.860Z] Checked if tokens are valid: true, expires at: 1781806901548
+[debug] [2026-06-18T17:24:38.862Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1/projects:checkProjectId [none]
+[debug] [2026-06-18T17:24:38.862Z] >>> [apiv2][body] POST https://firebase.googleapis.com/v1/projects:checkProjectId {"proposedId":"psicofact-404ba"}
+[debug] [2026-06-18T17:24:39.502Z] <<< [apiv2][status] POST https://firebase.googleapis.com/v1/projects:checkProjectId 200
+[debug] [2026-06-18T17:24:39.502Z] <<< [apiv2][body] POST https://firebase.googleapis.com/v1/projects:checkProjectId {"projectIdStatus":"PROJECT_ID_UNAVAILABLE","suggestedProjectId":"psicofact-404ba-f397e"}
+[debug] [2026-06-18T17:25:15.725Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (C:\Users\jesus\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\@inquirer\core\dist\commonjs\lib\create-prompt.js:101:37)
+    at Interface.emit (node:events:508:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+    at ReadStream.emit (node:events:520:35)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+[error] 
+[error] Error: An unexpected error has occurred.

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sociedades - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Gestión de Sociedades</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openModal()">+ Nueva Sociedad</button>
+                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                    <a href="configuracion.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar sociedad..." oninput="handleSearch()">
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
+                        <th>Teléfono</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="societies-body"></tbody>
+            </table>
+
+            <div class="pagination">
+                <button class="btn-turquesa" id="prev-page" onclick="changePage(-1)">Anterior</button>
+                <span id="page-info">Página 1 de 1</span>
+                <button class="btn-turquesa" id="next-page" onclick="changePage(1)">Siguiente</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Sociedad -->
+    <div id="modalSociedad" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nueva Sociedad</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="form-sociedad" class="form-grid">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" name="telefono">
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Sociedad</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+
+        function showToast(message, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3500);
+        }
+
+        let societies = [];
+        let editingId = null;
+
+        async function loadSocieties() {
+            const q = query(uCol("sociedades"), orderBy("nombre"));
+            const querySnapshot = await getDocs(q);
+            societies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderTable();
+        }
+
+        window.renderTable = function() {
+            const tbody = document.getElementById('societies-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filtered = societies.filter(s => s.nombre.toLowerCase().includes(searchTerm));
+
+            tbody.innerHTML = '';
+            filtered.forEach(s => {
+                tbody.innerHTML += `<tr><td>${s.nombre}</td><td>${s.telefono}</td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editSociety('${s.id}')">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteSociety('${s.id}')">🗑️</a>
+                    </td></tr>`;
+            });
+        }
+
+        window.handleSearch = () => renderTable();
+        window.handleSort = () => {}; 
+        window.changePage = () => {};
+
+        window.openModal = function(title = "Nueva Sociedad") {
+            const modal = document.getElementById('modalSociedad');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nueva Sociedad") { document.getElementById('form-sociedad').reset(); editingId = null; }
+            modal.style.display = 'flex';
+        }
+        window.closeModal = () => document.getElementById('modalSociedad').style.display = 'none';
+
+        window.editSociety = function(id) {
+            const s = societies.find(s => s.id === id);
+            editingId = id;
+            document.getElementById('nombre').value = s.nombre;
+            document.getElementById('telefono').value = s.telefono;
+            openModal("Editar Sociedad");
+        }
+
+        window.deleteSociety = async function(id) {
+            if (confirm("¿Está seguro de que desea eliminar esta sociedad?")) {
+                await deleteDoc(uDoc("sociedades", id));
+                showToast("Sociedad eliminada");
+                loadSocieties();
+            }
+        }
+
+        document.getElementById('form-sociedad').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            if (editingId) {
+                await updateDoc(uDoc("sociedades", editingId), data);
+                showToast("Sociedad actualizada");
+            } else {
+                await addDoc(uCol("sociedades"), data);
+                showToast("Sociedad guardada");
+            }
+            loadSocieties(); closeModal();
+        };
+
+        window.onclick = (e) => { if (e.target == document.getElementById('modalSociedad')) closeModal(); }
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            loadSocieties();
+        });
+    </script>
+</body>
+</html>

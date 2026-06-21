@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PsicoFact - Gestión Facultativa</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* ══════════════════════════════════════
+           PANTALLA DE INICIO
+        ══════════════════════════════════════ */
+        #auth-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: url('img/Psia.png') center center / cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #auth-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 32, 50, 0.65);
+        }
+
+        /* Tarjeta contenedora de vistas */
+        .auth-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.10);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 22px;
+            padding: 2.8rem 2.5rem;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+            text-align: center;
+            color: #fff;
+        }
+
+        /* Logo */
+        .auth-logo {
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            margin-bottom: 0.25rem;
+        }
+        .auth-logo span { color: #1abc9c; }
+
+        .auth-subtitle {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.65);
+            letter-spacing: 0.6px;
+            margin-bottom: 0;
+        }
+
+        /* Separador */
+        .auth-divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            margin: 1.8rem 0;
+        }
+
+        /* ── Vista: pantalla de inicio (dos opciones) ── */
+        #view-home .home-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-option {
+            width: 100%;
+            padding: 0.95rem;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s, transform 0.12s;
+        }
+        .btn-option:hover  { opacity: 0.88; }
+        .btn-option:active { transform: scale(0.97); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.30);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.22); opacity: 1; }
+
+        /* ── Vistas de formulario ── */
+        .auth-view { display: none; }
+        .auth-view.active { display: block; }
+
+        .auth-view label {
+            display: block;
+            text-align: left;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.80);
+            margin-bottom: 0.3rem;
+            margin-top: 1rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .auth-view input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.28);
+            background: rgba(255,255,255,0.13);
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s, background 0.2s;
+        }
+        .auth-view input::placeholder { color: rgba(255,255,255,0.40); }
+        .auth-view input:focus {
+            border-color: #1abc9c;
+            background: rgba(255,255,255,0.20);
+        }
+
+        .btn-submit {
+            margin-top: 1.6rem;
+            width: 100%;
+            padding: 0.88rem;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: opacity 0.2s, transform 0.12s;
+        }
+        .btn-submit:hover   { opacity: 0.88; }
+        .btn-submit:active  { transform: scale(0.97); }
+        .btn-submit:disabled { opacity: 0.50; cursor: not-allowed; }
+
+        .auth-msg {
+            margin-top: 0.9rem;
+            font-size: 0.82rem;
+            min-height: 1.2em;
+        }
+        .auth-msg.error   { color: #ff6b6b; }
+        .auth-msg.success { color: #1abc9c; }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 1.2rem;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.60);
+            font-size: 0.83rem;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .btn-back:hover { color: rgba(255,255,255,0.90); }
+
+        /* ── App ── */
+        #app-wrapper { display: none; }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.32);
+            color: #fff;
+            padding: 0.35rem 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: background 0.2s;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.26); }
+    </style>
+</head>
+<body>
+
+    <!-- ════════════════════════════════════════
+         PANTALLA DE AUTENTICACIÓN
+    ════════════════════════════════════════ -->
+    <div id="auth-screen">
+        <div class="auth-card">
+
+            <!-- Logo siempre visible -->
+            <div class="auth-logo"><span>P</span>sico<span>F</span>act</div>
+            <p class="auth-subtitle">Gestión Facultativa</p>
+            <hr class="auth-divider">
+
+            <!-- ── VISTA 1: Inicio ── -->
+            <div id="view-home" class="auth-view active">
+                <div class="home-options">
+                    <button class="btn-option btn-primary" id="go-login">Acceder</button>
+                    <button class="btn-option btn-secondary" id="go-register">Crear usuario</button>
+                </div>
+            </div>
+
+            <!-- ── VISTA 2: Login ── -->
+            <div id="view-login" class="auth-view">
+                <label for="login-email">Correo electrónico</label>
+                <input type="email" id="login-email" placeholder="usuario@correo.com" autocomplete="username" />
+
+                <label for="login-password">Contraseña</label>
+                <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+
+                <button class="btn-submit" id="login-btn">Entrar</button>
+                <p class="auth-msg error" id="login-error"></p>
+                <button class="btn-back" id="back-from-login">← Volver</button>
+            </div>
+
+            <!-- ── VISTA 3: Registro ── -->
+            <div id="view-register" class="auth-view">
+                <label for="reg-email">Correo electrónico</label>
+                <input type="email" id="reg-email" placeholder="nuevo@correo.com" autocomplete="username" />
+
+                <label for="reg-password">Contraseña</label>
+                <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+
+                <label for="reg-password2">Confirmar contraseña</label>
+                <input type="password" id="reg-password2" placeholder="Repite la contraseña" autocomplete="new-password" />
+
+                <button class="btn-submit" id="register-btn">Crear cuenta</button>
+                <p class="auth-msg" id="register-msg"></p>
+                <button class="btn-back" id="back-from-register">← Volver</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         APLICACIÓN (visible tras autenticación)
+    ════════════════════════════════════════ -->
+    <div id="app-wrapper">
+        <header class="navbar">
+            <div class="logo-container">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </div>
+            <span id="user-name" style="color:rgba(255,255,255,0.90); font-size:0.88rem; font-weight:600; margin-right:0.5rem;"></span>
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+        </header>
+
+        <main class="container">
+            <nav class="main-menu">
+                <a href="agenda.html" class="menu-card">
+                    <div class="icon">📅</div>
+                    <h2>Agenda</h2>
+                    <p>Citas y horarios</p>
+                </a>
+                <a href="consultas.html" class="menu-card">
+                    <div class="icon">👤</div>
+                    <h2>Consultas</h2>
+                    <p>Gestión de expedientes</p>
+                </a>
+                <a href="configuracion.html" class="menu-card">
+                    <div class="icon">⚙️</div>
+                    <h2>Configuración</h2>
+                    <p>Datos maestros de la aplicación</p>
+                </a>
+                <a href="help.html" class="menu-card" style="border-bottom-color: var(--turquesa);">
+                    <div class="icon">❓</div>
+                    <h2>Ayuda</h2>
+                    <p>Guía de uso y soporte</p>
+                </a>
+            </nav>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+        </footer>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+                 onAuthStateChanged, signOut }
+            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app  = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db   = getFirestore(app);
+
+        // ── Elementos ──
+        const authScreen   = document.getElementById('auth-screen');
+        const appWrapper   = document.getElementById('app-wrapper');
+
+        const viewHome     = document.getElementById('view-home');
+        const viewLogin    = document.getElementById('view-login');
+        const viewRegister = document.getElementById('view-register');
+
+        const ERROR_MSGS = {
+            'auth/invalid-credential':  'Credenciales incorrectas.',
+            'auth/user-not-found':      'Usuario no encontrado.',
+            'auth/wrong-password':      'Contraseña incorrecta.',
+            'auth/too-many-requests':   'Demasiados intentos. Inténtalo más tarde.',
+            'auth/invalid-email':       'Correo electrónico no válido.',
+            'auth/email-already-in-use':'Este correo ya está registrado.',
+            'auth/weak-password':       'La contraseña debe tener al menos 6 caracteres.',
+        };
+
+        // ── Navegación entre vistas ──
+        function showView(view) {
+            [viewHome, viewLogin, viewRegister].forEach(v => v.classList.remove('active'));
+            view.classList.add('active');
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('register-msg').textContent = '';
+            document.getElementById('register-msg').className = 'auth-msg';
+        }
+
+        document.getElementById('go-login').addEventListener('click', () => showView(viewLogin));
+        document.getElementById('go-register').addEventListener('click', () => showView(viewRegister));
+        document.getElementById('back-from-login').addEventListener('click', () => showView(viewHome));
+        document.getElementById('back-from-register').addEventListener('click', () => showView(viewHome));
+
+        // ── Estado de autenticación ──
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                authScreen.style.display = 'none';
+                appWrapper.style.display = 'block';
+                // Cargar nombre del facultativo
+                try {
+                    const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                    const nameEl = document.getElementById('user-name');
+                    if (nameEl && snap.exists()) {
+                        const d = snap.data();
+                        nameEl.textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                    }
+                } catch(e) { console.error(e); }
+            } else {
+                authScreen.style.display = 'flex';
+                appWrapper.style.display = 'none';
+                document.getElementById('user-name').textContent = '';
+                showView(viewHome);
+            }
+        });
+
+        // ── Login ──
+        const loginBtn = document.getElementById('login-btn');
+        loginBtn.addEventListener('click', async () => {
+            const email    = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorEl  = document.getElementById('login-error');
+            errorEl.textContent = '';
+
+            if (!email || !password) {
+                errorEl.textContent = 'Introduce correo y contraseña.';
+                return;
+            }
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Autenticando…';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (err) {
+                errorEl.textContent = ERROR_MSGS[err.code] || 'Error al iniciar sesión.';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
+            }
+        });
+
+        document.getElementById('login-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+
+        // ── Registro ──
+        const registerBtn = document.getElementById('register-btn');
+        registerBtn.addEventListener('click', async () => {
+            const email   = document.getElementById('reg-email').value.trim();
+            const pass1   = document.getElementById('reg-password').value;
+            const pass2   = document.getElementById('reg-password2').value;
+            const msgEl   = document.getElementById('register-msg');
+            msgEl.textContent = '';
+            msgEl.className   = 'auth-msg';
+
+            if (!email || !pass1 || !pass2) {
+                msgEl.className = 'auth-msg error';
+                msgEl.textContent = 'Completa todos los campos.';
+                return;
+            }
+            if (pass1 !== pass2) {
+                msgEl.className = 'auth-msg error';
+                msgEl.textContent = 'Las contraseñas no coinciden.';
+                return;
+            }
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creando cuenta…';
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass1);
+                // onAuthStateChanged abre la app automáticamente al crearse la sesión
+            } catch (err) {
+                msgEl.className = 'auth-msg error';
+                msgEl.textContent = ERROR_MSGS[err.code] || 'Error al crear el usuario.';
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Crear cuenta';
+            }
+        });
+
+        // ── Logout ──
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+
+    </script>
+
+</body>
+</html>

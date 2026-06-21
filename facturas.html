@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Facturas - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Facturación Mensual</h2>
+                <div class="agenda-actions" style="display: flex; gap: 10px;">
+                    <button class="btn-turquesa" id="btn-emitir" onclick="emitGroupedInvoice()" style="border:none; cursor:pointer; background: var(--turquesa); display: none;">Emitir Factura de Selección</button>
+                    <button class="btn-turquesa" id="btn-deshacer" onclick="undoExclusions()" style="border:none; cursor:pointer; background: #e67e22; display: none;">Deshacer Exclusiones</button>
+                    <select id="filtro-referencia" onchange="loadInvoicesByRef()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Ver Factura Existente...</option>
+                    </select>
+                    <select id="filtro-mes" onchange="loadInvoices()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Cualquier Mes...</option>
+                        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                        <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                        <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                    </select>
+                    <select id="filtro-ano" onchange="loadInvoices()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Cualquier Año...</option>
+                    </select>
+                    <select id="filtro-cliente" onchange="loadInvoices()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-family: inherit;">
+                        <option value="">Seleccione Clínica...</option>
+                    </select>
+                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-start; margin-bottom: 10px;">
+                <button class="btn-turquesa" onclick="exportToCSV()" style="border:none; cursor:pointer;">Exportar CSV</button>
+            </div>
+
+            <table class="agenda-table">
+                <thead>
+                    <tr id="resumen-totales" style="background-color: #f8f9fa; border-bottom: 2px solid var(--azul-primario);">
+                        <td colspan="4" style="text-align: right; font-weight: 600; color: var(--azul-oscuro);">TOTALES SELECCIÓN:</td>
+                        <td id="total-base-sum" style="font-weight: bold; color: var(--azul-primario);">0.00 €</td>
+                        <td id="total-iva-sum" style="font-weight: bold; color: var(--turquesa);">0.00 €</td>
+                        <td id="total-final-sum" style="font-weight: bold; color: var(--azul-oscuro); background: #eee;">0.00 €</td>
+                    </tr>
+                    <tr>
+                        <th>Nº Factura</th>
+                        <th>Fecha</th>
+                        <th>Paciente</th>
+                        <th>Clínica</th>
+                        <th>Base Imp.</th>
+                        <th>IVA (21%)</th>
+                        <th>Total</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="invoices-body"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Input oculto para disparar el explorador de archivos -->
+    <input type="file" id="file-explorer-input" style="display: none;" accept=".pdf">
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+
+        let currentInvoices = [];
+        let clinicsMasterData = [];
+        let excludedIds = []; // Nueva lista para rastrear sesiones a desvincular
+        let facultativoData = {};
+
+        async function init() {
+            // Cargar datos del facultativo
+            const facSnap = await getDoc(doc(db, 'usuarios', currentUid, 'facultativo', 'perfil'));
+            if (facSnap.exists()) facultativoData = facSnap.data();
+
+            // Llenar selector de años 2026 - 2060
+            const yearSelect = document.getElementById('filtro-ano');
+            for (let y = 2026; y <= 2060; y++) {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                yearSelect.appendChild(opt);
+            }
+
+            // Llenar selector de clínicas (clientes)
+            const snapClinics = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
+            clinicsMasterData = snapClinics.docs.map(d => d.data());
+            const clientSelect = document.getElementById('filtro-cliente');
+            clinicsMasterData.forEach(clinic => {
+                const opt = document.createElement('option');
+                opt.value = clinic.nombre; 
+                opt.textContent = clinic.nombre;
+                clientSelect.appendChild(opt);
+            });
+
+            loadInvoices();
+        }
+
+        async function loadInvoicesByRef() {
+            const ref = document.getElementById('filtro-referencia').value;
+            if (!ref) {
+                loadInvoices();
+                return;
+            }
+
+            const tbody = document.getElementById('invoices-body');
+            excludedIds = []; // Limpiamos exclusiones al cargar una factura nueva
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Cargando factura...</td></tr>';
+
+            const q = query(uCol("citas"), where("n_factura", "==", ref));
+            const snap = await getDocs(q);
+            currentInvoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            // Desmarcar filtros temporales para evitar confusión
+            document.getElementById('filtro-mes').value = "";
+            document.getElementById('filtro-ano').value = "";
+            
+            renderTable(currentInvoices);
+            document.getElementById('btn-emitir').style.display = 'block';
+            document.getElementById('btn-emitir').textContent = 'Re-Imprimir Factura';
+        }
+
+        window.toggleExclusion = function(id) {
+            const index = excludedIds.indexOf(id);
+            if (index > -1) {
+                excludedIds.splice(index, 1);
+            } else {
+                excludedIds.push(id);
+            }
+            renderTable(currentInvoices);
+            document.getElementById('btn-deshacer').style.display = excludedIds.length > 0 ? 'block' : 'none';
+        }
+
+        window.undoExclusions = function() {
+            excludedIds = [];
+            renderTable(currentInvoices);
+            document.getElementById('btn-deshacer').style.display = 'none';
+        }
+
+        async function emitGroupedInvoice() {
+            const printableInvoices = currentInvoices.filter(i => !excludedIds.includes(i.id));
+            if (printableInvoices.length === 0) return;
+
+            const year = document.getElementById('filtro-ano').value || new Date().getFullYear();
+
+            // Lógica para detectar si ya existe una referencia en este lote
+            const existingRef = printableInvoices.length > 0 ? printableInvoices[0].n_factura : null; // Busca en la primera de las imprimibles
+            let newInvoiceRef = "";
+
+            if (existingRef) {
+                // Si ya hay una referencia existente en el grupo, la mantenemos para añadir las nuevas
+                newInvoiceRef = existingRef;
+            } else {
+                // Si es una factura totalmente nueva, buscamos el siguiente número
+                const q = query(uCol("citas"), 
+                    where("n_factura", ">=", `FP-${year}-`),
+                    where("n_factura", "<=", `FP-${year}-\uf8ff`)
+                );
+                const snap = await getDocs(q);
+                let maxNum = 0;
+                snap.forEach(d => {
+                    const parts = d.data().n_factura.split('-');
+                    if (parts.length === 3) {
+                        const num = parseInt(parts[2]);
+                        if (!isNaN(num) && num > maxNum) maxNum = num;
+                    }
+                });
+                newInvoiceRef = `FP-${year}-${String(maxNum + 1).padStart(3, '0')}`;
+            }
+
+            // Primero, actualizamos la base de datos con el nuevo número de factura
+            // Solo para las sesiones que SÍ se van a facturar
+            for (const item of printableInvoices) {
+                if (item.id) {
+                    await updateDoc(uDoc("citas", item.id), { n_factura: newInvoiceRef });
+                }
+            }
+
+            // NUEVO: Disociar las sesiones excluidas en la base de datos
+            // A las sesiones que se excluyeron, les quitamos el número de factura
+            for (const id of excludedIds) {
+                await updateDoc(uDoc("citas", id), { n_factura: "" });
+            }
+
+            // Ahora que la BD está actualizada, podemos imprimir y luego recargar la tabla
+            alert(`Factura ${newInvoiceRef} procesada y lista para imprimir.`);
+            // Pasamos la lista de sesiones a imprimir y la referencia de factura directamente
+            printGroupedInvoice(printableInvoices, newInvoiceRef); 
+            excludedIds = []; // Limpiamos la lista de exclusiones después de imprimir
+            loadInvoices(); // Recargamos la tabla para reflejar los cambios de la BD
+        }
+
+        async function loadInvoices() {
+            const selectedYear = document.getElementById('filtro-ano').value;
+            const selectedMonth = document.getElementById('filtro-mes').value;
+            const selectedClinic = document.getElementById('filtro-cliente').value;
+            const tbody = document.getElementById('invoices-body');
+            const btnEmitir = document.getElementById('btn-emitir');
+            const btnDeshacer = document.getElementById('btn-deshacer');
+            const refSelect = document.getElementById('filtro-referencia');
+
+            if (!selectedClinic) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Seleccione una clínica para ver sesiones</td></tr>';
+                btnEmitir.style.display = 'none';
+
+                // Cargar todas las referencias globales si no hay clínica seleccionada (nada más cargar la página)
+                const qGlobal = query(uCol("citas"), where("estado", "==", "completed"));
+                const snapGlobal = await getDocs(qGlobal);
+                
+                const globalData = snapGlobal.docs.map(d => d.data());
+                const uniqueRefs = [];
+                const seen = new Set();
+
+                globalData.forEach(i => {
+                    if (i.n_factura && i.n_factura !== '---' && !seen.has(i.n_factura)) {
+                        seen.add(i.n_factura);
+                        uniqueRefs.push({ ref: i.n_factura, clinica: i.clinica });
+                    }
+                });
+                uniqueRefs.sort((a, b) => b.ref.localeCompare(a.ref));
+                
+                refSelect.innerHTML = '<option value="">Ver Factura Existente...</option>';
+                uniqueRefs.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.ref; 
+                    opt.textContent = `${item.ref} - ${item.clinica}`;
+                    refSelect.appendChild(opt);
+                });
+                refSelect.style.display = 'block';
+                return;
+            }
+
+            excludedIds = []; // Limpiamos exclusiones al cambiar de filtros
+            btnDeshacer.style.display = 'none';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Buscando facturas...</td></tr>';
+
+            let q = query(uCol("citas"), 
+                where("estado", "==", "completed"), 
+                where("clinica", "==", selectedClinic)
+            );
+            
+            const snap = await getDocs(q);
+            let allClinicSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Rellenar el desplegable de referencias con TODAS las existentes de esta clínica con el nombre de la clínica
+            const uniqueRefs = [];
+            const seen = new Set();
+
+            allClinicSessions.forEach(i => {
+                if (i.n_factura && i.n_factura !== '---' && !seen.has(i.n_factura)) {
+                    seen.add(i.n_factura);
+                    uniqueRefs.push({ ref: i.n_factura, clinica: i.clinica });
+                }
+            });
+            uniqueRefs.sort((a, b) => b.ref.localeCompare(a.ref));
+            
+            refSelect.innerHTML = '<option value="">Ver Factura Existente...</option>';
+            uniqueRefs.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.ref; 
+                opt.textContent = `${item.ref} - ${item.clinica}`;
+                refSelect.appendChild(opt);
+            });
+            refSelect.style.display = 'block';
+
+            // Ahora filtramos por año/mes para la visualización en la tabla de edición/generación
+            let tableData = [...allClinicSessions];
+            if (selectedYear) {
+                tableData = tableData.filter(c => c.fecha && c.fecha.startsWith(selectedYear));
+            }
+            if (selectedMonth) {
+                tableData = tableData.filter(c => c.fecha && c.fecha.split('-')[1] === selectedMonth);
+            }
+
+            // Ordenar la tabla por fecha descendente
+            tableData.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+            currentInvoices = tableData;
+            renderTable(tableData);
+            
+            if (tableData.length > 0) {
+                btnEmitir.style.display = 'block';
+                btnEmitir.textContent = tableData.some(i => i.n_factura) ? 'Actualizar Factura' : 'Emitir Factura de Selección';
+            } else { btnEmitir.style.display = 'none'; }
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('invoices-body');
+            tbody.innerHTML = '';
+            let sumTotal = 0;
+
+            items.forEach(item => {
+                const isExcluded = excludedIds.includes(item.id);
+                const total = parseFloat(item.importe) || 0;
+                const base = total / 1.21;
+                const iva = total - base;
+                
+                if (!isExcluded) sumTotal += total;
+
+                const rowStyle = isExcluded ? 'style="text-decoration: line-through; color: #999; opacity: 0.6; background-color: #fff1f1;"' : '';
+
+                tbody.innerHTML += `
+                    <tr ${rowStyle}>
+                        <td style="font-weight: 600; color: var(--azul-oscuro);">${item.n_factura || '---'}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.referenciaPaciente || item.paciente}</td>
+                        <td>${item.clinica}</td>
+                        <td>${base.toFixed(2)} €</td>
+                        <td>${iva.toFixed(2)} €</td>
+                        <td><strong>${total.toFixed(2)} €</strong></td>
+                        <td style="text-align: center;">
+                            ${item.n_factura ? `<a href="javascript:void(0)" class="action-icon" onclick="triggerFilePicker()" title="Buscar PDF en el equipo" style="margin-right:8px;">📁</a>` : ''}
+                            <a href="javascript:void(0)" class="action-icon" onclick="toggleExclusion('${item.id}')" title="${isExcluded ? 'Restaurar' : 'Excluir'}">${isExcluded ? '🔄' : '🗑️'}</a>
+                        </td>
+                    </tr>`;
+            });
+
+            const sumBase = sumTotal / 1.21;
+            const sumIva = sumTotal - sumBase;
+            document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
+            document.getElementById('total-iva-sum').textContent = sumIva.toFixed(2) + ' €';
+            document.getElementById('total-final-sum').textContent = sumTotal.toFixed(2) + ' €';
+        }
+
+        function exportToCSV() {
+            const printableInvoices = currentInvoices.filter(i => !excludedIds.includes(i.id));
+            if (printableInvoices.length === 0) {
+                alert("No hay sesiones válidas para exportar");
+                return;
+            }
+            
+            let csv = "\uFEFF"; // BOM para soporte UTF-8 en Excel
+            csv += "Nº Factura;Fecha;Paciente;Clinica;Base Imponible;IVA (21%);Total\n";
+            
+            printableInvoices.forEach(item => {
+                const total = parseFloat(item.importe) || 0;
+                const base = total / 1.21;
+                const iva = total - base;
+                // Usamos punto y coma como separador y coma para decimales (formato común en España para Excel)
+                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${base.toFixed(2).replace('.', ',')};${iva.toFixed(2).replace('.', ',')};${total.toFixed(2).replace('.', ',')}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Facturas_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.triggerFilePicker = function() {
+            document.getElementById('file-explorer-input').click();
+        }
+
+        window.printGroupedInvoice = function(invoicesToPrint, invoiceRef) {
+            const printableInvoices = invoicesToPrint || currentInvoices.filter(i => !excludedIds.includes(i.id));
+            if (printableInvoices.length === 0) return;
+            
+            const first = printableInvoices[0];
+            const clinic = clinicsMasterData.find(c => c.nombre === first.clinica) || { nombre: first.clinica };
+            const nFactura = invoiceRef || first.n_factura || 'PROFORMA';
+            
+            let totalFinal = 0;
+            let rowsHtml = '';
+            
+            printableInvoices.forEach(item => {
+                const t = parseFloat(item.importe) || 0;
+                totalFinal += t;
+                const b = t / 1.21; // Mostramos la base imponible en cada línea de la factura
+                rowsHtml += `
+                    <tr class="item">
+                        <td>${item.fecha} - Sesión Psicología (${item.referenciaPaciente || item.paciente})<\/td>
+                        <td style="text-align:right;">${b.toFixed(2)} €<\/td>
+                    <\/tr>`;
+            });
+
+            const totalBase = totalFinal / 1.21;
+            const totalIva = totalFinal - totalBase;
+
+            const printWindow = window.open('', '', 'height=900,width=950');
+            printWindow.document.write('<html><head><title>Factura ' + nFactura + '<\/title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write('body{font-family: "Segoe UI", sans-serif; padding: 20px; color: #333;}');
+            printWindow.document.write('.invoice-box{max-width: 850px; margin: auto; padding: 30px; border: 1px solid #eee; font-size: 15px; line-height: 24px;}');
+            printWindow.document.write('.invoice-box table{width: 100%; line-height: inherit; text-align: left; border-collapse: collapse;}');
+            printWindow.document.write('.invoice-box table td{padding: 5px; vertical-align: top;}');
+            printWindow.document.write('.header-flex{display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #3498db; padding-bottom: 20px;}');
+            printWindow.document.write('.invoice-box table tr.heading td{background: #eee; border-bottom: 1px solid #ddd; font-weight: bold;}');
+            printWindow.document.write('.invoice-box table tr.item td{border-bottom: 1px solid #eee;}');
+            printWindow.document.write('.invoice-box table tr.total td:nth-child(2){border-top: 2px solid #eee; font-weight: bold; text-align: right;}');
+            printWindow.document.write('<\/style><\/head><body>');
+            
+            printWindow.document.write('<div class="invoice-box">');
+            
+            // Cabecera Flex: Felipe a la izquierda, Clínica a la derecha
+            printWindow.document.write('<div class="header-flex">');
+            printWindow.document.write('<div><h2 style="margin:0; color:#2c3e50;">Felipe Poblet<\/h2><p>Psicólogo Colegiado Nº XXXX<br>NIF: 06620771Z<br>Email: FelipePoblet99@gmail.com<\/p><\/div>');
+            printWindow.document.write('<div style="text-align:right;"><h3 style="margin:0;">CLIENTE:<\/h3><p><strong>' + clinic.nombre + '<\/strong><br>CIF: ' + (clinic.cif || '---') + '<br>' + (clinic.direccion || '') + '<\/p><\/div>');
+            printWindow.document.write('<\/div>');
+
+            printWindow.document.write('<div style="margin-bottom:30px;"><strong>Factura Nº: ' + nFactura + '<\/strong><br>Fecha Emisión: ' + new Date().toLocaleDateString('es-ES') + '<\/div>');
+            
+            printWindow.document.write('<table>');
+            printWindow.document.write('<tr class="heading"><td>Concepto<\/td><td style="text-align:right;">Importe<\/td><\/tr>');
+            printWindow.document.write(rowsHtml);
+            printWindow.document.write('<tr class="total"><td><\/td><td><br>Base Imponible: ' + totalBase.toFixed(2) + ' €<br>IVA (21%): ' + totalIva.toFixed(2) + ' €<br><span style="font-size:1.3rem; color:#2c3e50;">TOTAL FACTURA: ' + totalFinal.toFixed(2) + ' €<\/span><\/td><\/tr>');
+            printWindow.document.write('<\/table><\/div>');
+
+            // Texto exención IVA y cuenta bancaria
+            const textoExencion = facultativoData.texto_exencion || '';
+            const cuentaBancaria = facultativoData.cuenta_bancaria || '';
+            if (textoExencion || cuentaBancaria) {
+                printWindow.document.write('<div style="margin-top:30px; border-top:1px solid #eee; padding-top:15px; font-size:13px; color:#555;">');
+                if (textoExencion) printWindow.document.write('<p style="margin:0 0 6px 0;">' + textoExencion + '<\/p>');
+                if (cuentaBancaria) printWindow.document.write('<p style="margin:0;"><strong>Cuenta bancaria (IBAN):<\/strong> ' + cuentaBancaria + '<\/p>');
+                printWindow.document.write('<\/div>');
+            }
+            
+            printWindow.document.write('<\/body><\/html>');
+            printWindow.document.close();
+            setTimeout(() => { printWindow.print(); }, 600);
+        }
+
+        // Exponer la función al objeto window para que sea accesible desde el onchange del HTML
+        window.loadInvoices = loadInvoices;
+        window.exportToCSV = exportToCSV;
+        window.emitGroupedInvoice = emitGroupedInvoice;
+        window.printGroupedInvoice = printGroupedInvoice;
+        window.loadInvoicesByRef = loadInvoicesByRef;
+        window.toggleExclusion = toggleExclusion;
+        window.undoExclusions = undoExclusions;
+        window.triggerFilePicker = triggerFilePicker;
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            init();
+        });
+    </script>
+</body>
+</html>

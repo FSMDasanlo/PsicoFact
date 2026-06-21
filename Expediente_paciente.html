@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expediente del Paciente - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2 id="expediente-titulo">Expediente: Cargando...</h2>
+            <div class="agenda-actions">
+                <a href="#" id="link-evaluacion" title="Nueva Evaluación"><img src="img/Psia.png" alt="Evaluación" style="width: 28px; vertical-align: middle; margin-right: 5px;"></a>
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="Con_pacientes.html" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <!-- Ficha del Paciente -->
+        <section class="agenda-container" style="margin-bottom: 2rem;">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Datos Personales</h3>
+            <div id="ficha-paciente" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <!-- Se rellena con JS -->
+            </div>
+        </section>
+
+        <!-- Historial de Citas -->
+        <section class="agenda-container">
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Historial de Citas</h3>
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Clínica</th>
+                        <th>Observaciones <a href="javascript:void(0)" onclick="showAllNotes()" title="Ver resumen de notas" style="text-decoration:none; margin-left:5px;">📄</a></th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="historial-citas">
+                    <!-- Se rellena con JS -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Resumen del Expediente -->
+        <div id="resumen-expediente" class="agenda-container" style="margin-top: 1.5rem; background-color: #f1faff; border-left: 5px solid var(--azul-primario); display: none;">
+            <!-- Se rellena con JS -->
+        </div>
+    </main>
+
+    <!-- Modal para Resumen de Notas -->
+    <div id="modalNotas" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="agenda-header">
+                <h2>Resumen de Evolución</h2>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <a href="javascript:void(0)" onclick="printNotes()" title="Imprimir" style="text-decoration:none; font-size: 1.4rem;">🖨️</a>
+                    <button class="btn-turquesa" onclick="copyNotes()" style="padding: 5px 12px; font-size: 0.85rem;">Copiar Texto</button>
+                    <span class="close-modal" onclick="closeNotesModal()">&times;</span>
+                </div>
+            </div>
+            <div id="notas-content" style="white-space: pre-wrap; margin-top: 1.5rem; max-height: 500px; overflow-y: auto; text-align: left; line-height: 1.8; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
+            </div>
+            <div class="form-actions full-width" style="justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn-turquesa" onclick="closeNotesModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+
+        // Mostrar fecha actual - eliminado
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('id');
+
+        // Configurar enlace a evaluación (asegurando que el ID del paciente se pasa)
+        if (patientId) document.getElementById('link-evaluacion').href = `evaluacion.html?id=${patientId}`;
+
+        let patientAppsData = [];
+        let currentPatientName = "";
+
+        function calculateAge(birthday) {
+            if (!birthday) return null;
+            const birthDate = new Date(birthday);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        async function loadExpediente() {
+            if (!patientId) return;
+            
+            const docSnap = await getDoc(uDoc("pacientes", patientId));
+            if (!docSnap.exists()) return;
+            const patient = docSnap.data();
+            currentPatientName = `${patient.nombre} ${patient.apellidos}`;
+
+            document.getElementById('expediente-titulo').textContent = `Expediente: ${patient.nombre} ${patient.apellidos}`;
+            
+            const age = calculateAge(patient.fechaNacimiento);
+            const ageDisplay = age !== null ? ` (${age} años)` : '';
+
+            const ficha = document.getElementById('ficha-paciente');
+            ficha.innerHTML = `
+                <div><strong>Teléfono:</strong><br>${patient.telefono}</div>
+                <div><strong>Fecha de Nacimiento:</strong><br>${patient.fechaNacimiento || 'No especificada'}${ageDisplay}</div>
+                <div><strong>Sociedad:</strong><br>${patient.sociedad}</div>
+                <div><strong>Clínica:</strong><br>${patient.clinica}</div>
+                <div class="full-width" style="margin-top:10px;"><strong>Notas:</strong><br>${patient.notas || patient.observaciones || 'Sin notas'}</div>
+            `;
+
+            const historialTbody = document.getElementById('historial-citas');
+            // Buscamos citas por el nombre del paciente o ID si lo guardas así
+            const q = query(uCol("citas"), where("paciente", "==", `${patient.nombre} ${patient.apellidos}`));
+            const snapCitas = await getDocs(q);
+            const patientApps = snapCitas.docs.map(d => d.data()).sort((a, b) => b.fecha.localeCompare(a.fecha));
+            
+            patientAppsData = patientApps;
+
+            if (patientApps.length > 0) {
+                patientApps.forEach(a => {
+                    const estadoLabel = a.estado === 'completed' ? 'Realizada' : 'Pendiente';
+                    historialTbody.innerHTML += `
+                        <tr>
+                            <td>${a.fecha}</td>
+                            <td>${a.hora}</td>
+                            <td>${a.clinica}</td>
+                            <td><small>${a.observaciones || ''}</small></td>
+                            <td><span class="status-pill ${a.estado}">${estadoLabel}</span></td>
+                        </tr>
+                    `;
+                });
+            } else {
+                historialTbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No hay citas registradas</td></tr>`;
+            }
+
+            const realizadas = patientApps.filter(a => a.estado === 'completed').length;
+            const pendientes = patientApps.filter(a => a.estado === 'pending').length;
+            const pagado = patientApps
+                .filter(a => a.estado === 'completed')
+                .reduce((acc, a) => acc + (parseFloat(a.importe) || 0), 0);
+
+            const resumenDiv = document.getElementById('resumen-expediente');
+            resumenDiv.style.display = 'block';
+            resumenDiv.innerHTML = `
+                Sesiones realizadas: <strong>${realizadas}</strong>, Sesiones pendientes: <strong>${pendientes}</strong> &nbsp; | &nbsp; <strong>Importe pagado:</strong> ${pagado.toFixed(2)} €
+            `;
+        }
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            loadExpediente();
+        });
+
+        window.showAllNotes = function() {
+            const content = document.getElementById('notas-content');
+            if (patientAppsData.length === 0) {
+                content.innerHTML = "<em>No hay citas registradas para este paciente.</em>";
+            } else {
+                let html = `<h3 style="margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Paciente: ${currentPatientName}</h3>`;
+                html += patientAppsData.map(a => {
+                    const obs = a.observaciones || a.obs || 'Sin observaciones';
+                    return `<strong>${a.fecha}</strong> / ${obs}`;
+                }).join('<br>');
+                content.innerHTML = html;
+            }
+            document.getElementById('modalNotas').style.display = 'flex';
+        }
+
+        window.copyNotes = function() {
+            const contentText = document.getElementById('notas-content').innerText;
+            navigator.clipboard.writeText(contentText).then(() => {
+                alert("Resumen copiado al portapapeles");
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+            });
+        }
+
+        window.printNotes = function() {
+            const content = document.getElementById('notas-content').innerHTML;
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Resumen de Evolución - ' + currentPatientName + '<\/title>');
+            printWindow.document.write('<style>body{font-family: "Segoe UI", Tahoma, sans-serif; line-height: 1.6; padding: 40px; color: #333;} h3{border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;} strong{color: #2c3e50;}<\/style>');
+            printWindow.document.write('<\/head><body>');
+            printWindow.document.write(content);
+            printWindow.document.write('<\/body><\/html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        window.closeNotesModal = function() {
+            document.getElementById('modalNotas').style.display = 'none';
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalNotas');
+            if (event.target == modal) closeNotesModal();
+        }
+    </script>
+</body>
+</html>
