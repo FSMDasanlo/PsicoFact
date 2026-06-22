@@ -61,7 +61,7 @@
                         <th>Paciente</th>
                         <th>Clínica</th>
                         <th>Base Imp.</th>
-                        <th>IVA (21%)</th>
+                        <th>ICA (0%)</th>
                         <th>Total</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
@@ -178,19 +178,19 @@
             } else {
                 // Si es una factura totalmente nueva, buscamos el siguiente número
                 const q = query(uCol("citas"), 
-                    where("n_factura", ">=", `FP-${year}-`),
-                    where("n_factura", "<=", `FP-${year}-\uf8ff`)
+                    where("n_factura", ">=", `FP-${year}/`),
+                    where("n_factura", "<=", `FP-${year}/\uf8ff`)
                 );
                 const snap = await getDocs(q);
                 let maxNum = 0;
                 snap.forEach(d => {
-                    const parts = d.data().n_factura.split('-');
-                    if (parts.length === 3) {
-                        const num = parseInt(parts[2]);
+                    const parts = d.data().n_factura.split('/');
+                    if (parts.length === 2) {
+                        const num = parseInt(parts[1]);
                         if (!isNaN(num) && num > maxNum) maxNum = num;
                     }
                 });
-                newInvoiceRef = `FP-${year}-${String(maxNum + 1).padStart(3, '0')}`;
+                newInvoiceRef = `FP-${year}/${String(maxNum + 1).padStart(3, '0')}`;
             }
 
             // Primero, actualizamos la base de datos con el nuevo número de factura
@@ -317,8 +317,7 @@
             items.forEach(item => {
                 const isExcluded = excludedIds.includes(item.id);
                 const total = parseFloat(item.importe) || 0;
-                const base = total / 1.21;
-                const iva = total - base;
+                const base = total;
                 
                 if (!isExcluded) sumTotal += total;
 
@@ -331,7 +330,7 @@
                         <td>${item.referenciaPaciente || item.paciente}</td>
                         <td>${item.clinica}</td>
                         <td>${base.toFixed(2)} €</td>
-                        <td>${iva.toFixed(2)} €</td>
+                        <td>0.00 €</td>
                         <td><strong>${total.toFixed(2)} €</strong></td>
                         <td style="text-align: center;">
                             ${item.n_factura ? `<a href="javascript:void(0)" class="action-icon" onclick="triggerFilePicker()" title="Buscar PDF en el equipo" style="margin-right:8px;">📁</a>` : ''}
@@ -340,10 +339,8 @@
                     </tr>`;
             });
 
-            const sumBase = sumTotal / 1.21;
-            const sumIva = sumTotal - sumBase;
-            document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
-            document.getElementById('total-iva-sum').textContent = sumIva.toFixed(2) + ' €';
+            document.getElementById('total-base-sum').textContent = sumTotal.toFixed(2) + ' €';
+            document.getElementById('total-iva-sum').textContent = '0.00 €';
             document.getElementById('total-final-sum').textContent = sumTotal.toFixed(2) + ' €';
         }
 
@@ -355,14 +352,12 @@
             }
             
             let csv = "\uFEFF"; // BOM para soporte UTF-8 en Excel
-            csv += "Nº Factura;Fecha;Paciente;Clinica;Base Imponible;IVA (21%);Total\n";
+            csv += "Nº Factura;Fecha;Paciente;Clinica;Base Imponible;ICA (0%);Total\n";
             
             printableInvoices.forEach(item => {
                 const total = parseFloat(item.importe) || 0;
-                const base = total / 1.21;
-                const iva = total - base;
                 // Usamos punto y coma como separador y coma para decimales (formato común en España para Excel)
-                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${base.toFixed(2).replace('.', ',')};${iva.toFixed(2).replace('.', ',')};${total.toFixed(2).replace('.', ',')}\n`;
+                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${total.toFixed(2).replace('.', ',')};0,00;${total.toFixed(2).replace('.', ',')}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -382,68 +377,134 @@
         window.printGroupedInvoice = function(invoicesToPrint, invoiceRef) {
             const printableInvoices = invoicesToPrint || currentInvoices.filter(i => !excludedIds.includes(i.id));
             if (printableInvoices.length === 0) return;
-            
+
             const first = printableInvoices[0];
             const clinic = clinicsMasterData.find(c => c.nombre === first.clinica) || { nombre: first.clinica };
             const nFactura = invoiceRef || first.n_factura || 'PROFORMA';
-            
-            let totalFinal = 0;
-            let rowsHtml = '';
-            
-            printableInvoices.forEach(item => {
-                const t = parseFloat(item.importe) || 0;
-                totalFinal += t;
-                const b = t / 1.21; // Mostramos la base imponible en cada línea de la factura
-                rowsHtml += `
-                    <tr class="item">
-                        <td>${item.fecha} - Sesión Psicología (${item.referenciaPaciente || item.paciente})<\/td>
-                        <td style="text-align:right;">${b.toFixed(2)} €<\/td>
-                    <\/tr>`;
-            });
+            const today = new Date().toLocaleDateString('es-ES');
 
-            const totalBase = totalFinal / 1.21;
-            const totalIva = totalFinal - totalBase;
+            // Mes de la factura (del primer registro)
+            const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            let mesFactura = '';
+            const firstFecha = (printableInvoices[0].fecha || '');
+            if (firstFecha) {
+                const fp = firstFecha.split('-');
+                if (fp.length >= 2) mesFactura = monthNames[parseInt(fp[1], 10) - 1] + ' ' + fp[0];
+            }
+
+            // Totales (ICA = 0 %)
+            let totalBase = 0;
+            printableInvoices.forEach(item => { totalBase += parseFloat(item.importe) || 0; });
+            const irpf    = totalBase * 0.07;
+            const liquido = totalBase - irpf;
+
+            // Datos del facultativo
+            const fac         = facultativoData;
+            const facNombre   = [fac.nombre, fac.apellidos].filter(Boolean).join(' ') || '';
+            const facNif      = fac.nif || '';
+            const facDir      = fac.direccion || '';
+            const facTelf     = fac.telefono || '';
+            const textoFac    = fac.texto_factura || '';
+            const textoExen   = fac.texto_exencion || '';
+            const cuentaIBAN  = fac.cuenta_bancaria || '';
+            const numColegiado = fac.num_colegiado || '';
+
+            // Datos de la clínica
+            const clinNombre = clinic.nombre || '';
+            const clinNif    = clinic.cif || '';
+            const clinDir    = clinic.direccion || '';
+            const clinTelf   = clinic.telefono || '';
 
             const printWindow = window.open('', '', 'height=900,width=950');
-            printWindow.document.write('<html><head><title>Factura ' + nFactura + '<\/title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write('body{font-family: "Segoe UI", sans-serif; padding: 20px; color: #333;}');
-            printWindow.document.write('.invoice-box{max-width: 850px; margin: auto; padding: 30px; border: 1px solid #eee; font-size: 15px; line-height: 24px;}');
-            printWindow.document.write('.invoice-box table{width: 100%; line-height: inherit; text-align: left; border-collapse: collapse;}');
-            printWindow.document.write('.invoice-box table td{padding: 5px; vertical-align: top;}');
-            printWindow.document.write('.header-flex{display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #3498db; padding-bottom: 20px;}');
-            printWindow.document.write('.invoice-box table tr.heading td{background: #eee; border-bottom: 1px solid #ddd; font-weight: bold;}');
-            printWindow.document.write('.invoice-box table tr.item td{border-bottom: 1px solid #eee;}');
-            printWindow.document.write('.invoice-box table tr.total td:nth-child(2){border-top: 2px solid #eee; font-weight: bold; text-align: right;}');
-            printWindow.document.write('<\/style><\/head><body>');
-            
-            printWindow.document.write('<div class="invoice-box">');
-            
-            // Cabecera Flex: Felipe a la izquierda, Clínica a la derecha
-            printWindow.document.write('<div class="header-flex">');
-            printWindow.document.write('<div><h2 style="margin:0; color:#2c3e50;">Felipe Poblet<\/h2><p>Psicólogo Colegiado Nº XXXX<br>NIF: 06620771Z<br>Email: FelipePoblet99@gmail.com<\/p><\/div>');
-            printWindow.document.write('<div style="text-align:right;"><h3 style="margin:0;">CLIENTE:<\/h3><p><strong>' + clinic.nombre + '<\/strong><br>CIF: ' + (clinic.cif || '---') + '<br>' + (clinic.direccion || '') + '<\/p><\/div>');
-            printWindow.document.write('<\/div>');
+            printWindow.document.write(`<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8">
+<title>Factura ${nFactura}<\/title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;font-size:13px;color:#222;background:#fff}
+  .page{max-width:800px;margin:40px auto;padding:40px}
+  .titulo{text-align:center;letter-spacing:10px;font-size:1.9rem;font-weight:700;color:#2c3e50;margin-bottom:52px}
+  hr.azul{border:none;border-top:2px solid #3498db;margin:10px 0}
+  hr.gris{border:none;border-top:1px solid #ccc;margin:18px 0}
+  .ref{text-align:center;margin:14px 0 20px;font-size:13px;line-height:1.9}
+  .partes{display:flex;justify-content:space-between;gap:30px;margin:24px 0}
+  .partes .col{flex:1;line-height:1.8}
+  .partes .col.derecha{text-align:right}
+  .partes .col strong{display:block;font-size:14px;color:#2c3e50;margin-bottom:2px}
+  .concepto{margin:24px 0;font-size:13px;line-height:1.8}
+  table.totales{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  table.totales td{padding:8px 10px;border-bottom:1px solid #e0e0e0}
+  table.totales td:last-child{text-align:right;min-width:130px}
+  table.totales tr.liquido td{font-weight:700;font-size:14px;border-top:2px solid #3498db;border-bottom:2px solid #3498db}
+  .pie{margin-top:28px;padding-top:14px;border-top:1px solid #ccc;font-size:12px;color:#444;line-height:2}
+  .pie p{margin:2px 0}
+  .firma{margin-top:70px;font-size:13px;line-height:2}
+  @page{margin:0;size:A4}  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:1.5cm 2cm}.page{margin:0;padding:0}}
+<\/style><\/head><body>
+<div class="page">
 
-            printWindow.document.write('<div style="margin-bottom:30px;"><strong>Factura Nº: ' + nFactura + '<\/strong><br>Fecha Emisión: ' + new Date().toLocaleDateString('es-ES') + '<\/div>');
-            
-            printWindow.document.write('<table>');
-            printWindow.document.write('<tr class="heading"><td>Concepto<\/td><td style="text-align:right;">Importe<\/td><\/tr>');
-            printWindow.document.write(rowsHtml);
-            printWindow.document.write('<tr class="total"><td><\/td><td><br>Base Imponible: ' + totalBase.toFixed(2) + ' €<br>IVA (21%): ' + totalIva.toFixed(2) + ' €<br><span style="font-size:1.3rem; color:#2c3e50;">TOTAL FACTURA: ' + totalFinal.toFixed(2) + ' €<\/span><\/td><\/tr>');
-            printWindow.document.write('<\/table><\/div>');
+  <p class="titulo">F A C T U R A<\/p>
+  <hr class="azul">
 
-            // Texto exención IVA y cuenta bancaria
-            const textoExencion = facultativoData.texto_exencion || '';
-            const cuentaBancaria = facultativoData.cuenta_bancaria || '';
-            if (textoExencion || cuentaBancaria) {
-                printWindow.document.write('<div style="margin-top:30px; border-top:1px solid #eee; padding-top:15px; font-size:13px; color:#555;">');
-                if (textoExencion) printWindow.document.write('<p style="margin:0 0 6px 0;">' + textoExencion + '<\/p>');
-                if (cuentaBancaria) printWindow.document.write('<p style="margin:0;"><strong>Cuenta bancaria (IBAN):<\/strong> ' + cuentaBancaria + '<\/p>');
-                printWindow.document.write('<\/div>');
-            }
-            
-            printWindow.document.write('<\/body><\/html>');
+  <div class="ref">
+    <p><strong>Nº. de Factura: ${nFactura}<\/strong><\/p>
+    <p>Fecha: ${today}<\/p>
+  <\/div>
+
+  <hr class="azul">
+
+  <div class="partes">
+    <div class="col">
+      <strong>${facNombre}<\/strong>
+      <p>NIF: ${facNif}<\/p>
+      <p>${facDir}<\/p>
+      <p>Telf.: ${facTelf}<\/p>
+    <\/div>
+    <div class="col derecha">
+      <strong>${clinNombre}<\/strong>
+      <p>NIF/CIF: ${clinNif}<\/p>
+      <p>${clinDir}<\/p>
+      <p>Telf.: ${clinTelf}<\/p>
+    <\/div>
+  <\/div>
+
+  <hr class="gris">
+
+  <div class="concepto">
+    <p>${textoFac}${mesFactura ? ' ' + mesFactura : ''}<\/p>
+  <\/div>
+
+  <table class="totales">
+    <tr>
+      <td>Base imponible<\/td>
+      <td>${totalBase.toFixed(2)} €<\/td>
+    <\/tr>
+    <tr>
+      <td>Retención I.R.P.F. (7%)<\/td>
+      <td>${irpf.toFixed(2)} €<\/td>
+    <\/tr>
+    <tr class="liquido">
+      <td>Líquido<\/td>
+      <td>${liquido.toFixed(2)} €<\/td>
+    <\/tr>
+  <\/table>
+
+  <hr class="gris">
+
+  <div class="pie">
+    ${textoExen ? `<p>${textoExen}<\/p><br>` : ''}
+    ${cuentaIBAN ? `<p><strong>Cuenta Bancaria:<\/strong> ${cuentaIBAN}<\/p>` : ''}
+  <\/div>
+
+  <div class="firma">
+    <br><br><br>
+    <p>Fdo: ${facNombre}<\/p>
+    <p>N. de Colegiado: ${numColegiado}<\/p>
+  <\/div>
+
+<\/div>
+<\/body><\/html>`);
             printWindow.document.close();
             setTimeout(() => { printWindow.print(); }, 600);
         }
