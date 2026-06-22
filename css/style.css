@@ -14,11 +14,16 @@
     padding: 0;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--fondo);
     color: var(--texto);
     line-height: 1.6;
+    overflow-x: hidden;
 }
 
 /* Header / Navbar */

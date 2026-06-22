@@ -12,9 +12,18 @@
         ══════════════════════════════════════ */
         #auth-screen {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
             z-index: 1000;
-            background: url('img/Psia.png') center center / cover no-repeat;
+            background-image: url('img/Psia.png');
+            background-position: center center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            overflow: hidden;
         }
 
         /* Gradiente sutil solo en la franja inferior para legibilidad */
