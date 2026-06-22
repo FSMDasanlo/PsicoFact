@@ -15,105 +15,101 @@
             inset: 0;
             z-index: 1000;
             background: url('img/Psia.png') center center / cover no-repeat;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
         }
 
+        /* Gradiente sutil solo en la franja inferior para legibilidad */
         #auth-screen::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(15, 32, 50, 0.65);
+            background: linear-gradient(to top, rgba(0,0,0,0.52) 0%, transparent 38%);
+            pointer-events: none;
         }
 
-        /* Tarjeta contenedora de vistas */
-        .auth-card {
-            position: relative;
-            background: rgba(255, 255, 255, 0.10);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            border-radius: 22px;
-            padding: 2.8rem 2.5rem;
-            width: 100%;
-            max-width: 380px;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
-            text-align: center;
-            color: #fff;
-        }
-
-        /* Logo */
-        .auth-logo {
-            font-size: 2.4rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: #fff;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            margin-bottom: 0.25rem;
-        }
-        .auth-logo span { color: #1abc9c; }
-
-        .auth-subtitle {
-            font-size: 0.82rem;
-            color: rgba(255,255,255,0.65);
-            letter-spacing: 0.6px;
-            margin-bottom: 0;
-        }
-
-        /* Separador */
-        .auth-divider {
-            border: none;
-            border-top: 1px solid rgba(255,255,255,0.15);
-            margin: 1.8rem 0;
-        }
-
-        /* ── Vista: pantalla de inicio (dos opciones) ── */
-        #view-home .home-options {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-top: 0.5rem;
-        }
-
-        .btn-option {
-            width: 100%;
-            padding: 0.95rem;
-            border-radius: 12px;
-            font-size: 1.05rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.2s, transform 0.12s;
-        }
-        .btn-option:hover  { opacity: 0.88; }
-        .btn-option:active { transform: scale(0.97); }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #1abc9c, #3498db);
-            color: #fff;
-        }
-
-        .btn-secondary {
-            background: rgba(255,255,255,0.12);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.30);
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.22); opacity: 1; }
-
-        /* ── Vistas de formulario ── */
+        /* Vistas */
         .auth-view { display: none; }
         .auth-view.active { display: block; }
+
+        /* ── Vista inicio: dos botones mínimos en la parte baja ── */
+        #view-home {
+            position: absolute;
+            bottom: 2.8rem;
+            left: 0;
+            right: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 1.2rem;
+        }
+        #view-home.active { display: flex; }
+
+        .btn-entry {
+            padding: 0.52rem 1.55rem;
+            border-radius: 50px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.12s, box-shadow 0.2s;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .btn-entry:active { transform: scale(0.96); }
+
+        .btn-entry-primary {
+            background: rgba(26, 188, 156, 0.28);
+            border: 1px solid rgba(26, 188, 156, 0.70);
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        .btn-entry-primary:hover {
+            background: rgba(26, 188, 156, 0.48);
+            box-shadow: 0 0 14px rgba(26, 188, 156, 0.30);
+        }
+
+        .btn-entry-ghost {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.35);
+            color: rgba(255,255,255,0.82);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        .btn-entry-ghost:hover { background: rgba(255,255,255,0.20); }
+
+        /* ── Panel de formulario (login / registro) ── */
+        #view-login,
+        #view-register {
+            position: absolute;
+            inset: 0;
+            display: none;
+        }
+        #view-login.active,
+        #view-register.active { display: block; }
+
+        .auth-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 2rem);
+            max-width: 330px;
+            background: rgba(8, 22, 38, 0.84);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.13);
+            border-radius: 18px;
+            padding: 1.9rem 1.7rem;
+            box-shadow: 0 18px 52px rgba(0,0,0,0.55);
+            color: #fff;
+        }
 
         .auth-view label {
             display: block;
             text-align: left;
-            font-size: 0.78rem;
+            font-size: 0.74rem;
             font-weight: 600;
-            color: rgba(255,255,255,0.80);
-            margin-bottom: 0.3rem;
+            color: rgba(255,255,255,0.68);
+            margin-bottom: 0.28rem;
             margin-top: 1rem;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -121,30 +117,31 @@
 
         .auth-view input {
             width: 100%;
-            padding: 0.75rem 1rem;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.28);
-            background: rgba(255,255,255,0.13);
+            padding: 0.70rem 0.9rem;
+            border-radius: 9px;
+            border: 1px solid rgba(255,255,255,0.22);
+            background: rgba(255,255,255,0.10);
             color: #fff;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             outline: none;
             transition: border 0.2s, background 0.2s;
+            box-sizing: border-box;
         }
-        .auth-view input::placeholder { color: rgba(255,255,255,0.40); }
+        .auth-view input::placeholder { color: rgba(255,255,255,0.35); }
         .auth-view input:focus {
             border-color: #1abc9c;
-            background: rgba(255,255,255,0.20);
+            background: rgba(255,255,255,0.17);
         }
 
         .btn-submit {
-            margin-top: 1.6rem;
+            margin-top: 1.5rem;
             width: 100%;
-            padding: 0.88rem;
+            padding: 0.84rem;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             background: linear-gradient(135deg, #1abc9c, #3498db);
             color: #fff;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             letter-spacing: 0.5px;
@@ -155,25 +152,26 @@
         .btn-submit:disabled { opacity: 0.50; cursor: not-allowed; }
 
         .auth-msg {
-            margin-top: 0.9rem;
-            font-size: 0.82rem;
-            min-height: 1.2em;
+            margin-top: 0.8rem;
+            font-size: 0.79rem;
+            min-height: 1.1em;
+            text-align: center;
         }
         .auth-msg.error   { color: #ff6b6b; }
         .auth-msg.success { color: #1abc9c; }
 
         .btn-back {
-            display: inline-block;
-            margin-top: 1.2rem;
+            display: block;
+            margin: 1rem auto 0;
             background: none;
             border: none;
-            color: rgba(255,255,255,0.60);
-            font-size: 0.83rem;
+            color: rgba(255,255,255,0.48);
+            font-size: 0.78rem;
             cursor: pointer;
             text-decoration: underline;
             transition: color 0.2s;
         }
-        .btn-back:hover { color: rgba(255,255,255,0.90); }
+        .btn-back:hover { color: rgba(255,255,255,0.85); }
 
         /* ── App ── */
         #app-wrapper { display: none; }
@@ -197,23 +195,16 @@
          PANTALLA DE AUTENTICACIÓN
     ════════════════════════════════════════ -->
     <div id="auth-screen">
-        <div class="auth-card">
 
-            <!-- Logo siempre visible -->
-            <div class="auth-logo"><span>P</span>sico<span>F</span>act</div>
-            <p class="auth-subtitle">Gestión Facultativa</p>
-            <hr class="auth-divider">
+        <!-- ── VISTA 1: Inicio – botones mínimos en la parte baja ── -->
+        <div id="view-home" class="auth-view active">
+            <button class="btn-entry btn-entry-primary" id="go-login">Acceder</button>
+            <button class="btn-entry btn-entry-ghost" id="go-register">Crear usuario</button>
+        </div>
 
-            <!-- ── VISTA 1: Inicio ── -->
-            <div id="view-home" class="auth-view active">
-                <div class="home-options">
-                    <button class="btn-option btn-primary" id="go-login">Acceder</button>
-                    <button class="btn-option btn-secondary" id="go-register">Crear usuario</button>
-                </div>
-            </div>
-
-            <!-- ── VISTA 2: Login ── -->
-            <div id="view-login" class="auth-view">
+        <!-- ── VISTA 2: Login ── -->
+        <div id="view-login" class="auth-view">
+            <div class="auth-panel">
                 <label for="login-email">Correo electrónico</label>
                 <input type="email" id="login-email" placeholder="usuario@correo.com" autocomplete="username" />
 
@@ -224,9 +215,11 @@
                 <p class="auth-msg error" id="login-error"></p>
                 <button class="btn-back" id="back-from-login">← Volver</button>
             </div>
+        </div>
 
-            <!-- ── VISTA 3: Registro ── -->
-            <div id="view-register" class="auth-view">
+        <!-- ── VISTA 3: Registro ── -->
+        <div id="view-register" class="auth-view">
+            <div class="auth-panel">
                 <label for="reg-email">Correo electrónico</label>
                 <input type="email" id="reg-email" placeholder="nuevo@correo.com" autocomplete="username" />
 
@@ -240,8 +233,8 @@
                 <p class="auth-msg" id="register-msg"></p>
                 <button class="btn-back" id="back-from-register">← Volver</button>
             </div>
-
         </div>
+
     </div>
 
     <!-- ════════════════════════════════════════
