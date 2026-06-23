@@ -52,7 +52,7 @@
                     <tr id="resumen-totales" style="background-color: #f8f9fa; border-bottom: 2px solid var(--azul-primario);">
                         <td colspan="4" style="text-align: right; font-weight: 600; color: var(--azul-oscuro);">TOTALES SELECCIÓN:</td>
                         <td id="total-base-sum" style="font-weight: bold; color: var(--azul-primario);">0.00 €</td>
-                        <td id="total-iva-sum" style="font-weight: bold; color: var(--turquesa);">0.00 €</td>
+                        <td id="total-fac-sum" style="font-weight: bold; color: var(--turquesa);">0.00 €</td>
                         <td id="total-final-sum" style="font-weight: bold; color: var(--azul-oscuro); background: #eee;">0.00 €</td>
                     </tr>
                     <tr>
@@ -60,8 +60,8 @@
                         <th>Fecha</th>
                         <th>Paciente</th>
                         <th>Clínica</th>
-                        <th>Base Imp.</th>
-                        <th>ICA (0%)</th>
+                        <th>Base (Clín.)</th>
+                        <th>Facultativo</th>
                         <th>Total</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
@@ -312,14 +312,19 @@
         function renderTable(items) {
             const tbody = document.getElementById('invoices-body');
             tbody.innerHTML = '';
-            let sumTotal = 0;
+            let sumBase = 0;
+            let sumFacultativo = 0;
 
             items.forEach(item => {
                 const isExcluded = excludedIds.includes(item.id);
-                const total = parseFloat(item.importe) || 0;
-                const base = total;
+                const importeClinica = parseFloat(item.importe) || 0;
+                // Si no tiene importe_facultativo grabado, calculamos uno por defecto del 100% para no perder datos antiguos
+                const importeFacultativo = item.importe_facultativo !== undefined ? parseFloat(item.importe_facultativo) : importeClinica;
                 
-                if (!isExcluded) sumTotal += total;
+                if (!isExcluded) {
+                    sumBase += importeClinica;
+                    sumFacultativo += importeFacultativo;
+                }
 
                 const rowStyle = isExcluded ? 'style="text-decoration: line-through; color: #999; opacity: 0.6; background-color: #fff1f1;"' : '';
 
@@ -329,9 +334,9 @@
                         <td>${item.fecha}</td>
                         <td>${item.referenciaPaciente || item.paciente}</td>
                         <td>${item.clinica}</td>
-                        <td>${base.toFixed(2)} €</td>
-                        <td>0.00 €</td>
-                        <td><strong>${total.toFixed(2)} €</strong></td>
+                        <td>${importeClinica.toFixed(2)} €</td>
+                        <td style="color: var(--turquesa); font-weight: 600;">${importeFacultativo.toFixed(2)} €</td>
+                        <td><strong>${importeFacultativo.toFixed(2)} €</strong></td>
                         <td style="text-align: center;">
                             ${item.n_factura ? `<a href="javascript:void(0)" class="action-icon" onclick="triggerFilePicker()" title="Buscar PDF en el equipo" style="margin-right:8px;">📁</a>` : ''}
                             <a href="javascript:void(0)" class="action-icon" onclick="toggleExclusion('${item.id}')" title="${isExcluded ? 'Restaurar' : 'Excluir'}">${isExcluded ? '🔄' : '🗑️'}</a>
@@ -339,9 +344,9 @@
                     </tr>`;
             });
 
-            document.getElementById('total-base-sum').textContent = sumTotal.toFixed(2) + ' €';
-            document.getElementById('total-iva-sum').textContent = '0.00 €';
-            document.getElementById('total-final-sum').textContent = sumTotal.toFixed(2) + ' €';
+            document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
+            document.getElementById('total-fac-sum').textContent = sumFacultativo.toFixed(2) + ' €';
+            document.getElementById('total-final-sum').textContent = sumFacultativo.toFixed(2) + ' €';
         }
 
         function exportToCSV() {
@@ -352,12 +357,13 @@
             }
             
             let csv = "\uFEFF"; // BOM para soporte UTF-8 en Excel
-            csv += "Nº Factura;Fecha;Paciente;Clinica;Base Imponible;ICA (0%);Total\n";
+            csv += "Nº Factura;Fecha;Paciente;Clinica;Importe Clinica;Imp. Facultativo;Total Facultativo\n";
             
             printableInvoices.forEach(item => {
-                const total = parseFloat(item.importe) || 0;
-                // Usamos punto y coma como separador y coma para decimales (formato común en España para Excel)
-                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${total.toFixed(2).replace('.', ',')};0,00;${total.toFixed(2).replace('.', ',')}\n`;
+                const totalClinica = parseFloat(item.importe) || 0;
+                const totalFacultativo = item.importe_facultativo !== undefined ? parseFloat(item.importe_facultativo) : totalClinica;
+                
+                csv += `${item.n_factura || ''};${item.fecha};${item.referenciaPaciente || item.paciente};${item.clinica};${totalClinica.toFixed(2).replace('.', ',')};${totalFacultativo.toFixed(2).replace('.', ',')};${totalFacultativo.toFixed(2).replace('.', ',')}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -524,6 +530,12 @@
             currentUid = user.uid;
             init();
         });
+
+        // Hacer funciones accesibles globalmente
+        window.loadInvoices = loadInvoices;
+        window.loadInvoicesByRef = loadInvoicesByRef;
+        window.emitGroupedInvoice = emitGroupedInvoice;
+        window.exportToCSV = exportToCSV;
     </script>
 </body>
 </html>

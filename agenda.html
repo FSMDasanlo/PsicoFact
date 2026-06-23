@@ -104,7 +104,8 @@
                     <tr>
                         <th>Hora</th>
                         <th>Paciente (Sociedad)</th>
-                        <th>Clínica / Observaciones</th>
+                        <th>Clínica / Obs.</th>
+                        <th>Imp. Fac.</th>
                         <th>Estado</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
@@ -165,9 +166,14 @@
                     <input type="text" id="clinica-cita" name="clinica" readonly style="background-color: #f0f0f0;">
                 </div>
                 <div class="form-group">
-                    <label for="importe-cita">Importe (€)</label>
-                    <input type="number" id="importe-cita" name="importe" step="0.01">
+                    <label for="importe-cita">Importe Clínica (€)</label>
+                    <input type="number" id="importe-cita" name="importe" step="0.01" oninput="calculateFacultativoAmount()">
                 </div>
+                <div class="form-group">
+                    <label for="importe-facultativo">Importe Facultativo (€)</label>
+                    <input type="number" id="importe-facultativo" name="importe_facultativo" step="0.01" readonly style="background-color: #f0f0f0;">
+                </div>
+                <input type="hidden" id="porcentaje-facultativo-cita" name="porcentaje_facultativo">
                 <div class="form-group full-width">
                     <label for="obs-cita">Observaciones</label>
                     <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
@@ -241,6 +247,13 @@
             filterSelect.innerHTML = '<option value="">Cualquier paciente...</option>' + optionsHtml;
         }
 
+        window.calculateFacultativoAmount = function() {
+            const total = parseFloat(document.getElementById('importe-cita').value) || 0;
+            const pct = parseFloat(document.getElementById('porcentaje-facultativo-cita').value) || 0;
+            const facAmount = (total * pct) / 100;
+            document.getElementById('importe-facultativo').value = facAmount.toFixed(2);
+        };
+
         function handlePatientChange() {
             const selectedName = document.getElementById('paciente-select').value;
             const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
@@ -249,12 +262,20 @@
                 document.getElementById('clinica-cita').value = patient.clinica;
                 
                 const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
-                document.getElementById('importe-cita').value = clinicData ? parseFloat(clinicData.importe) : '';
+                const pct = clinicData ? (parseFloat(clinicData.porcentaje_facultativo) || 0) : 0;
+                const importeTotal = clinicData ? parseFloat(clinicData.importe) : 0;
+                
+                document.getElementById('importe-cita').value = importeTotal > 0 ? importeTotal : '';
+                document.getElementById('porcentaje-facultativo-cita').value = pct;
                 document.getElementById('ref-cita').value = patient.referencia || '';
+                
+                window.calculateFacultativoAmount();
             } else {
                 document.getElementById('sociedad-cita').value = '';
                 document.getElementById('clinica-cita').value = '';
                 document.getElementById('importe-cita').value = '';
+                document.getElementById('porcentaje-facultativo-cita').value = '0';
+                document.getElementById('importe-facultativo').value = '';
                 document.getElementById('ref-cita').value = '';
             }
         }
@@ -315,6 +336,7 @@
                     <td>${timeInfo}</td>
                     <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
                     <td>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
+                    <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${app.porcentaje_facultativo || 0}%)</small></td>
                     <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment('${app.id}')" title="${isCompleted ? 'Marcar como Pendiente' : 'Marcar como Realizada'}">${checkIcon}</a>
@@ -353,12 +375,22 @@
         function editAppointment(id) {
             const app = appointments.find(a => a.id === id);
             editingAppointmentId = id;
-            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'observaciones'].forEach(f => {
-                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : f))));
+            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones'].forEach(f => {
+                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : f))))));
                 if(el) el.value = app[f] || '';
             });
             document.getElementById('paciente-select').value = app.paciente;
             document.getElementById('ref-cita').value = app.referenciaPaciente || '';
+            
+            // Si es una cita antigua y no tiene porcentaje grabado, buscamos el de su clínica actual
+            if (!app.porcentaje_facultativo) {
+                const clinicData = clinicsMasterData.find(c => c.nombre === app.clinica);
+                if (clinicData) {
+                    document.getElementById('porcentaje-facultativo-cita').value = clinicData.porcentaje_facultativo || 0;
+                    window.calculateFacultativoAmount();
+                }
+            }
+            
             openAppointmentModal("Editar Cita");
         }
         document.getElementById('form-cita').onsubmit = async function(e) {

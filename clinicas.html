@@ -40,7 +40,8 @@
                         <th class="sortable" onclick="handleSort('contacto')">Responsable</th>
                         <th>Teléfono</th>
                         <th>CIF/NIF</th>
-                        <th>Importe</th>
+                        <th>Importe Clínica</th>
+                        <th>% Facul.</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -88,8 +89,12 @@
                     <input type="text" id="direccion" name="direccion">
                 </div>
                 <div class="form-group">
-                    <label for="importe">Importe por sesión (€)</label>
+                    <label for="importe">Importe por sesión clínica (€)</label>
                     <input type="number" id="importe" name="importe" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="porcentaje_facultativo">% Facultativo</label>
+                    <input type="number" id="porcentaje_facultativo" name="porcentaje_facultativo" step="0.1" min="0" max="100" placeholder="Ej: 70">
                 </div>
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Clínica</button>
@@ -148,7 +153,7 @@
             const filtered = clinics.filter(c => c.nombre.toLowerCase().includes(searchTerm) || c.contacto.toLowerCase().includes(searchTerm));
             tbody.innerHTML = '';
             filtered.forEach(c => {
-                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.cif || ''}</td><td>${parseFloat(c.importe || 0).toFixed(2)} €</td>
+                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.cif || ''}</td><td>${parseFloat(c.importe || 0).toFixed(2)} €</td><td>${c.porcentaje_facultativo || 0}%</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editClinic('${c.id}')">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic('${c.id}')">🗑️</a>
@@ -171,7 +176,7 @@
         window.editClinic = function(id) {
             const c = clinics.find(c => c.id === id);
             editingId = id;
-            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe'].forEach(f => document.getElementById(f).value = c[f] || '');
+            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe', 'porcentaje_facultativo'].forEach(f => document.getElementById(f).value = c[f] || '');
             openModal("Editar Clínica");
         }
         
