@@ -612,17 +612,27 @@
             <div class="eval-diagnosis-card">
                 <div style="display: flex; gap: 10px; margin-bottom: 14px; align-items: center; flex-wrap: wrap;">
                     <button type="button" class="btn-promp" id="btn-send-ia" onclick="sendToGeminiDiagnosis()" style="background: linear-gradient(to right, #8e44ad, #6c3483); margin-bottom:0;">🤖 Generar Diagnóstico IA</button>
+                    <button type="button" class="btn-diag-action" onclick="togglePromptEditor()" title="Editar petición (Prompt) antes de enviar" style="padding: 8px 12px;">✎ Editar Petición</button>
                     <span id="ia-status" style="font-size:0.8rem; color:#888;"></span>
                 </div>
-                <!-- Oculto: textarea síntomas usado internamente como prompt -->
-                <div style="display:none;">
-                    <textarea name="sintomas"></textarea>
+                
+                <!-- Área de edición del Prompt (oculta por defecto) -->
+                <div id="prompt-editor-container" style="display:none; margin-bottom: 15px; background: #fffbe6; padding: 12px; border: 1px dashed #ffe58f; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="font-weight:600; color:#856404; font-size: 0.85rem;">📝 Petición personalizada para la IA:</label>
+                        <button type="button" onclick="generateAIDiagnosis();" class="btn-diag-action" style="font-size: 0.75rem; background: #fff;">🔄 Recargar datos del formulario</button>
+                    </div>
+                    <textarea name="sintomas" id="prompt-textarea" rows="6" 
+                        style="width: 100%; font-size: 0.85rem; border: 1px solid #ffe58f; padding: 10px; border-radius: 4px; font-family: inherit;"
+                        placeholder="Aquí aparecerán los datos del formulario procesados..."></textarea>
+                    <p style="font-size: 0.75rem; color: #856404; margin-top: 5px;">* Puedes añadir instrucciones extras aquí antes de pulsar "Generar Diagnóstico IA".</p>
                 </div>
+
                 <div class="question-block" style="margin-top: 0;">
                     <label style="font-weight:600; color:var(--azul-oscuro);">Diagnóstico clínico (IA)</label>
                     <textarea name="diagnostico_final" id="diag-textarea" rows="14" placeholder="Pulsa 'Generar Diagnóstico IA' para obtener el análisis clínico..."
                         oninput="document.getElementById('diag-char-count').textContent = this.value.length + ' caracteres'"
-                        style="font-size:0.93rem; line-height:1.7;"></textarea>
+                        style="font-size:0.95rem; line-height:1.6; font-family: 'Courier New', Courier, monospace; background-color: #fdfdfd;"></textarea>
                     <div class="diag-char-count" id="diag-char-count">0 caracteres</div>
                     <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                         <button type="button" class="btn-diag-action" onclick="copyDiagnosis()">📋 Copiar</button>
@@ -925,11 +935,31 @@
 
         const GROQ_API_KEY = window.APP_CONFIG.groqApiKey;
 
-        window.sendToGeminiDiagnosis = async function() {
-            // Generar el prompt automáticamente desde los datos de la evaluación
-            generateAIDiagnosis();
+        window.togglePromptEditor = function() {
+            const container = document.getElementById('prompt-editor-container');
+            const promptTextArea = document.getElementById('prompt-textarea');
+            
+            if (container.style.display === 'none') {
+                // Si está vacío, generamos el contenido inicial
+                if (!promptTextArea.value.trim()) {
+                    window.generateAIDiagnosis();
+                }
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        };
 
+        window.sendToGeminiDiagnosis = async function() {
             const sintomasField = document.getElementsByName('sintomas')[0];
+            const promptEditorDiv = document.getElementById('prompt-editor-container');
+
+            // Si el editor NO es visible y está vacío, generamos automáticamente
+            // Si el editor es visible, asumimos que el facultativo ha podido editarlo
+            if (promptEditorDiv.style.display === 'none' || !sintomasField.value.trim()) {
+                window.generateAIDiagnosis();
+            }
+
             const diagnosticoField = document.getElementsByName('diagnostico_final')[0];
             const btn = document.getElementById('btn-send-ia');
             const statusEl = document.getElementById('ia-status');
@@ -960,7 +990,7 @@
                             messages: [
                                 {
                                     role: 'system',
-                                    content: 'Eres un psicólogo clínico experto. Analiza evaluaciones psicológicas estructuradas y elabora diagnósticos diferenciales con hipótesis diagnósticas según el DSM-5/CIE-11, orientaciones terapéuticas y recomendaciones de intervención. Sé preciso, clínico y estructurado.'
+                                    content: 'Eres un psicólogo clínico experto. Analiza evaluaciones psicológicas y elabora un informe formal en TEXTO PLANO legible.\n\nReglas de formato CRÍTICAS:\n1. PROHIBIDO usar Markdown (nada de asteriscos **, ni almohadillas #).\n2. TÍTULOS PRINCIPALES: En MAYÚSCULAS y con una línea de guiones debajo (ej: INFORME CLÍNICO\\n-------------------------------------------------).\n3. TÍTULOS SECUNDARIOS: En MAYÚSCULAS.\n4. VIÑETAS: Usa guiones simples (-).\n5. ESTILO: Profesional, clínico y estructurado.'
                                 },
                                 {
                                     role: 'user',
@@ -980,7 +1010,14 @@
                     throw new Error(`Error HTTP ${response.status}: ${errData?.error?.message || ''}`);
                 }
                 const data = await response.json();
-                const text = data.choices?.[0]?.message?.content || 'Sin respuesta de la IA.';
+                let text = data.choices?.[0]?.message?.content || 'Sin respuesta de la IA.';
+                
+                // Limpieza de seguridad para eliminar cualquier residuo de Markdown (asteriscos, etc.)
+                text = text.replace(/\*\*/g, '')
+                           .replace(/\*/g, '')
+                           .replace(/^#+\s+/gm, '')
+                           .replace(/^- /gm, '• ');
+
                 diagnosticoField.value = text;
                 document.getElementById('diag-char-count').textContent = text.length + ' caracteres';
                 statusEl.textContent = '✅ Diagnóstico generado';
