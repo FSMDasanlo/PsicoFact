@@ -77,7 +77,8 @@
                         <th>Referencia / Paciente</th>
                         <th>Clínica</th>
                         <th>Sociedad</th>
-                        <th>Importe</th>
+                        <th>Total Clínica</th>
+                        <th>Importe PS</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -160,12 +161,15 @@
                 data.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
                 data.forEach(app => {
                     const isDone = app.estado === 'completed';
+                    // Usamos el campo importe_facultativo para el cálculo financiero real
+                    const importePS = parseFloat(app.importe_facultativo) || 0;
+                    
                     if (isDone) {
                         realizadas++;
-                        importePagado += parseFloat(app.importe) || 0;
+                        importePagado += importePS;
                     } else {
                         pendientes++;
-                        importePendiente += parseFloat(app.importe) || 0;
+                        importePendiente += importePS;
                     }
 
                     tbody.innerHTML += `
@@ -174,7 +178,8 @@
                             <td><strong>${app.referenciaPaciente || app.paciente}</strong></td>
                             <td>${app.clinica}</td>
                             <td>${app.sociedad}</td>
-                            <td>${(parseFloat(app.importe) || 0).toFixed(2)} €</td>
+                            <td style="color: #666; font-size: 0.85em;">${(parseFloat(app.importe) || 0).toFixed(2)} €</td>
+                            <td style="font-weight: 600; color: var(--azul-oscuro);">${importePS.toFixed(2)} €</td>
                             <td><span class="status-pill ${app.estado}">${app.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
                         </tr>`;
                 });
@@ -182,9 +187,9 @@
 
             resumen.innerHTML = `
                 <div><small>Sesiones Realizadas</small><br><strong>${realizadas}</strong></div>
-                <div><small>Total Pagado</small><br><strong>${importePagado.toFixed(2)} €</strong></div>
+                <div><small>Mis Honorarios (Cobrado)</small><br><strong>${importePagado.toFixed(2)} €</strong></div>
                 <div><small>Sesiones Pendientes</small><br><strong>${pendientes}</strong></div>
-                <div><small>Importe Pendiente</small><br><strong>${importePendiente.toFixed(2)} €</strong></div>
+                <div><small>Honorarios Pendientes</small><br><strong>${importePendiente.toFixed(2)} €</strong></div>
             `;
         }
         window.renderData = renderData;

@@ -8,6 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
     <style>
         /* ══════════════════════════════════════
+           PREVENT FLASH DE INICIO
+        ══════════════════════════════════════ */
+        /* Oculta la página entera inicialmente para evitar el flash */
+        body {
+            visibility: hidden;
+        }
+
+        #auth-screen {
+            display: none; 
+        }
+
+        /* ══════════════════════════════════════
            PANTALLA DE INICIO
         ══════════════════════════════════════ */
         #auth-screen {
@@ -19,29 +31,25 @@
             width: 100%;
             height: 100%;
             z-index: 1000;
-            background-image: url('img/Psia.png');
-            background-position: center center;
-            background-size: cover;
+            /* Degradado y fallback de color para evitar el fondo blanco */
+            background-color: #0A2B42;
+            background-image: url('img/Psia.PNG'), linear-gradient(to right, #0A2B42, #0A394F);
             background-repeat: no-repeat;
+            background-position: center bottom, center;
+            background-size: contain, cover;
+            display: flex; 
+            flex-direction: column;
             overflow: hidden;
         }
 
         @media (max-width: 768px) {
             #auth-screen {
-                background-size: contain;
-                /* Verde/Azul oscuro que coincide con el fondo de la imagen Psia.png */
-                background-color: #030a12;
+                background-position: center center;
+                background-size: contain; 
             }
         }
 
-        /* Gradiente sutil solo en la franja inferior para legibilidad */
-        #auth-screen::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.52) 0%, transparent 38%);
-            pointer-events: none;
-        }
+        /* Eliminado ::before que podía causar confusión al inspeccionar y oscurecer el fondo */
 
         /* Vistas */
         .auth-view { display: none; }
@@ -54,11 +62,30 @@
             left: 0;
             right: 0;
             display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        #view-home.active { display: flex; }
+
+        .view-home-buttons {
+            display: flex;
             justify-content: center;
             align-items: center;
             gap: 1.2rem;
         }
-        #view-home.active { display: flex; }
+
+        .btn-link {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.75); /* Aumentada la opacidad para mejor legibilidad */
+            font-size: 0.78rem;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .btn-link:hover { color: #fff; }
 
         .btn-entry {
             padding: 0.52rem 1.55rem;
@@ -204,6 +231,20 @@
             transition: background 0.2s;
         }
         .btn-logout:hover { background: rgba(255,255,255,0.26); }
+
+        /* Estilo para el nombre del facultativo debajo del botón */
+        .user-info-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        #user-name {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -215,8 +256,11 @@
 
         <!-- ── VISTA 1: Inicio – botones mínimos en la parte baja ── -->
         <div id="view-home" class="auth-view active">
-            <button class="btn-entry btn-entry-primary" id="go-login">Acceder</button>
-            <button class="btn-entry btn-entry-ghost" id="go-register">Crear usuario</button>
+            <div class="view-home-buttons">
+                <button class="btn-entry btn-entry-primary" id="go-login">Acceder</button>
+                <button class="btn-entry btn-entry-ghost" id="go-register">Crear usuario</button>
+            </div>
+            <button class="btn-link" id="forgot-password">Olvidé la contraseña</button>
         </div>
 
         <!-- ── VISTA 2: Login ── -->
@@ -229,6 +273,7 @@
                 <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
 
                 <button class="btn-submit" id="login-btn">Entrar</button>
+                <button class="btn-link" id="forgot-password-login" style="margin-top: 0.8rem; display: block; margin-left: auto; margin-right: auto;">¿Olvidaste tu contraseña?</button>
                 <p class="auth-msg error" id="login-error"></p>
                 <button class="btn-back" id="back-from-login">← Volver</button>
             </div>
@@ -262,8 +307,10 @@
             <div class="logo-container">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </div>
-            <span id="user-name" style="color:rgba(255,255,255,0.90); font-size:0.88rem; font-weight:600; margin-right:0.5rem;"></span>
-            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <div class="user-info-container">
+                <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+                <span id="user-name"></span>
+            </div>
         </header>
 
         <main class="container">
@@ -301,7 +348,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-                 onAuthStateChanged, signOut }
+                 onAuthStateChanged, signOut, sendPasswordResetEmail }
             from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
         import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
@@ -311,10 +358,18 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
-        // ── Elementos ──
+        // -- Lógica para evitar flash inicial --
         const authScreen   = document.getElementById('auth-screen');
         const appWrapper   = document.getElementById('app-wrapper');
+        
+        const likelyLoggedIn = localStorage.getItem('firebase:authUser:' + firebaseConfig.apiKey + ':[DEFAULT]');
+        if (!likelyLoggedIn) {
+            authScreen.style.display = 'flex';
+        }
+        // Mostramos el body una vez decidida la visibilidad inicial de la pantalla de auth
+        document.body.style.visibility = 'visible';
 
+        // ── Elementos ──
         const viewHome     = document.getElementById('view-home');
         const viewLogin    = document.getElementById('view-login');
         const viewRegister = document.getElementById('view-register');
@@ -342,6 +397,22 @@
         document.getElementById('go-register').addEventListener('click', () => showView(viewRegister));
         document.getElementById('back-from-login').addEventListener('click', () => showView(viewHome));
         document.getElementById('back-from-register').addEventListener('click', () => showView(viewHome));
+
+        // ── Recuperar contraseña ──
+        async function handleResetPassword() {
+            const email = window.prompt('Introduce tu correo electrónico para recibir un enlace de recuperación:');
+            if (!email) return;
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert('Se ha enviado un correo de recuperación a: ' + email);
+            } catch (err) {
+                alert('Error al enviar el correo: ' + (ERROR_MSGS[err.code] || err.message));
+            }
+        }
+
+        document.getElementById('forgot-password').addEventListener('click', handleResetPassword);
+        document.getElementById('forgot-password-login').addEventListener('click', handleResetPassword);
 
         // ── Estado de autenticación ──
         onAuthStateChanged(auth, async (user) => {
