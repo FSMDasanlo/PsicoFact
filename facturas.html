@@ -52,17 +52,16 @@
                     <tr id="resumen-totales" style="background-color: #f8f9fa; border-bottom: 2px solid var(--azul-primario);">
                         <td colspan="4" style="text-align: right; font-weight: 600; color: var(--azul-oscuro);">TOTALES SELECCIÓN:</td>
                         <td id="total-base-sum" style="font-weight: bold; color: var(--azul-primario);">0.00 €</td>
-                        <td id="total-fac-sum" style="font-weight: bold; color: var(--turquesa);">0.00 €</td>
-                        <td id="total-final-sum" style="font-weight: bold; color: var(--azul-oscuro); background: #eee;">0.00 €</td>
+                        <td id="total-fac-sum" colspan="2" style="font-weight: bold; color: var(--turquesa); text-align: center;">0.00 €</td>
                     </tr>
                     <tr>
                         <th>Nº Factura</th>
                         <th>Fecha</th>
                         <th>Paciente</th>
                         <th>Clínica</th>
-                        <th>Base (Clín.)</th>
-                        <th>Facultativo</th>
-                        <th>Total</th>
+                        <th>Importe Clín.</th>
+                        <th>% Fac.</th>
+                        <th>Cobro Fac.</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -335,8 +334,8 @@
                         <td>${item.referenciaPaciente || item.paciente}</td>
                         <td>${item.clinica}</td>
                         <td>${importeClinica.toFixed(2)} €</td>
+                        <td style="color: #666; font-size: 0.85rem;">${item.porcentaje_facultativo || 0}%</td>
                         <td style="color: var(--turquesa); font-weight: 600;">${importeFacultativo.toFixed(2)} €</td>
-                        <td><strong>${importeFacultativo.toFixed(2)} €</strong></td>
                         <td style="text-align: center;">
                             ${item.n_factura ? `<a href="javascript:void(0)" class="action-icon" onclick="triggerFilePicker()" title="Buscar PDF en el equipo" style="margin-right:8px;">📁</a>` : ''}
                             <a href="javascript:void(0)" class="action-icon" onclick="toggleExclusion('${item.id}')" title="${isExcluded ? 'Restaurar' : 'Excluir'}">${isExcluded ? '🔄' : '🗑️'}</a>
@@ -346,7 +345,6 @@
 
             document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
             document.getElementById('total-fac-sum').textContent = sumFacultativo.toFixed(2) + ' €';
-            document.getElementById('total-final-sum').textContent = sumFacultativo.toFixed(2) + ' €';
         }
 
         function exportToCSV() {
@@ -401,7 +399,11 @@
 
             // Totales (ICA = 0 %)
             let totalBase = 0;
-            printableInvoices.forEach(item => { totalBase += parseFloat(item.importe) || 0; });
+            printableInvoices.forEach(item => { 
+                const importeClinica = parseFloat(item.importe) || 0;
+                const importeFacultativo = item.importe_facultativo !== undefined ? parseFloat(item.importe_facultativo) : importeClinica;
+                totalBase += importeFacultativo; 
+            });
             const irpf    = totalBase * 0.07;
             const liquido = totalBase - irpf;
 
@@ -433,8 +435,8 @@
   .titulo{text-align:center;letter-spacing:10px;font-size:1.9rem;font-weight:700;color:#2c3e50;margin-bottom:52px}
   hr.azul{border:none;border-top:2px solid #3498db;margin:10px 0}
   hr.gris{border:none;border-top:1px solid #ccc;margin:18px 0}
-  .ref{text-align:center;margin:14px 0 20px;font-size:13px;line-height:1.9}
-  .partes{display:flex;justify-content:space-between;gap:30px;margin:24px 0}
+  .ref{display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px;font-size:13px}
+  .partes{display:flex;justify-content:space-between;gap:30px;margin:18px 0}
   .partes .col{flex:1;line-height:1.8}
   .partes .col.derecha{text-align:right}
   .partes .col strong{display:block;font-size:14px;color:#2c3e50;margin-bottom:2px}
@@ -454,8 +456,8 @@
   <hr class="azul">
 
   <div class="ref">
-    <p><strong>Nº. de Factura: ${nFactura}<\/strong><\/p>
-    <p>Fecha: ${today}<\/p>
+    <span><strong>Factura: ${nFactura}</strong></span>
+    <span>${today}<\/span>
   <\/div>
 
   <hr class="azul">
@@ -477,8 +479,7 @@
 
   <hr class="gris">
 
-  <div class="concepto">
-    <p>${textoFac}${mesFactura ? ' ' + mesFactura : ''}<\/p>
+  <div class="concepto">    <br><br><br><br>    <p>${textoFac}${mesFactura ? ' ' + mesFactura : ''}<\/p>
   <\/div>
 
   <table class="totales">
