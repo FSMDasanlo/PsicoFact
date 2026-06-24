@@ -13,6 +13,7 @@
         .help-card { background: #fff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--turquesa); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .icon-legend { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .icon-box { background: #eee; padding: 5px 10px; border-radius: 4px; font-size: 1.2rem; min-width: 45px; text-align: center; }
+        .new-badge { background: #9b59b6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 5px; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -40,25 +41,47 @@
                 <div class="help-grid">
                     <div class="help-card">
                         <h4>📅 Agenda</h4>
-                        <p>Gestión diaria de pacientes. Permite crear citas, marcar asistencia y sincronizar con Google Calendar. Incluye detección de conflictos horarios (30 min).</p>
+                        <p>Gestión diaria de pacientes. Permite crear citas, marcar asistencia y sincronizar con <strong>Google Calendar</strong>. Incluye detección inteligente de conflictos horarios.</p>
                     </div>
                     <div class="help-card">
                         <h4>👤 Consultas</h4>
-                        <p>Acceso al histórico. Incluye el <strong>Expediente del Paciente</strong> con sus datos personales, listado de sesiones y un <strong>Resumen de Evolución</strong> consolidado.</p>
+                        <p>Acceso al histórico clínico. Gestiona el <strong>Expediente del Paciente</strong>, notas de sesión y el <strong>Resumen de Evolución</strong> para informes rápidos.</p>
                     </div>
-                    <div class="help-card">
-                        <h4>💰 Facturas</h4>
-                        <p>Visualización de ingresos. Calcula automáticamente la Base Imponible e IVA (21%) de las sesiones realizadas. Permite exportar a Excel (CSV).</p>
+                    <div class="help-card" style="border-left-color: #9b59b6;">
+                        <h4>🛠️ Utilidades <span class="new-badge">NUEVO</span></h4>
+                        <p>Herramientas de mantenimiento: Copia de seguridad (JSON), Restauración de datos, <strong>Exportación a Excel (CSV)</strong> y Optimización de la base de datos.</p>
                     </div>
                     <div class="help-card">
                         <h4>⚙️ Configuración</h4>
-                        <p>Gestión de "Datos Maestros": Alta y edición de Clínicas, Sociedades médicas y Pacientes recurrentes.</p>
+                        <p>Gestión de "Datos Maestros": Aquí configuras tu <strong>Perfil Profesional</strong>, tus Clínicas, Sociedades médicas y el listado de Pacientes.</p>
                     </div>
                 </div>
             </section>
 
             <section class="help-section">
-                <h3>Leyenda de Iconos y Botones</h3>
+                <h3>Nuevas Utilidades de Sistema <span class="new-badge">ACTUALIZADO</span></h3>
+                <div class="help-grid">
+                    <div class="help-card">
+                        <p><strong>📤 Backup y Restauración</strong><br>
+                        Descarga toda tu base de datos en un solo archivo JSON. Es la forma más segura de cambiar de cuenta o guardar versiones históricas de tus datos.</p>
+                    </div>
+                    <div class="help-card">
+                        <p><strong>📊 Exportación CSV (Excel)</strong><br>
+                        Obtén un listado de tus pacientes compatible con Excel. Útil para mailing, contabilidad externa o gestión administrativa.</p>
+                    </div>
+                    <div class="help-card">
+                        <p><strong>🧹 Optimización y Limpieza</strong><br>
+                        El sistema analiza si hay citas "huérfanas" (de pacientes borrados) o si te falta configurar el perfil, ayudándote a mantener el sistema impecable.</p>
+                    </div>
+                    <div class="help-card" style="border-left-color: #e74c3c;">
+                        <p><strong>⚠️ Borrado de Seguridad</strong><br>
+                        Opción de "Derecho al Olvido": permite eliminar permanentemente todos tus datos almacenados en la nube con un sistema de doble confirmación.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <h3>Leyenda de Iconos</h3>
                 <div class="help-grid">
                     <div class="help-card">
                         <div class="icon-legend"><span class="icon-box">🏠</span> <span>Ir a la portada principal.</span></div>
@@ -66,11 +89,10 @@
                         <div class="icon-legend"><span class="icon-box">🗑️</span> <span>Eliminar permanentemente.</span></div>
                     </div>
                     <div class="help-card">
-                        <div class="icon-legend"><span class="icon-box">✅ / ⚪</span> <span>Cambiar estado: Realizada / Pendiente.</span></div>
-                        <div class="icon-legend"><span class="icon-box">👁️</span> <span>Ver detalle o historial completo (Expediente).</span></div>
-                        <div class="icon-legend"><span class="icon-box">🔍</span> <span>Buscador en tiempo real.</span></div>
-                        <div class="icon-legend"><span class="icon-box">📄</span> <span>Ver resumen de todas las notas (Evolución).</span></div>
-                        <div class="icon-legend"><span class="icon-box">🖨️</span> <span>Imprimir documento o resumen.</span></div>
+                        <div class="icon-legend"><span class="icon-box">✅ / ⚪</span> <span>Estado: Realizada / Pendiente.</span></div>
+                        <div class="icon-legend"><span class="icon-box">👁️</span> <span>Ver detalle o Expediente completo.</span></div>
+                        <div class="icon-legend"><span class="icon-box">🔍</span> <span>Buscador inteligente en tiempo real.</span></div>
+                        <div class="icon-legend"><span class="icon-box">📄</span> <span>Resumen de Evolución (Notas).</span></div>
                     </div>
                 </div>
             </section>
@@ -78,14 +100,11 @@
             <section class="help-section">
                 <h3>Preguntas Frecuentes</h3>
                 <div class="help-card" style="border-left-color: var(--azul-primario);">
-                    <p><strong>¿Cómo genero una factura?</strong><br>
-                    Las facturas se generan automáticamente a partir de las citas marcadas como <strong>"Realizadas"</strong>. Ve a la sección de Facturas para ver el resumen y exportar.</p>
+                    <p><strong>¿Cómo recupero mi acceso?</strong><br>
+                    En la pantalla de inicio dispones de un botón <em>"Olvidé la contraseña"</em>. El sistema te enviará un email oficial de Google para resetearla.</p>
                     <br>
-                    <p><strong>¿Cómo añado una cita a mi móvil?</strong><br>
-                    Al crear o editar una cita en la Agenda, pulsa el botón "Añadir a Google Calendar". Se abrirá tu calendario con los datos ya rellenos.</p>
-                    <br>
-                    <p><strong>¿Cómo exporto las notas del paciente?</strong><br>
-                    Dentro del Expediente, pulsa el icono 📄 sobre la tabla de citas. Se abrirá una ventana con todas las anotaciones donde podrás <strong>copiar el texto</strong> al portapapeles o <strong>imprimir</strong> el informe de evolución.</p>
+                    <p><strong>¿Es seguro descargar el Backup?</strong><br>
+                    Sí, el archivo se descarga localmente en tu equipo. Guárdalo bien, ya que contiene información sensible protegida por secreto profesional.</p>
                 </div>
             </section>
         </div>
@@ -97,8 +116,8 @@
 
     <script src="js/config.js"></script>
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
         const firebaseConfig = window.APP_CONFIG.firebase;
         const auth = getAuth(initializeApp(firebaseConfig));
         onAuthStateChanged(auth, (user) => {
