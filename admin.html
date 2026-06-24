@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { visibility: hidden; }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none;">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2>Acciones de Administrador</h2>
+            <a href="index.html" class="back-link">&larr; Volver</a>
+        </div>
+
+        <nav class="main-menu" id="admin-menu">
+            <a href="javascript:void(0)" class="menu-card" onclick="listUsers()" style="border-bottom-color: #3498db;">
+                <div class="icon">👥</div>
+                <h2>Listado Usuarios</h2>
+                <p>Información de Firebase</p>
+            </a>
+            <a href="javascript:void(0)" class="menu-card" onclick="openDuplicateModal()" style="border-bottom-color: #f1c40f;">
+                <div class="icon">👥➕</div>
+                <h2>Duplicar Usuario</h2>
+                <p>Clonar datos de un UID a uno nuevo</p>
+            </a>
+            <a href="javascript:void(0)" class="menu-card" onclick="openDeleteModal()" style="border-bottom-color: #e74c3c;">
+                <div class="icon">🗑️</div>
+                <h2>Eliminar Datos</h2>
+                <p>Borrar datos de Firestore por UID</p>
+            </a>
+        </nav>
+    </main>
+
+    <!-- Modal Listado -->
+    <div id="modalList" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; padding:2rem; border-radius:12px; max-width:600px; width:100%; max-height:80vh; overflow-y:auto;">
+            <h3>Usuarios del Sistema</h3>
+            <div id="users-list-container" style="margin: 1.5rem 0;"></div>
+            <button class="btn-turquesa" onclick="closeModal('modalList')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Modal Duplicar -->
+    <div id="modalDuplicate" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; padding:2rem; border-radius:12px; max-width:450px; width:100%;">
+            <h3>Duplicar Usuario</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Se clonará el perfil, clínicas y sociedades del UID origen.</p>
+            <form id="form-duplicate">
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; font-size:0.8rem; font-weight:600;">UID Usuario origen (Cópialo de Authentication)</label>
+                    <input type="text" id="dup-origin" placeholder="Ej: 5xYp9..." required style="width:100%; padding:8px; margin-top:4px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; font-size:0.8rem; font-weight:600;">Nuevo Email</label>
+                    <input type="email" id="dup-new-email" placeholder="nuevo@correo.com" required style="width:100%; padding:8px; margin-top:4px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; font-size:0.8rem; font-weight:600;">Nueva Contraseña</label>
+                    <input type="password" id="dup-pass" required style="width:100%; padding:8px; margin-top:4px;">
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="submit" class="btn-turquesa">Clonar Datos</button>
+                    <button type="button" class="btn-link" onclick="closeModal('modalDuplicate')" style="color:#666;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let adminEmail = 'jesus.samperruiz@gmail.com';
+
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.email === adminEmail) {
+                document.body.style.visibility = 'visible';
+            } else if (user) {
+                document.body.style.visibility = 'visible';
+                const menu = document.getElementById('admin-menu');
+                if (menu) {
+                    menu.innerHTML = `<div style="grid-column: 1/-1; background:#fff3cd; padding:20px; border-radius:10px; border:1px solid #ffeeba;">
+                        <p>⚠️ <strong>Sesión cambiada:</strong> Estás autenticado como <strong>${user.email}</strong>.</p>
+                        <p style="font-size:0.9rem; margin-top:10px;">Para duplicar otro usuario o volver como Admin, debes cerrar sesión y entrar de nuevo con tu cuenta habitual (jesus.samperruiz@gmail.com).</p>
+                        <button class="btn-turquesa" onclick="window.handleLogout()" style="margin-top:15px;">Cerrar Sesión</button>
+                    </div>`;
+                }
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        window.handleLogout = () => signOut(auth).then(() => location.href='index.html');
+        window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+        window.listUsers = () => {
+            const container = document.getElementById('users-list-container');
+            container.innerHTML = `
+                <div style="text-align:left; line-height:1.4;">
+                    <p style="color:#e67e22; font-weight:bold;">⚠️ Limitación de Firebase:</p>
+                    <p style="font-size:0.9rem;">Firebase impide listar emails de Authentication por seguridad. Usa la consola de Firebase para copiar el <strong>UID</strong>.</p>
+                </div>
+            `;
+            document.getElementById('modalList').style.display = 'flex';
+        };
+
+        window.openDuplicateModal = () => document.getElementById('modalDuplicate').style.display = 'flex';
+        
+        document.getElementById('form-duplicate').onsubmit = async (e) => {
+            e.preventDefault();
+            const originUid = document.getElementById('dup-origin').value.trim();
+            const newEmail = document.getElementById('dup-new-email').value.trim();
+            const newPass = document.getElementById('dup-pass').value;
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Leyendo origen...";
+
+            try {
+                // 1. LEER DATOS (Siendo Admin)
+                const fetchCol = async (col) => {
+                    const snap = await getDocs(collection(db, 'usuarios', originUid, col));
+                    console.log(`[Duplicador] Leídos ${snap.docs.length} de ${col}`);
+                    return snap.docs.map(d => ({ id: d.id, data: d.data() }));
+                };
+
+                const pSnap = await getDoc(doc(db, 'usuarios', originUid, 'facultativo', 'perfil'));
+                const profileData = pSnap.exists() ? pSnap.data() : null;
+                
+                const clinicas = await fetchCol('clinicas');
+                const sociedades = await fetchCol('sociedades');
+                const pacientes = await fetchCol('pacientes');
+                const citas = await fetchCol('citas');
+                const evaluaciones = await fetchCol('evaluaciones_completas');
+
+                const totalItems = clinicas.length + sociedades.length + pacientes.length + citas.length + evaluaciones.length;
+                if (totalItems === 0 && !profileData) {
+                    throw new Error("No se han encontrado datos en el UID de origen. Verifica que sea el correcto.");
+                }
+
+                if (!confirm(`Se han encontrado:\n- ${pacientes.length} Pacientes\n- ${citas.length} Citas\n- ${evaluaciones.length} Evaluaciones\n- ${clinicas.length} Clínicas\n- ${sociedades.length} Sociedades\n\n¿Deseas continuar con la creación del nuevo usuario?`)) {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+
+                btn.textContent = "Creando cuenta...";
+
+                // 2. CREAR NUEVO (Cambia la sesión)
+                const res = await createUserWithEmailAndPassword(auth, newEmail, newPass);
+                const newUid = res.user.uid;
+
+                // 3. ESCRIBIR (Como nuevo usuario)
+                btn.textContent = "Volcando datos...";
+                
+                const writeCol = async (col, items) => {
+                    for (const item of items) {
+                        await setDoc(doc(db, 'usuarios', newUid, col, item.id), item.data);
+                    }
+                };
+
+                if (profileData) {
+                    profileData.email = newEmail; 
+                    await setDoc(doc(db, 'usuarios', newUid, 'facultativo', 'perfil'), profileData);
+                }
+                
+                await writeCol('clinicas', clinicas);
+                await writeCol('sociedades', sociedades);
+                await writeCol('pacientes', pacientes);
+                await writeCol('citas', citas);
+                await writeCol('evaluaciones_completas', evaluaciones);
+
+                alert(`¡Éxito! Usuario creado: ${newUid}\nSe han clonado satisfactoriamente los pacientes, citas y configuraciones.`);
+                location.reload();
+            } catch (err) {
+                console.error(err);
+                alert("Error técnico: " + err.message);
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        };
+
+        window.openDeleteModal = async () => {
+            const uid = prompt("UID del usuario a borrar de Firestore:");
+            if (!uid || !confirm("¿Borrar definitivamente los datos médicos de este UID?")) return;
+            try {
+                await deleteDoc(doc(db, 'usuarios', uid, 'facultativo', 'perfil'));
+                alert("Datos médicos eliminados.");
+            } catch (err) { alert("Error: " + err.message); }
+        };
+    </script>
+</body>
+</html>

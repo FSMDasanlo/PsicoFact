@@ -330,6 +330,11 @@
                     <h2>Configuración</h2>
                     <p>Datos maestros de la aplicación</p>
                 </a>
+                <a href="admin.html" id="admin-card" class="menu-card" style="display: none; border-bottom-color: #e74c3c;">
+                    <div class="icon">🛡️</div>
+                    <h2>Admin</h2>
+                    <p>(Acciones de administrador)</p>
+                </a>
                 <a href="help.html" class="menu-card" style="border-bottom-color: var(--turquesa);">
                     <div class="icon">❓</div>
                     <h2>Ayuda</h2>
@@ -417,17 +422,39 @@
         // ── Estado de autenticación ──
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                console.log("Usuario autenticado:", user.email);
                 authScreen.style.display = 'none';
                 appWrapper.style.display = 'block';
+
+                // Mostrar tarjeta de Admin solo si es el usuario jesus.samperruiz@gmail.com
+                const adminCard = document.getElementById('admin-card');
+                if (adminCard) {
+                    const userEmail = (user.email || "").toLowerCase().trim();
+                    if (userEmail === 'jesus.samperruiz@gmail.com') {
+                        adminCard.style.display = 'block';
+                    } else {
+                        adminCard.style.display = 'none';
+                    }
+                }
+
                 // Cargar nombre del facultativo
                 try {
                     const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
                     const nameEl = document.getElementById('user-name');
-                    if (nameEl && snap.exists()) {
-                        const d = snap.data();
-                        nameEl.textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                    if (nameEl) {
+                        if (snap.exists()) {
+                            const d = snap.data();
+                            const fullName = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                            nameEl.textContent = fullName || user.email;
+                        } else {
+                            nameEl.textContent = user.email;
+                        }
                     }
-                } catch(e) { console.error(e); }
+                } catch(e) { 
+                    console.error("Error cargando perfil:", e);
+                    const nameEl = document.getElementById('user-name');
+                    if (nameEl) nameEl.textContent = user.email;
+                }
             } else {
                 authScreen.style.display = 'flex';
                 appWrapper.style.display = 'none';
