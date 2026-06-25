@@ -100,6 +100,8 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         let currentUid = null;
+        let currentPatientName = '';
+        let patientAppsData = [];
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
@@ -130,6 +132,73 @@
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        async function loadExpediente() {
+            const params = new URLSearchParams(window.location.search);
+            const patientId = params.get('id');
+            if (!patientId) {
+                alert("No se ha especificado un ID de paciente.");
+                window.location.href = 'Con_pacientes.html';
+                return;
+            }
+
+            try {
+                // 1. Cargar datos del paciente
+                const pSnap = await getDoc(uDoc('pacientes', patientId));
+                if (!pSnap.exists()) {
+                    alert("Paciente no encontrado.");
+                    window.location.href = 'Con_pacientes.html';
+                    return;
+                }
+                const p = pSnap.data();
+                currentPatientName = `${p.nombre} ${p.apellidos}`;
+                document.getElementById('expediente-titulo').textContent = `Expediente: ${currentPatientName}`;
+                document.getElementById('link-evaluacion').href = `evaluacion.html?id=${patientId}`;
+
+                const ficha = document.getElementById('ficha-paciente');
+                ficha.innerHTML = `
+                    <div class="form-group"><label>Referencia</label><p><strong>${p.referencia || '-'}</strong></p></div>
+                    <div class="form-group"><label>Teléfono</label><p>${p.telefono || '-'}</p></div>
+                    <div class="form-group"><label>Sociedad</label><p>${p.sociedad || '-'}</p></div>
+                    <div class="form-group"><label>Clínica</label><p>${p.clinica || '-'}</p></div>
+                    <div class="form-group"><label>Fecha Nac.</label><p>${p.fechaNacimiento || '-'}</p></div>
+                    <div class="form-group full-width"><label>Notas Generales</label><p>${p.notas || p.observaciones || '-'}</p></div>
+                `;
+
+                // 2. Cargar historial de citas
+                const q = query(uCol('citas'), orderBy('fecha', 'desc'));
+                const cSnap = await getDocs(q);
+                
+                const tbody = document.getElementById('historial-citas');
+                tbody.innerHTML = '';
+                
+                patientAppsData = [];
+                cSnap.forEach(doc => {
+                    const c = doc.data();
+                    // Filtramos por referencia o por nombre exacto
+                    if (c.referenciaPaciente === p.referencia || (c.paciente === currentPatientName)) {
+                        patientAppsData.push(c);
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${c.fecha}</td>
+                                <td>${c.hora || '-'}</td>
+                                <td>${c.clinica || '-'}</td>
+                                <td>${c.observaciones || c.obs || '-'}</td>
+                                <td><span class="status-pill ${c.estado}">${c.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                if (patientAppsData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No hay citas registradas</td></tr>';
+                }
+
+            } catch (error) {
+                console.error("Error cargando expediente:", error);
+                alert("Error al cargar los datos del expediente.");
+            }
+        }
 
         window.showAllNotes = function() {
             const content = document.getElementById('notas-content');

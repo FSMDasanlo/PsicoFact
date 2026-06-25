@@ -96,6 +96,7 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         let currentUid = null;
+        let patients = [];
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
         onAuthStateChanged(auth, async (user) => {
@@ -122,9 +123,20 @@
             }
 
             loadFilters();
+            loadData();
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        async function loadData() {
+            try {
+                const querySnapshot = await getDocs(uCol("pacientes"));
+                patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // No renderizamos nada hasta que el usuario busque (según el marcador de posición)
+            } catch (error) {
+                console.error("Error cargando pacientes:", error);
+            }
+        }
 
         async function loadFilters() {
             const snapshotClinicas = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
@@ -140,6 +152,53 @@
                 selectSociedad.innerHTML += `<option value="${s.data().nombre}">${s.data().nombre}</option>`;
             });
         }
+
+        function handleSearch() {
+            const nombreFiltro = document.getElementById('filtro-nombre').value.toLowerCase();
+            const clinicaFiltro = document.getElementById('filtro-clinica').value;
+            const sociedadFiltro = document.getElementById('filtro-sociedad').value;
+
+            const filtered = patients.filter(p => {
+                const fullName = `${p.nombre} ${p.apellidos}`.toLowerCase();
+                const cumpleNombre = nombreFiltro === "" || fullName.includes(nombreFiltro);
+                const cumpleClinica = clinicaFiltro === "" || p.clinica === clinicaFiltro;
+                const cumpleSociedad = sociedadFiltro === "" || p.sociedad === sociedadFiltro;
+                return cumpleNombre && cumpleClinica && cumpleSociedad;
+            });
+
+            renderResults(filtered);
+        }
+
+        function renderResults(lista) {
+            const tbody = document.getElementById('resultados-busqueda');
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            lista.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.nombre} ${p.apellidos}</td>
+                        <td>${p.telefono || '-'}</td>
+                        <td>${p.sociedad || '-'}</td>
+                        <td>${p.clinica || '-'}</td>
+                        <td style="text-align: center;">
+                            <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente">📂</a>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function clearFilters() {
+            document.getElementById('form-busqueda').reset();
+            renderResults([]);
+            document.getElementById('resultados-busqueda').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td></tr>';
+        }
+
+        window.handleSearch = handleSearch;
+        window.clearFilters = clearFilters;
     </script>
 
 </body>
