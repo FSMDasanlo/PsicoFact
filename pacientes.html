@@ -99,6 +99,10 @@
                         <option value="">Seleccione...</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="importe_sesion">Importe sesión (€)</label>
+                    <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="Ej: 60">
+                </div>
                 <div class="form-group full-width">
                     <label for="notas">Notas</label>
                     <textarea id="notas" name="notas" rows="3"></textarea>
@@ -277,7 +281,7 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas'].forEach(f => {
+            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas', 'importe_sesion'].forEach(f => {
                 const el = document.getElementById(f);
                 const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];
                 if (el) el.value = value || '';

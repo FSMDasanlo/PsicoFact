@@ -64,16 +64,17 @@
             <table class="agenda-table">
                 <thead>
                     <tr>
-                        <th>Paciente</th>
-                        <th>Teléfono</th>
-                        <th>Sociedad</th>
-                        <th>Clínica</th>
+                        <th class="sortable" onclick="handleSort('nombre_completo')">Paciente</th>
+                        <th class="sortable" onclick="handleSort('telefono')">Teléfono</th>
+                        <th class="sortable" onclick="handleSort('sociedad')">Sociedad</th>
+                        <th class="sortable" onclick="handleSort('clinica')">Clínica</th>
+                        <th class="sortable" onclick="handleSort('importe_sesion')">Importe Sesión (€)</th>
                         <th style="text-align: center;">Expediente</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-busqueda">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
+                        <td colspan="6" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
                     </tr>
                 </tbody>
             </table>
@@ -98,6 +99,10 @@
         let currentUid = null;
         let patients = [];
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
+
+        let currentSortField = 'nombre_completo';
+        let currentSortOrder = 'asc';
+        let lastFilteredList = [];
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
@@ -158,7 +163,7 @@
             const clinicaFiltro = document.getElementById('filtro-clinica').value;
             const sociedadFiltro = document.getElementById('filtro-sociedad').value;
 
-            const filtered = patients.filter(p => {
+            lastFilteredList = patients.filter(p => {
                 const fullName = `${p.nombre} ${p.apellidos}`.toLowerCase();
                 const cumpleNombre = nombreFiltro === "" || fullName.includes(nombreFiltro);
                 const cumpleClinica = clinicaFiltro === "" || p.clinica === clinicaFiltro;
@@ -166,24 +171,58 @@
                 return cumpleNombre && cumpleClinica && cumpleSociedad;
             });
 
-            renderResults(filtered);
+            handleSort(currentSortField, true);
+        }
+
+        function handleSort(field, keepOrder = false) {
+            if (!keepOrder) {
+                if (currentSortField === field) {
+                    currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortField = field;
+                    currentSortOrder = 'asc';
+                }
+            }
+
+            lastFilteredList.sort((a, b) => {
+                let valA, valB;
+
+                if (field === 'nombre_completo') {
+                    valA = `${a.nombre} ${a.apellidos}`.toLowerCase();
+                    valB = `${b.nombre} ${b.apellidos}`.toLowerCase();
+                } else if (field === 'importe_sesion') {
+                    valA = parseFloat(a.importe_sesion) || 0;
+                    valB = parseFloat(b.importe_sesion) || 0;
+                } else {
+                    valA = (a[field] || '').toString().toLowerCase();
+                    valB = (b[field] || '').toString().toLowerCase();
+                }
+
+                if (valA < valB) return currentSortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderResults(lastFilteredList);
         }
 
         function renderResults(lista) {
             const tbody = document.getElementById('resultados-busqueda');
             if (lista.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
                 return;
             }
 
             tbody.innerHTML = '';
             lista.forEach(p => {
+                const importe = parseFloat(p.importe_sesion || 0);
                 tbody.innerHTML += `
                     <tr>
                         <td>${p.nombre} ${p.apellidos}</td>
                         <td>${p.telefono || '-'}</td>
                         <td>${p.sociedad || '-'}</td>
                         <td>${p.clinica || '-'}</td>
+                        <td style="font-weight: 600;">${importe > 0 ? importe.toFixed(2) + ' €' : '-'}</td>
                         <td style="text-align: center;">
                             <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente">📂</a>
                         </td>
@@ -193,11 +232,14 @@
 
         function clearFilters() {
             document.getElementById('form-busqueda').reset();
+            lastFilteredList = [];
             renderResults([]);
-            document.getElementById('resultados-busqueda').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td></tr>';
+            document.getElementById('resultados-busqueda').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td></tr>';
         }
 
         window.handleSearch = handleSearch;
+        window.handleSort = handleSort;
+        window.clearFilters = clearFilters;
         window.clearFilters = clearFilters;
     </script>
 
