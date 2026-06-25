@@ -193,6 +193,22 @@
         </div>
     </div>
 
+    <!-- Modal para Agenda en tramos de 15 min -->
+    <div id="modalAgendaTramos" class="modal">
+        <div class="modal-content" style="max-width: 95%; width: 1000px; height: 85vh; padding: 20px; display: flex; flex-direction: column;">
+            <div class="agenda-header" style="margin-bottom: 20px;">
+                <h2 style="margin: 0;">Agenda Detallada (15 min)</h2>
+                <span class="close-modal" onclick="closeTramosModal()">&times;</span>
+            </div>
+            <div id="tramos-container" style="overflow: auto; flex: 1; border: 1px solid #dee2e6; border-radius: 8px;">
+                <!-- Tabla de tramos se cargará aquí -->
+            </div>
+            <div class="form-actions" style="margin-top: 20px; justify-content: flex-end;">
+                <button type="button" class="btn-turquesa" onclick="closeTramosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -352,12 +368,13 @@
             });
         }
 
-        function openAppointmentModal(title = "Nueva Cita", preselectedDate = null) {
+        function openAppointmentModal(title = "Nueva Cita", preselectedDate = null, preselectedTime = null) {
             const modal = document.getElementById('modalCita');
             modal.querySelector('h2').textContent = title;
             if (title === "Nueva Cita") {
                 document.getElementById('form-cita').reset();
                 document.getElementById('fecha').value = preselectedDate || new Date().toISOString().split('T')[0];
+                if (preselectedTime) document.getElementById('hora').value = preselectedTime;
                 editingAppointmentId = null;
             }
             modal.style.display = 'flex';
@@ -541,12 +558,31 @@
                 today.setHours(0, 0, 0, 0); // Normalizar 'hoy' a inicio del día
                 const currentDayDate = new Date(year, month, day);
 
-                if (currentDayDate >= today) { // Solo si el día es hoy o futuro
-                    dayEl.onclick = () => {
-                        closeCalendarModal();
-                        openAppointmentModal("Nueva Cita", dateKey);
-                    };
-                } else {
+                let clickTimer = null;
+                dayEl.onclick = () => {
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                        return;
+                    }
+                    clickTimer = setTimeout(() => {
+                        if (currentDayDate >= today) {
+                            closeCalendarModal();
+                            openAppointmentModal("Nueva Cita", dateKey);
+                        }
+                        clickTimer = null;
+                    }, 250);
+                };
+
+                dayEl.ondblclick = (e) => {
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                    }
+                    openTramosModal(dateKey);
+                };
+
+                if (currentDayDate < today) {
                     dayEl.classList.add('past'); // Añadir clase para días pasados
                 }
 
@@ -567,6 +603,84 @@
 
         function closeCalendarModal() { document.getElementById('modalCalendario').style.display = 'none'; }
 
+        async function openTramosModal(selectedDateStr) {
+            const container = document.getElementById('tramos-container');
+            container.innerHTML = 'Cargando...';
+            document.getElementById('modalAgendaTramos').style.display = 'flex';
+
+            const selectedDate = new Date(selectedDateStr + 'T00:00:00');
+            const dates = [];
+            for (let i = -2; i <= 2; i++) {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + i);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+
+            // Fetch appointments for these dates
+            const q = query(uCol("citas"), where("fecha", ">=", dates[0]), where("fecha", "<=", dates[4]));
+            const snap = await getDocs(q);
+            const citasRange = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Asegurar que las citas del rango estén disponibles para editAppointment
+            citasRange.forEach(c => {
+                if (!appointments.find(a => a.id === c.id)) {
+                    appointments.push(c);
+                }
+            });
+
+            let html = `<table class="tramos-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white;">
+                <thead>
+                    <tr>
+                        <th style="border: 1px solid #dee2e6; padding: 12px 8px; background: #f8f9fa; position: sticky; left: 0; z-index: 2;">Hora</th>`;
+            
+            dates.forEach((d, idx) => {
+                const dateObj = new Date(d + 'T00:00:00');
+                const dayName = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][dateObj.getDay()];
+                const isSelected = d === selectedDateStr;
+                const bgColor = isSelected ? 'var(--azul-oscuro)' : '#f8f9fa';
+                const textColor = isSelected ? 'white' : 'var(--azul-oscuro)';
+                html += `<th style="border: 1px solid #dee2e6; padding: 12px 8px; background: ${bgColor}; color: ${textColor}; min-width: 140px; text-align: center;">
+                            <div style="font-weight: 600;">${dayName}</div>
+                            <div style="font-size: 0.75rem;">${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}</div>
+                         </th>`;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            for (let hour = 8; hour <= 21; hour++) {
+                const timeStr = `${String(hour).padStart(2, '0')}:00`;
+                html += `<tr>
+                    <td style="border: 1px solid #dee2e6; padding: 10px 5px; text-align: center; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 1;">${timeStr}</td>`;
+                
+                dates.forEach(d => {
+                    // Buscamos si hay alguna cita en esta hora (ej. 08:00, 08:30, etc.)
+                    const citasEnHora = citasRange.filter(c => c.fecha === d && c.hora.startsWith(String(hour).padStart(2, '0') + ':'));
+                    
+                    if (citasEnHora.length > 0) {
+                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #e3f2fd; color: #1565c0; cursor: pointer; text-align: center;">`;
+                        citasEnHora.forEach(cita => {
+                            html += `<div style="font-weight: 600; margin-bottom: 4px; border-bottom: 1px solid #bbdefb; padding-bottom: 2px;" onclick="window.closeTramosModal(); window.editAppointment('${cita.id}')">
+                                        ${cita.hora} - ${cita.paciente}
+                                        <div style="font-size: 0.7rem; color: #555; font-weight: 400;">${cita.clinica}</div>
+                                     </div>`;
+                        });
+                        html += `</td>`;
+                    } else {
+                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; cursor: pointer; color: #dee2e6; text-align: center; transition: background 0.2s;" 
+                                    onmouseover="this.style.background='#f1f3f5'; this.textContent='+'" 
+                                    onmouseout="this.style.background='transparent'; this.textContent=''"
+                                    onclick="window.closeTramosModal(); window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}')"></td>`;
+                    }
+                });
+                html += `</tr>`;
+            }
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function closeTramosModal() { document.getElementById('modalAgendaTramos').style.display = 'none'; }
+
         // Exponer funciones al objeto window para acceso desde el HTML
         window.openAppointmentModal = openAppointmentModal;
         window.closeAppointmentModal = closeAppointmentModal;
@@ -581,6 +695,8 @@
         window.addToGoogleCalendar = addToGoogleCalendar;
         window.showCalendarView = showCalendarView;
         window.closeCalendarModal = closeCalendarModal;
+        window.openTramosModal = openTramosModal;
+        window.closeTramosModal = closeTramosModal;
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
