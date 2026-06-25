@@ -166,26 +166,29 @@
                 data.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
                 data.forEach(app => {
                     const isDone = app.estado === 'completed';
+                    const isCancelled = app.estado === 'cancelled';
                     // Usamos el campo importe_facultativo para el cálculo financiero real
-                    const importePS = parseFloat(app.importe_facultativo) || 0;
+                    const importePS = isCancelled ? 0 : (parseFloat(app.importe_facultativo) || 0);
                     
                     if (isDone) {
                         realizadas++;
                         importePagado += importePS;
-                    } else {
+                    } else if (!isCancelled) {
                         pendientes++;
                         importePendiente += importePS;
                     }
 
+                    const statusLabel = app.estado === 'completed' ? 'Realizada' : (app.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
+
                     tbody.innerHTML += `
-                        <tr>
+                        <tr class="${isCancelled ? 'row-cancelled' : ''}">
                             <td>${app.fecha}</td>
                             <td><strong>${app.referenciaPaciente || app.paciente}</strong></td>
                             <td>${app.clinica}</td>
                             <td>${app.sociedad}</td>
                             <td style="color: #666; font-size: 0.85em;">${(parseFloat(app.importe) || 0).toFixed(2)} €</td>
                             <td style="font-weight: 600; color: var(--azul-oscuro);">${importePS.toFixed(2)} €</td>
-                            <td><span class="status-pill ${app.estado}">${app.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
+                            <td><span class="status-pill ${app.estado}">${statusLabel}</span></td>
                         </tr>`;
                 });
             }

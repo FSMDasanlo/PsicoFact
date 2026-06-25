@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estados de Cita - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="PsicoFact Logo" class="logo-img">
+                <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
+            </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-container">
+            <div class="agenda-header">
+                <h2>Gestión de Estados de Cita</h2>
+                <div class="agenda-actions">
+                    <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openModal()">+ Nuevo Estado</button>
+                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                    <a href="configuracion.html" class="back-link">&larr; Volver</a>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar estado..." oninput="handleSearch()">
+            </div>
+            
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th>Nombre del Estado</th>
+                        <th>Clave (ID)</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="estados-body"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal para Estado -->
+    <div id="modalEstado" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Nuevo Estado</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="form-estado" class="form-grid">
+                <div class="form-group full-width">
+                    <label for="nombre">Nombre Visual</label>
+                    <input type="text" id="nombre" name="nombre" placeholder="Ej: Cancelada" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="clave">Clave Interna (sin espacios, ej: cancelled)</label>
+                    <input type="text" id="clave" name="clave" placeholder="ej: cancelled" required>
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar Estado</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        const uCol = (name) => collection(db, "usuarios", currentUid, name);
+        const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+
+            // Cargar perfil
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    document.getElementById('user-name').textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ') || user.email;
+                }
+            } catch(e) { console.error(e); }
+
+            await verifyInitialStates();
+            loadEstados();
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        async function verifyInitialStates() {
+            const snap = await getDocs(uCol("estados_cita"));
+            if (snap.empty) {
+                // Crear estados por defecto
+                const defaults = [
+                    { clave: 'pending', nombre: 'Pendiente' },
+                    { clave: 'completed', nombre: 'Realizada' },
+                    { clave: 'cancelled', nombre: 'Cancelada' }
+                ];
+                for (const d of defaults) {
+                    await addDoc(uCol("estados_cita"), d);
+                }
+            }
+        }
+
+        let estados = [];
+        let editingId = null;
+
+        async function loadEstados() {
+            const querySnapshot = await getDocs(query(uCol("estados_cita"), orderBy("nombre")));
+            estados = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderTable();
+        }
+
+        window.renderTable = function() {
+            const tbody = document.getElementById('estados-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filtered = estados.filter(e => e.nombre.toLowerCase().includes(searchTerm) || e.clave.toLowerCase().includes(searchTerm));
+            tbody.innerHTML = '';
+            filtered.forEach(e => {
+                tbody.innerHTML += `<tr>
+                    <td>${e.nombre}</td>
+                    <td><code>${e.clave}</code></td>
+                    <td style="text-align: center;">
+                        <a href="javascript:void(0)" class="action-icon" onclick="editEstado('${e.id}')">✏️</a>
+                        <a href="javascript:void(0)" class="action-icon" onclick="deleteEstado('${e.id}')">🗑️</a>
+                    </td></tr>`;
+            });
+        }
+
+        window.handleSearch = () => renderTable();
+
+        window.openModal = function(title = "Nuevo Estado") {
+            const modal = document.getElementById('modalEstado');
+            modal.querySelector('h2').textContent = title;
+            if (title === "Nuevo Estado") { document.getElementById('form-estado').reset(); editingId = null; }
+            modal.style.display = 'flex';
+        }
+        window.closeModal = function() { document.getElementById('modalEstado').style.display = 'none'; }
+        
+        window.editEstado = function(id) {
+            const e = estados.find(x => x.id === id);
+            editingId = id;
+            document.getElementById('nombre').value = e.nombre;
+            document.getElementById('clave').value = e.clave;
+            openModal("Editar Estado");
+        }
+        
+        window.deleteEstado = async function(id) { 
+            if (confirm("¿Eliminar este estado? Esto no afectará a las citas ya creadas pero dejarán de aparecer correctamente en filtros.")) { 
+                await deleteDoc(uDoc("estados_cita", id));
+                loadEstados();
+            } 
+        }
+
+        document.getElementById('form-estado').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            if (editingId) {
+                await updateDoc(uDoc("estados_cita", editingId), data);
+            } else {
+                await addDoc(uCol("estados_cita"), data);
+            }
+            loadEstados(); closeModal();
+        };
+
+        window.onclick = (e) => { if (e.target == document.getElementById('modalEstado')) closeModal(); }
+        
+        function showToast(message) {
+            alert(message); // Simplificado o usar sistema de toast si existe
+        }
+    </script>
+</body>
+</html>

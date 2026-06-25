@@ -42,8 +42,8 @@
             cursor: pointer;
         }
         .calendar-day.has-appointment {
-            background-color: var(--turquesa);
-            color: white;
+            background-color: transparent; /* Se controla dinámicamente */
+            color: inherit;
             font-weight: 600;
             cursor: pointer;
         }
@@ -183,6 +183,14 @@
                     <label for="obs-cita">Observaciones</label>
                     <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
                 </div>
+                <div class="form-group full-width">
+                    <label for="estado-cita">Estado de la Cita</label>
+                    <select id="estado-cita" name="estado">
+                        <option value="pending">Pendiente</option>
+                        <option value="completed">Realizada</option>
+                        <option value="cancelled">Cancelada</option>
+                    </select>
+                </div>
                 <input type="hidden" id="ref-cita" name="referenciaPaciente">
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
@@ -244,6 +252,7 @@
 
         let patientsMaster = [];
         let clinicsMasterData = [];
+        let statesMasterData = [];
         let appointments = [];
         let currentCalendarDate = new Date();
         let editingAppointmentId = null;
@@ -253,8 +262,36 @@
             patientsMaster = snapP.docs.map(d => d.data());
             const snapC = await getDocs(uCol("clinicas"));
             clinicsMasterData = snapC.docs.map(d => d.data());
+            
+            // Cargar estados
+            try {
+                const snapE = await getDocs(uCol("estados_cita"));
+                statesMasterData = snapE.docs.map(d => d.data());
+                if (statesMasterData.length === 0) {
+                    statesMasterData = [
+                        { clave: 'pending', nombre: 'Pendiente' },
+                        { clave: 'completed', nombre: 'Realizada' },
+                        { clave: 'cancelled', nombre: 'Cancelada' }
+                    ];
+                }
+            } catch (e) {
+                console.error("Error cargando estados:", e);
+            }
+
             populatePatientDropdown();
+            populateStatesDropdowns();
             loadFilteredAppointments();
+        }
+
+        function populateStatesDropdowns() {
+            const filterSelect = document.getElementById('filtro-estado');
+            const formSelect = document.getElementById('estado-cita');
+            
+            if (filterSelect && formSelect) {
+                let optionsHtml = statesMasterData.map(s => `<option value="${s.clave}">${s.nombre}</option>`).join('');
+                filterSelect.innerHTML = '<option value="">Cualquier estado</option>' + optionsHtml;
+                formSelect.innerHTML = optionsHtml;
+            }
         }
 
         function populatePatientDropdown() {
@@ -302,10 +339,14 @@
         }
 
         function getStatusLabel(estado) {
+            const state = statesMasterData.find(s => s.clave === estado);
+            if (state) return state.nombre;
+            
             const labels = {
                 'confirmada': 'Confirmada',
                 'pending': 'Pendiente',
-                'completed': 'Realizada'
+                'completed': 'Realizada',
+                'cancelled': 'Cancelada'
             };
             return labels[estado] || 'Pendiente';
         }
@@ -346,17 +387,23 @@
             const isFiltering = document.getElementById('filtro-paciente').value || document.getElementById('filtro-estado').value;
 
             appointments.forEach(app => {
+                const clinicInfo = clinicsMasterData.find(c => c.nombre === app.clinica);
+                const clinicColor = clinicInfo ? clinicInfo.color : '#3498db';
+                
                 const isCompleted = app.estado === 'completed';
-                const checkIcon = isCompleted ? '✅' : '⚪';
+                const isCancelled = app.estado === 'cancelled';
+                const checkIcon = isCompleted ? '✅' : (isCancelled ? '❌' : '⚪');
+                
                 const row = document.createElement('tr');
                 if (isCompleted) row.classList.add('row-completed');
+                if (isCancelled) row.classList.add('row-cancelled');
                 
                 const timeInfo = isFiltering ? `${app.fecha}<br><strong>${app.hora}</strong>` : app.hora;
 
                 row.innerHTML = `
                     <td>${timeInfo}</td>
                     <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
-                    <td>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
+                    <td><span class="clinic-color-dot" style="background-color: ${clinicColor}"></span>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
                     <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${app.porcentaje_facultativo || 0}%)</small></td>
                     <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
                     <td style="text-align: center;">
@@ -397,9 +444,9 @@
         function editAppointment(id) {
             const app = appointments.find(a => a.id === id);
             editingAppointmentId = id;
-            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones'].forEach(f => {
-                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : f))))));
-                if(el) el.value = app[f] || '';
+            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
+                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f)))))));
+                if(el) el.value = app[f] || (f === 'estado' ? 'pending' : '');
             });
             document.getElementById('paciente-select').value = app.paciente;
             document.getElementById('ref-cita').value = app.referenciaPaciente || '';
@@ -590,7 +637,31 @@
                 
                 if (dayCitas.length > 0) {
                     dayEl.classList.add('has-appointment');
-                    const tooltip = dayCitas.map(c => `${c.paciente} (${c.hora})`).join('\n');
+                    
+                    // Lógica de colores y marcas según estado
+                    const hasPending = dayCitas.some(c => c.estado === 'pending');
+                    const allCompleted = dayCitas.every(c => c.estado === 'completed');
+                    const allCancelled = dayCitas.every(c => c.estado === 'cancelled');
+
+                    let content = `<span>${day}</span>`;
+                    
+                    if (allCompleted) {
+                        dayEl.style.backgroundColor = '#d1ecf1'; // Azul pastel (Realizadas)
+                        dayEl.style.color = '#0c5460';
+                        content += `<span style="position: absolute; bottom: 2px; font-size: 0.6rem;">✅</span>`;
+                    } else if (allCancelled) {
+                        dayEl.style.backgroundColor = '#f8d7da'; // Rojo pastel (Canceladas)
+                        dayEl.style.color = '#721c24';
+                        content += `<span style="position: absolute; bottom: 2px; font-size: 0.6rem;">❌</span>`;
+                    } else if (hasPending) {
+                        dayEl.style.backgroundColor = '#fff3cd'; // Amarillo pastel (Pendientes)
+                        dayEl.style.color = '#856404';
+                    }
+
+                    dayEl.innerHTML = content;
+                    dayEl.style.position = 'relative';
+
+                    const tooltip = dayCitas.map(c => `${c.paciente} (${c.hora}) - ${getStatusLabel(c.estado)}`).join('\n');
                     dayEl.title = tooltip;
                 }
                 
@@ -657,11 +728,18 @@
                     const citasEnHora = citasRange.filter(c => c.fecha === d && c.hora.startsWith(String(hour).padStart(2, '0') + ':'));
                     
                     if (citasEnHora.length > 0) {
-                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #e3f2fd; color: #1565c0; cursor: pointer; text-align: center;">`;
+                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #fff; cursor: pointer; text-align: center;">`;
                         citasEnHora.forEach(cita => {
-                            html += `<div style="font-weight: 600; margin-bottom: 4px; border-bottom: 1px solid #bbdefb; padding-bottom: 2px;" onclick="window.closeTramosModal(); window.editAppointment('${cita.id}')">
-                                        ${cita.hora} - ${cita.paciente}
-                                        <div style="font-size: 0.7rem; color: #555; font-weight: 400;">${cita.clinica}</div>
+                            const clinicInfo = clinicsMasterData.find(c => c.nombre === cita.clinica);
+                            const clinicColor = clinicInfo ? clinicInfo.color : '#e3f2fd';
+                            // Usar el color de la clínica con opacidad para el fondo
+                            const bgColor = clinicInfo ? `${clinicInfo.color}22` : '#e3f2fd'; // 22 es ~13% opacidad
+                            const borderColor = clinicInfo ? clinicInfo.color : '#bbdefb';
+
+                            html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" onclick="window.closeTramosModal(); window.editAppointment('${cita.id}')">
+                                        <div style="font-size: 0.8rem;">${cita.hora}</div>
+                                        <div>${cita.paciente}</div>
+                                        <div style="font-size: 0.7rem; color: #666; font-weight: 400;">${cita.clinica}</div>
                                      </div>`;
                         });
                         html += `</td>`;

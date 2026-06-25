@@ -101,6 +101,20 @@
                     <label for="porcentaje_facultativo">% Facultativo</label>
                     <input type="number" id="porcentaje_facultativo" name="porcentaje_facultativo" step="0.1" min="0" max="100" placeholder="Ej: 70">
                 </div>
+                <div class="form-group full-width">
+                    <label>Color Identificativo (para Agenda)</label>
+                    <div class="color-palette" id="color-palette">
+                        <div class="color-option" style="background-color: #3498db;" data-color="#3498db"></div>
+                        <div class="color-option" style="background-color: #1abc9c;" data-color="#1abc9c"></div>
+                        <div class="color-option" style="background-color: #2ecc71;" data-color="#2ecc71"></div>
+                        <div class="color-option" style="background-color: #f1c40f;" data-color="#f1c40f"></div>
+                        <div class="color-option" style="background-color: #e67e22;" data-color="#e67e22"></div>
+                        <div class="color-option" style="background-color: #e74c3c;" data-color="#e74c3c"></div>
+                        <div class="color-option" style="background-color: #9b59b6;" data-color="#9b59b6"></div>
+                        <div class="color-option" style="background-color: #34495e;" data-color="#34495e"></div>
+                    </div>
+                    <input type="hidden" id="color" name="color" value="#3498db">
+                </div>
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Clínica</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
@@ -186,7 +200,8 @@
             const filtered = clinics.filter(c => c.nombre.toLowerCase().includes(searchTerm) || c.contacto.toLowerCase().includes(searchTerm));
             tbody.innerHTML = '';
             filtered.forEach(c => {
-                tbody.innerHTML += `<tr><td>${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.cif || ''}</td><td>${parseFloat(c.importe || 0).toFixed(2)} €</td><td>${c.porcentaje_facultativo || 0}%</td>
+                const colorDot = c.color ? `<span class="clinic-color-dot" style="background-color: ${c.color}"></span>` : '';
+                tbody.innerHTML += `<tr><td>${colorDot}${c.nombre}</td><td>${c.contacto}</td><td>${c.telefono}</td><td>${c.cif || ''}</td><td>${parseFloat(c.importe || 0).toFixed(2)} €</td><td>${c.porcentaje_facultativo || 0}%</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editClinic('${c.id}')">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deleteClinic('${c.id}')">🗑️</a>
@@ -201,15 +216,35 @@
         window.openModal = function(title = "Nueva Clínica") {
             const modal = document.getElementById('modalClinica');
             modal.querySelector('h2').textContent = title;
-            if (title === "Nueva Clínica") { document.getElementById('form-clinica').reset(); editingId = null; }
+            if (title === "Nueva Clínica") { 
+                document.getElementById('form-clinica').reset(); 
+                editingId = null; 
+                selectColor('#3498db');
+            }
             modal.style.display = 'flex';
         }
         window.closeModal = function() { document.getElementById('modalClinica').style.display = 'none'; }
         
+        function selectColor(color) {
+            document.getElementById('color').value = color;
+            document.querySelectorAll('.color-option').forEach(opt => {
+                if (opt.dataset.color === color) opt.classList.add('selected');
+                else opt.classList.remove('selected');
+            });
+        }
+
+        document.querySelectorAll('.color-option').forEach(opt => {
+            opt.onclick = () => selectColor(opt.dataset.color);
+        });
+
         window.editClinic = function(id) {
             const c = clinics.find(c => c.id === id);
             editingId = id;
-            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe', 'porcentaje_facultativo'].forEach(f => document.getElementById(f).value = c[f] || '');
+            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe', 'porcentaje_facultativo', 'color'].forEach(f => {
+                const el = document.getElementById(f);
+                if (el) el.value = c[f] || (f === 'color' ? '#3498db' : '');
+            });
+            selectColor(c.color || '#3498db');
             openModal("Editar Clínica");
         }
         

@@ -187,13 +187,14 @@
                 patientAppsData.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
                 patientAppsData.forEach(c => {
+                    const statusLabel = c.estado === 'completed' ? 'Realizada' : (c.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
                     tbody.innerHTML += `
-                        <tr>
+                        <tr class="${c.estado === 'cancelled' ? 'row-cancelled' : ''}">
                             <td>${c.fecha}</td>
                             <td>${c.hora || '-'}</td>
                             <td>${c.clinica || '-'}</td>
                             <td>${c.observaciones || c.obs || '-'}</td>
-                            <td><span class="status-pill ${c.estado}">${c.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
+                            <td><span class="status-pill ${c.estado}">${statusLabel}</span></td>
                         </tr>
                     `;
                 });
