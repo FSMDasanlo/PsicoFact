@@ -14,9 +14,14 @@
 
     <header class="navbar">
         <div class="logo-container">
-            <a href="index.html" style="text-decoration: none;">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="PsicoFact Logo" class="logo-img">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
         </div>
     </header>
 
@@ -98,25 +103,46 @@
 
         let adminEmail = 'jesus.samperruiz@gmail.com';
 
-        onAuthStateChanged(auth, (user) => {
-            if (user && user.email === adminEmail) {
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            
+            // Cargar nombre del facultativo
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                const nameEl = document.getElementById('user-name');
+                if (nameEl) {
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        const fullName = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                        nameEl.textContent = fullName || user.email;
+                    } else {
+                        nameEl.textContent = user.email;
+                    }
+                }
+            } catch(e) { 
+                console.error("Error cargando perfil:", e);
+                const nameEl = document.getElementById('user-name');
+                if (nameEl) nameEl.textContent = user.email;
+            }
+
+            if (user.email === adminEmail) {
                 document.body.style.visibility = 'visible';
-            } else if (user) {
+            } else {
                 document.body.style.visibility = 'visible';
                 const menu = document.getElementById('admin-menu');
                 if (menu) {
                     menu.innerHTML = `<div style="grid-column: 1/-1; background:#fff3cd; padding:20px; border-radius:10px; border:1px solid #ffeeba;">
                         <p>⚠️ <strong>Sesión cambiada:</strong> Estás autenticado como <strong>${user.email}</strong>.</p>
                         <p style="font-size:0.9rem; margin-top:10px;">Para duplicar otro usuario o volver como Admin, debes cerrar sesión y entrar de nuevo con tu cuenta habitual (jesus.samperruiz@gmail.com).</p>
-                        <button class="btn-turquesa" onclick="window.handleLogout()" style="margin-top:15px;">Cerrar Sesión</button>
+                        <button class="btn-turquesa" id="logout-btn-msg" style="margin-top:15px;">Cerrar Sesión</button>
                     </div>`;
+                    document.getElementById('logout-btn-msg')?.addEventListener('click', () => signOut(auth));
                 }
-            } else {
-                window.location.href = 'index.html';
             }
         });
 
-        window.handleLogout = () => signOut(auth).then(() => location.href='index.html');
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
         window.listUsers = () => {

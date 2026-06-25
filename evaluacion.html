@@ -285,9 +285,14 @@
 
     <header class="navbar">
         <div class="logo-container">
-            <a href="index.html" style="text-decoration: none;">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="PsicoFact Logo" class="logo-img">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
         </div>
     </header>
 
@@ -750,10 +755,10 @@
 
     <script src="js/config.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
         const firebaseConfig = window.APP_CONFIG.firebase;
         const app = initializeApp(firebaseConfig);
@@ -764,68 +769,35 @@
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
-        // fecha eliminada
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const patientId = urlParams.get('id');
-        let savedEvaluations = [];
-
-        function calculateAge(birthday) {
-            if (!birthday) return null;
-            const birthDate = new Date(birthday);
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
-            }
-            return age;
-        }
-
-        // Fecha hoy por defecto
-        document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0];
-
-        async function loadPatient(id) {
-            if (!id) {
-                document.getElementById('nombre-paciente').textContent = "Error: ID de paciente no encontrado";
-                document.getElementById('edad-paciente').textContent = "--";
-                return;
-            }
-            try {
-                const docSnap = await getDoc(uDoc("pacientes", id));
-                if (docSnap.exists()) {
-                    const p = docSnap.data();
-                    document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
-                    const age = calculateAge(p.fechaNacimiento);
-                    if (age !== null) {
-                        document.getElementById('edad-paciente').textContent = `${age} años`;
-                    } else {
-                        document.getElementById('edad-paciente').textContent = "No especificada";
-                    }
-                } else {
-                    document.getElementById('nombre-paciente').textContent = "Paciente no encontrado";
-                    document.getElementById('edad-paciente').textContent = "--";
-                }
-            } catch (error) {
-                console.error("Error al cargar paciente:", error);
-                document.getElementById('nombre-paciente').textContent = "Error al cargar";
-                document.getElementById('edad-paciente').textContent = "--";
-            }
-        }
-
-        // Función de inicialización para asegurar que todo esté cargado
-        async function init() {
-            await loadPatient(patientId);
-            if (patientId) {
-                document.getElementById('btn-historial').style.display = 'inline-block';
-            }
-        }
-
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
             currentUid = user.uid;
+
+            // Cargar nombre del facultativo
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                const nameEl = document.getElementById('user-name');
+                if (nameEl) {
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        const fullName = [d.nombre, d.apellidos].filter(Boolean).join(' ');
+                        nameEl.textContent = fullName || user.email;
+                    } else {
+                        nameEl.textContent = user.email;
+                    }
+                }
+            } catch(e) { 
+                console.error("Error cargando perfil:", e);
+                const nameEl = document.getElementById('user-name');
+                if (nameEl) nameEl.textContent = user.email;
+            }
+
             init();
         });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        // fecha eliminada
 
         window.openHistorialModal = function() {
             document.getElementById('modalHistorial').style.display = 'flex';

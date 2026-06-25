@@ -41,6 +41,12 @@ body {
     align-items: center;
 }
 
+.logo-img {
+    height: 40px;
+    width: auto;
+    margin-right: 12px;
+}
+
 .brand-name {
     color: var(--blanco);
     font-size: 1.8rem;
@@ -438,6 +444,36 @@ footer {
 .toast.success { border-left-color: var(--turquesa); }
 .toast.error { border-left-color: #e74c3c; }
 .toast.info { border-left-color: var(--azul-primario); }
+
+/* User Info & Logout */
+.user-info-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+#user-name {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+.btn-logout {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: background 0.2s;
+}
+
+.btn-logout:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
 
 /* --- MEDIA QUERIES (Al final para asegurar que sobrescriban correctamente) --- */
 @media (max-width: 600px) {

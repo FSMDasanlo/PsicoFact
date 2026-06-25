@@ -233,18 +233,7 @@
         .btn-logout:hover { background: rgba(255,255,255,0.26); }
 
         /* Estilo para el nombre del facultativo debajo del botón */
-        .user-info-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 2px;
-        }
-        #user-name {
-            color: rgba(255,255,255,0.85);
-            font-size: 0.75rem;
-            font-weight: 400;
-            letter-spacing: 0.5px;
-        }
+        /* Eliminados estilos redundantes (ahora en style.css) */
     </style>
 </head>
 <body>
@@ -305,6 +294,7 @@
     <div id="app-wrapper">
         <header class="navbar">
             <div class="logo-container">
+                <img src="img/solo_psia_peque.PNG" alt="PsicoFact Logo" class="logo-img">
                 <span class="brand-name"><strong>P</strong>sico<strong>F</strong>act</span>
             </div>
             <div class="user-info-container">
@@ -415,7 +405,7 @@
 
             try {
                 await sendPasswordResetEmail(auth, email);
-                alert('Se ha enviado un correo de recuperación a: ' + email);
+                alert('Se ha enviado un correo de recuperación a: ' + email + '. Por favor, revisa también tu carpeta de correo no deseado (spam).');
             } catch (err) {
                 alert('Error al enviar el correo: ' + (ERROR_MSGS[err.code] || err.message));
             }
