@@ -78,13 +78,13 @@
             <table class="agenda-table">
                 <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>Referencia / Paciente</th>
-                        <th>Clínica</th>
-                        <th>Sociedad</th>
-                        <th>Total Clínica</th>
-                        <th>Importe PS</th>
-                        <th>Estado</th>
+                        <th onclick="window.sortTable('fecha')" style="cursor:pointer;">Fecha ↕️</th>
+                        <th onclick="window.sortTable('paciente')" style="cursor:pointer;">Referencia / Paciente ↕️</th>
+                        <th onclick="window.sortTable('clinica')" style="cursor:pointer;">Clínica ↕️</th>
+                        <th onclick="window.sortTable('sociedad')" style="cursor:pointer;">Sociedad ↕️</th>
+                        <th onclick="window.sortTable('importe')" style="cursor:pointer;">Total Clínica ↕️</th>
+                        <th onclick="window.sortTable('importe_facultativo')" style="cursor:pointer;">Importe PS ↕️</th>
+                        <th onclick="window.sortTable('estado')" style="cursor:pointer;">Estado ↕️</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-citas">
@@ -111,6 +111,12 @@
         const auth = getAuth(app);
         let currentUid = null;
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}-${month}-${year}`;
+        }
 
         function showToast(message, type = 'success') {
             let container = document.getElementById('toast-container');
@@ -146,6 +152,18 @@
         }
 
         let appointments = [];
+        let currentSortField = 'fecha';
+        let currentSortOrder = 'desc';
+
+        window.sortTable = function(field) {
+            if (currentSortField === field) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortOrder = 'asc';
+            }
+            renderData(appointments);
+        };
 
         async function loadAppointments() {
             const snap = await getDocs(uCol("citas"));
@@ -157,13 +175,31 @@
             const tbody = document.getElementById('resultados-citas');
             const resumen = document.getElementById('resumen-citas');
             tbody.innerHTML = '';
+            
+            // Ordenar datos
+            data.sort((a, b) => {
+                let valA = a[currentSortField] || '';
+                let valB = b[currentSortField] || '';
+
+                if (currentSortField === 'fecha') {
+                    valA = `${a.fecha}T${a.hora || '00:00'}`;
+                    valB = `${b.fecha}T${b.hora || '00:00'}`;
+                }
+
+                if (typeof valA === 'string') {
+                    return currentSortOrder === 'asc' 
+                        ? valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'}) 
+                        : valB.localeCompare(valA, undefined, {numeric: true, sensitivity: 'base'});
+                } else {
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
+            });
 
             let realizadas = 0, importePagado = 0, pendientes = 0, importePendiente = 0;
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #95a5a6;">No hay citas para este periodo</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #95a5a6;">No hay citas para este periodo</td></tr>`;
             } else {
-                data.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
                 data.forEach(app => {
                     const isDone = app.estado === 'completed';
                     const isCancelled = app.estado === 'cancelled';
@@ -182,7 +218,7 @@
 
                     tbody.innerHTML += `
                         <tr class="${isCancelled ? 'row-cancelled' : ''}">
-                            <td>${app.fecha}</td>
+                            <td>${formatDate(app.fecha)}</td>
                             <td><strong>${app.referenciaPaciente || app.paciente}</strong></td>
                             <td>${app.clinica}</td>
                             <td>${app.sociedad}</td>

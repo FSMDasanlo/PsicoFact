@@ -105,6 +105,12 @@
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
 
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}-${month}-${year}`;
+        }
+
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
             currentUid = user.uid;
@@ -190,7 +196,7 @@
                     const statusLabel = c.estado === 'completed' ? 'Realizada' : (c.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
                     tbody.innerHTML += `
                         <tr class="${c.estado === 'cancelled' ? 'row-cancelled' : ''}">
-                            <td>${c.fecha}</td>
+                            <td>${formatDate(c.fecha)}</td>
                             <td>${c.hora || '-'}</td>
                             <td>${c.clinica || '-'}</td>
                             <td>${c.observaciones || c.obs || '-'}</td>

@@ -60,13 +60,13 @@
                         <td id="total-fac-sum" colspan="2" style="font-weight: bold; color: var(--turquesa); text-align: center;">0.00 €</td>
                     </tr>
                     <tr>
-                        <th>Nº Factura</th>
-                        <th>Fecha</th>
-                        <th>Paciente</th>
-                        <th>Clínica</th>
-                        <th>Importe Clín.</th>
-                        <th>% Fac.</th>
-                        <th>Cobro Fac.</th>
+                        <th onclick="window.sortTable('n_factura')" style="cursor:pointer;">Nº Factura ↕️</th>
+                        <th onclick="window.sortTable('fecha')" style="cursor:pointer;">Fecha ↕️</th>
+                        <th onclick="window.sortTable('paciente')" style="cursor:pointer;">Paciente ↕️</th>
+                        <th onclick="window.sortTable('clinica')" style="cursor:pointer;">Clínica ↕️</th>
+                        <th onclick="window.sortTable('importe')" style="cursor:pointer;">Importe Clín. ↕️</th>
+                        <th onclick="window.sortTable('porcentaje_facultativo')" style="cursor:pointer;">% Fac. ↕️</th>
+                        <th onclick="window.sortTable('importe_facultativo')" style="cursor:pointer;">Cobro Fac. ↕️</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -125,6 +125,18 @@
         let clinicsMasterData = [];
         let excludedIds = []; // Nueva lista para rastrear sesiones a desvincular
         let facultativoData = {};
+        let currentSortField = 'fecha';
+        let currentSortOrder = 'desc';
+
+        window.sortTable = function(field) {
+            if (currentSortField === field) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortOrder = 'asc';
+            }
+            renderTable(currentInvoices);
+        };
 
         async function init() {
             // Cargar datos del facultativo
@@ -428,6 +440,26 @@
         function renderTable(items) {
             const tbody = document.getElementById('invoices-body');
             tbody.innerHTML = '';
+
+            // Ordenar datos
+            items.sort((a, b) => {
+                let valA = a[currentSortField] || '';
+                let valB = b[currentSortField] || '';
+
+                if (currentSortField === 'fecha') {
+                    valA = `${a.fecha}T${a.hora || '00:00'}`;
+                    valB = `${b.fecha}T${b.hora || '00:00'}`;
+                }
+
+                if (typeof valA === 'string') {
+                    return currentSortOrder === 'asc' 
+                        ? valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'}) 
+                        : valB.localeCompare(valA, undefined, {numeric: true, sensitivity: 'base'});
+                } else {
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
+            });
+
             let sumBase = 0;
             let sumFacultativo = 0;
 

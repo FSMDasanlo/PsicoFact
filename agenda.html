@@ -107,11 +107,11 @@
             <table class="agenda-table">
                 <thead>
                     <tr>
-                        <th>Hora</th>
-                        <th>Paciente (Sociedad)</th>
-                        <th>Clínica / Obs.</th>
-                        <th>Imp. Fac.</th>
-                        <th>Estado</th>
+                        <th onclick="window.sortTable('fecha')" style="cursor:pointer;">Hora ↕️</th>
+                        <th onclick="window.sortTable('paciente')" style="cursor:pointer;">Paciente (Sociedad) ↕️</th>
+                        <th onclick="window.sortTable('clinica')" style="cursor:pointer;">Clínica / Obs. ↕️</th>
+                        <th onclick="window.sortTable('importe_facultativo')" style="cursor:pointer;">Imp. Fac. ↕️</th>
+                        <th onclick="window.sortTable('estado')" style="cursor:pointer;">Estado ↕️</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -256,6 +256,8 @@
         let appointments = [];
         let currentCalendarDate = new Date();
         let editingAppointmentId = null;
+        let currentSortField = 'fecha';
+        let currentSortOrder = 'asc';
 
         async function init() {
             const snapP = await getDocs(uCol("pacientes"));
@@ -304,6 +306,12 @@
             select.innerHTML = '<option value="">Seleccione un paciente...</option>' + optionsHtml;
             filterSelect.innerHTML = '<option value="">Cualquier paciente...</option>' + optionsHtml;
         }
+
+        window.formatDate = function(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}-${month}-${year}`;
+        };
 
         window.calculateFacultativoAmount = function() {
             const total = parseFloat(document.getElementById('importe-cita').value) || 0;
@@ -377,14 +385,37 @@
             renderAgenda();
         }
 
+        window.sortTable = function(field) {
+            if (currentSortField === field) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortOrder = 'asc';
+            }
+            renderAgenda();
+        };
+
         function renderAgenda() {
             const tbody = document.getElementById('agenda-body');
             tbody.innerHTML = '';
             
-            // Ordenar por Fecha y luego por Hora
+            // Ordenar dinámicamente
             appointments.sort((a, b) => {
-                if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
-                return a.hora.localeCompare(b.hora);
+                let valA = a[currentSortField] || '';
+                let valB = b[currentSortField] || '';
+
+                if (currentSortField === 'fecha') {
+                    valA = `${a.fecha}T${a.hora}`;
+                    valB = `${b.fecha}T${b.hora}`;
+                }
+
+                if (typeof valA === 'string') {
+                    return currentSortOrder === 'asc' 
+                        ? valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'}) 
+                        : valB.localeCompare(valA, undefined, {numeric: true, sensitivity: 'base'});
+                } else {
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
             });
 
             const isFiltering = document.getElementById('filtro-paciente').value || document.getElementById('filtro-estado').value;
@@ -401,7 +432,7 @@
                 if (isCompleted) row.classList.add('row-completed');
                 if (isCancelled) row.classList.add('row-cancelled');
                 
-                const timeInfo = isFiltering ? `${app.fecha}<br><strong>${app.hora}</strong>` : app.hora;
+                const timeInfo = isFiltering ? `${window.formatDate(app.fecha)}<br><strong>${app.hora}</strong>` : app.hora;
 
                 row.innerHTML = `
                     <td>${timeInfo}</td>
