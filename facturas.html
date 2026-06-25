@@ -150,6 +150,40 @@
                 clientSelect.appendChild(opt);
             });
 
+            // Llenar selector de referencias al inicio buscando en todas las citas completadas
+            const qAll = query(uCol("citas"), where("estado", "==", "completed"));
+            const snapAll = await getDocs(qAll);
+            const refSelect = document.getElementById('filtro-referencia');
+            const seen = new Set();
+            const uniqueRefs = [];
+            
+            snapAll.forEach(d => {
+                const data = d.data();
+                if (data.n_factura && data.n_factura !== '---' && !seen.has(data.n_factura)) {
+                    seen.add(data.n_factura);
+                    uniqueRefs.push({ ref: data.n_factura, clinica: data.clinica });
+                }
+            });
+
+            uniqueRefs.sort((a, b) => {
+                const parseRef = (r) => {
+                    const m = r.match(/FP-(\d+)\/(\d+)/);
+                    return m ? { year: parseInt(m[1]), num: parseInt(m[2]) } : { year: 0, num: 0 };
+                };
+                const ra = parseRef(a.ref);
+                const rb = parseRef(b.ref);
+                if (ra.year !== rb.year) return rb.year - ra.year;
+                return rb.num - ra.num;
+            });
+
+            refSelect.innerHTML = '<option value="">Ver Factura Existente...</option>';
+            uniqueRefs.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.ref; 
+                opt.textContent = `${item.ref} - ${item.clinica}`;
+                refSelect.appendChild(opt);
+            });
+
             loadInvoices();
         }
 
@@ -195,56 +229,93 @@
         }
 
         async function emitGroupedInvoice() {
-            const printableInvoices = currentInvoices.filter(i => !excludedIds.includes(i.id));
-            if (printableInvoices.length === 0) return;
+            // 1. De todas las sesiones visibles, separar las ya facturadas de las pendientes
+            //    independientemente de si el usuario las ha excluido o no.
+            const yaFacturadas = currentInvoices.filter(i => i.n_factura && i.n_factura !== '---');
+            const pendientes    = currentInvoices.filter(i => !i.n_factura || i.n_factura === '---');
+
+            // 2. De las PENDIENTES, aplicar las exclusiones manuales del usuario
+            const pendientesSeleccionadas = pendientes.filter(i => !excludedIds.includes(i.id));
+
+            // REGLA DE ORO: las sesiones que ya tienen factura NO SE TOCAN NUNCA en este flujo.
 
             const year = document.getElementById('filtro-ano').value || new Date().getFullYear();
 
-            // Lógica para detectar si ya existe una referencia en este lote
-            const existingRef = printableInvoices.length > 0 ? printableInvoices[0].n_factura : null; // Busca en la primera de las imprimibles
+            let printableInvoices = [];
             let newInvoiceRef = "";
 
-            if (existingRef) {
-                // Si ya hay una referencia existente en el grupo, la mantenemos para añadir las nuevas
-                newInvoiceRef = existingRef;
-            } else {
-                // Si es una factura totalmente nueva, buscamos el siguiente número
-                const q = query(uCol("citas"), 
-                    where("n_factura", ">=", `FP-${year}/`),
-                    where("n_factura", "<=", `FP-${year}/\uf8ff`)
+            if (pendientesSeleccionadas.length === 0 && yaFacturadas.length > 0) {
+                // CASO A: Solo hay sesiones ya facturadas visibles (re-impresión o cambio de ref.)
+                const refsExistentes = [...new Set(yaFacturadas.map(i => i.n_factura))];
+                const defaultRef = refsExistentes[0];
+                const manualRef = prompt(
+                    `Todas las sesiones visibles ya están facturadas (${refsExistentes.join(', ')}).\n` +
+                    `Puede cambiar la referencia o pulsar Aceptar para mantenerla.\n\n` +
+                    `⚠️ Solo se actualizarán las sesiones con la referencia "${defaultRef}".`,
+                    defaultRef
                 );
-                const snap = await getDocs(q);
-                let maxNum = 0;
-                snap.forEach(d => {
-                    const parts = d.data().n_factura.split('/');
-                    if (parts.length === 2) {
-                        const num = parseInt(parts[1]);
-                        if (!isNaN(num) && num > maxNum) maxNum = num;
-                    }
-                });
-                newInvoiceRef = `FP-${year}/${String(maxNum + 1).padStart(3, '0')}`;
+                if (manualRef === null) return;
+                newInvoiceRef = manualRef.trim() || defaultRef;
+                // Solo re-asignamos las sesiones de ESA referencia concreta, no otras
+                printableInvoices = yaFacturadas.filter(i => i.n_factura === defaultRef);
+
+            } else if (pendientesSeleccionadas.length > 0 && yaFacturadas.length > 0) {
+                // CASO B: Hay pendientes Y ya facturadas → solo procesamos las pendientes
+                const refsExistentes = [...new Set(yaFacturadas.map(i => i.n_factura))];
+                const nextRef = await generateNextInvoiceRef(year);
+                const manualRef = prompt(
+                    `Hay ${yaFacturadas.length} sesión(es) ya facturadas (${refsExistentes.join(', ')}) que NO se modificarán.\n\n` +
+                    `Se va a crear una factura nueva para las ${pendientesSeleccionadas.length} sesiones pendientes.\n` +
+                    `Introduzca la referencia:`,
+                    nextRef
+                );
+                if (manualRef === null) return;
+                newInvoiceRef = manualRef.trim() || nextRef;
+                printableInvoices = pendientesSeleccionadas;  // ← solo las pendientes
+
+            } else {
+                // CASO C: Solo hay pendientes (nada facturado aún)
+                const nextRef = await generateNextInvoiceRef(year);
+                const manualRef = prompt(`Introduzca la referencia para las ${pendientesSeleccionadas.length} sesiones nuevas:`, nextRef);
+                if (manualRef === null) return;
+                newInvoiceRef = manualRef.trim() || nextRef;
+                printableInvoices = pendientesSeleccionadas;
             }
 
-            // Primero, actualizamos la base de datos con el nuevo número de factura
-            // Solo para las sesiones que SÍ se van a facturar
+            if (printableInvoices.length === 0) {
+                alert('No hay sesiones a procesar.');
+                return;
+            }
+
+            // 3. ACTUALIZACIÓN EN BASE DE DATOS — solo las sesiones de printableInvoices
             for (const item of printableInvoices) {
-                if (item.id) {
-                    await updateDoc(uDoc("citas", item.id), { n_factura: newInvoiceRef });
-                }
+                await updateDoc(uDoc("citas", item.id), { n_factura: newInvoiceRef });
             }
+            // ⚠️ NO se toca ninguna otra sesión. Las ya facturadas que no estén en printableInvoices
+            //    conservan su referencia original intacta.
 
-            // NUEVO: Disociar las sesiones excluidas en la base de datos
-            // A las sesiones que se excluyeron, les quitamos el número de factura
-            for (const id of excludedIds) {
-                await updateDoc(uDoc("citas", id), { n_factura: "" });
-            }
-
-            // Ahora que la BD está actualizada, podemos imprimir y luego recargar la tabla
+            // 4. FINALIZACIÓN
             alert(`Factura ${newInvoiceRef} procesada y lista para imprimir.`);
-            // Pasamos la lista de sesiones a imprimir y la referencia de factura directamente
-            printGroupedInvoice(printableInvoices, newInvoiceRef); 
-            excludedIds = []; // Limpiamos la lista de exclusiones después de imprimir
-            loadInvoices(); // Recargamos la tabla para reflejar los cambios de la BD
+            printGroupedInvoice(printableInvoices, newInvoiceRef);
+            excludedIds = [];
+            loadInvoices();
+        }
+
+        async function generateNextInvoiceRef(year) {
+            const q = query(uCol("citas"), 
+                where("n_factura", ">=", `FP-${year}/`),
+                where("n_factura", "<=", `FP-${year}/\uf8ff`)
+            );
+            const snap = await getDocs(q);
+            let maxNum = 0;
+            snap.forEach(d => {
+                const parts = d.data().n_factura.split('/');
+                if (parts.length === 2) {
+                    const num = parseInt(parts[1]);
+                    if (!isNaN(num) && num > maxNum) maxNum = num;
+                }
+            });
+            return `FP-${year}/${String(maxNum + 1).padStart(3, '0')}`;
         }
 
         async function loadInvoices() {
@@ -260,7 +331,7 @@
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Seleccione una clínica para ver sesiones</td></tr>';
                 btnEmitir.style.display = 'none';
 
-                // Cargar todas las referencias globales si no hay clínica seleccionada (nada más cargar la página)
+                // Cargar todas las referencias globales si no hay clínica seleccionada
                 const qGlobal = query(uCol("citas"), where("estado", "==", "completed"));
                 const snapGlobal = await getDocs(qGlobal);
                 
@@ -269,12 +340,25 @@
                 const seen = new Set();
 
                 globalData.forEach(i => {
-                    if (i.n_factura && i.n_factura !== '---' && !seen.has(i.n_factura)) {
-                        seen.add(i.n_factura);
-                        uniqueRefs.push({ ref: i.n_factura, clinica: i.clinica });
+                    const refNum = i.n_factura;
+                    if (refNum && refNum !== '---' && !seen.has(refNum)) {
+                        seen.add(refNum);
+                        uniqueRefs.push({ ref: refNum, clinica: i.clinica });
                     }
                 });
-                uniqueRefs.sort((a, b) => b.ref.localeCompare(a.ref));
+                
+                // Ordenar por número de factura (asumiendo formato FP-YYYY/NNN)
+                uniqueRefs.sort((a, b) => {
+                    // Extraer los componentes para una ordenación numérica real
+                    const parseRef = (r) => {
+                        const m = r.match(/FP-(\d+)\/(\d+)/);
+                        return m ? { year: parseInt(m[1]), num: parseInt(m[2]) } : { year: 0, num: 0 };
+                    };
+                    const ra = parseRef(a.ref);
+                    const rb = parseRef(b.ref);
+                    if (ra.year !== rb.year) return rb.year - ra.year;
+                    return rb.num - ra.num;
+                });
                 
                 refSelect.innerHTML = '<option value="">Ver Factura Existente...</option>';
                 uniqueRefs.forEach(item => {

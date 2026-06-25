@@ -161,11 +161,10 @@
             line-height: 1.7;
             color: #333;
         }
-        .diag-char-count {
-            font-size: 0.78rem;
-            color: #999;
-            text-align: right;
-            margin-top: 3px;
+        .agenda-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         /* ===== PANEL LATERAL ADJETIVOS ===== */
@@ -311,7 +310,7 @@
 
         <!-- Cabecera de Datos -->
         <div class="eval-header-info">
-            <div><strong>Paciente:</strong> <span id="nombre-paciente">Cargando...</span></div>
+            <div><strong>Paciente:</strong> <span id="nombre-paciente">Cargando...</span> <br> <small id="paciente-sociedad" style="color: #666;"></small></div>
             <div><strong>Edad:</strong> <span id="edad-paciente">--</span></div>
             <div><strong>Fecha:</strong> <input type="date" id="fecha-evaluacion" name="fecha_evaluacion" style="border:none; font-weight:600; font-family:inherit;"></div>
         </div>
@@ -766,8 +765,50 @@
         const auth = getAuth(app);
         const functions = getFunctions(app, "us-central1");
         let currentUid = null;
+        let patientId = null;
+        let savedEvaluations = [];
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
+
+        async function init() {
+            const params = new URLSearchParams(window.location.search);
+            patientId = params.get('id');
+            if (!patientId) {
+                alert("ID de paciente no encontrado.");
+                window.location.href = 'Con_pacientes.html';
+                return;
+            }
+
+            try {
+                const pSnap = await getDoc(uDoc('pacientes', patientId));
+                if (pSnap.exists()) {
+                    const p = pSnap.data();
+                    document.getElementById('nombre-paciente').textContent = `${p.nombre} ${p.apellidos}`;
+                    document.getElementById('paciente-sociedad').textContent = p.sociedad || 'N/A';
+                    
+                    // Calcular edad
+                    if (p.fechaNacimiento) {
+                        const birth = new Date(p.fechaNacimiento);
+                        const today = new Date();
+                        let age = today.getFullYear() - birth.getFullYear();
+                        const m = today.getMonth() - birth.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                        document.getElementById('edad-paciente').textContent = `${age} años`;
+                    }
+
+                    document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0];
+                    
+                    // Mostrar botón de historial si existen evaluaciones
+                    const qEval = query(uCol("evaluaciones_completas"), where("patientId", "==", patientId));
+                    const evalSnap = await getDocs(qEval);
+                    if (!evalSnap.empty) {
+                        document.getElementById('btn-historial').style.display = 'block';
+                    }
+                }
+            } catch (err) {
+                console.error("Error al cargar datos del paciente:", err);
+            }
+        }
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }

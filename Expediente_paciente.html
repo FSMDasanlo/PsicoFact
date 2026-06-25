@@ -91,7 +91,7 @@
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
         const firebaseConfig = window.APP_CONFIG.firebase;
@@ -165,8 +165,10 @@
                     <div class="form-group full-width"><label>Notas Generales</label><p>${p.notas || p.observaciones || '-'}</p></div>
                 `;
 
-                // 2. Cargar historial de citas
-                const q = query(uCol('citas'), orderBy('fecha', 'desc'));
+                // 2. Cargar historial de citas (filtrado por paciente)
+                // Nota: Usamos filter en el cliente para evitar requerir índices compuestos complejos de Firestore 
+                // para cada combinación de paciente/fecha si no son necesarios.
+                const q = query(uCol('citas'));
                 const cSnap = await getDocs(q);
                 
                 const tbody = document.getElementById('historial-citas');
@@ -177,17 +179,23 @@
                     const c = doc.data();
                     // Filtramos por referencia o por nombre exacto
                     if (c.referenciaPaciente === p.referencia || (c.paciente === currentPatientName)) {
-                        patientAppsData.push(c);
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${c.fecha}</td>
-                                <td>${c.hora || '-'}</td>
-                                <td>${c.clinica || '-'}</td>
-                                <td>${c.observaciones || c.obs || '-'}</td>
-                                <td><span class="status-pill ${c.estado}">${c.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
-                            </tr>
-                        `;
+                        patientAppsData.push({ id: doc.id, ...c });
                     }
+                });
+
+                // Ordenar por fecha descendente manualmente
+                patientAppsData.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+                patientAppsData.forEach(c => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${c.fecha}</td>
+                            <td>${c.hora || '-'}</td>
+                            <td>${c.clinica || '-'}</td>
+                            <td>${c.observaciones || c.obs || '-'}</td>
+                            <td><span class="status-pill ${c.estado}">${c.estado === 'completed' ? 'Realizada' : 'Pendiente'}</span></td>
+                        </tr>
+                    `;
                 });
 
                 if (patientAppsData.length === 0) {
