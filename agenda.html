@@ -888,7 +888,8 @@
                     const citasEnHora = citasRange.filter(c => c.fecha === d && c.hora.startsWith(String(hour).padStart(2, '0') + ':'));
                     
                     if (citasEnHora.length > 0) {
-                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #fff; cursor: pointer; text-align: center;">`;
+                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #fff; cursor: pointer; text-align: center;" 
+                                     ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">`;
                         citasEnHora.forEach(cita => {
                             const clinicInfo = clinicsMasterData.find(c => c.nombre === cita.clinica);
                             const clinicColor = clinicInfo ? clinicInfo.color : '#e3f2fd';
@@ -896,7 +897,9 @@
                             const bgColor = clinicInfo ? `${clinicInfo.color}22` : '#e3f2fd'; // 22 es ~13% opacidad
                             const borderColor = clinicInfo ? clinicInfo.color : '#bbdefb';
 
-                            html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
+                            html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" 
+                                        draggable="true" ondragstart="window.handleDragStart(event, '${cita.id}')" ondragend="window.handleDragEnd(event)"
+                                        onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
                                         <div style="font-size: 0.8rem;">${cita.hora}</div>
                                         <div>${cita.paciente}</div>
                                         <div style="font-size: 0.7rem; color: #666; font-weight: 400;">${cita.clinica}</div>
@@ -905,6 +908,7 @@
                         html += `</td>`;
                     } else {
                         html += `<td style="border: 1px solid #dee2e6; padding: 6px; cursor: pointer; color: #dee2e6; text-align: center; transition: background 0.2s;" 
+                                    ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')"
                                     onmouseover="this.style.background='#f1f3f5'; this.textContent='+'" 
                                     onmouseout="this.style.background='transparent'; this.textContent=''"
                                     onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}'), 50)"></td>`;
@@ -935,6 +939,70 @@
         window.closeCalendarModal = closeCalendarModal;
         window.openTramosModal = openTramosModal;
         window.closeTramosModal = closeTramosModal;
+
+        window.handleDragStart = function(e, appointmentId) {
+            const app = appointments.find(a => a.id === appointmentId);
+            if (app && app.estado === 'completed') {
+                showToast("No se puede mover una cita ya realizada.", "error");
+                e.preventDefault();
+                return;
+            }
+            e.dataTransfer.setData('text/plain', appointmentId);
+            e.target.style.opacity = '0.5';
+        };
+
+        window.handleDragEnd = function(e) {
+            e.target.style.opacity = '1';
+        };
+
+        window.handleDragOver = function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.style.background = '#e3f2fd';
+        };
+
+        window.handleDragLeave = function(e) {
+            e.currentTarget.style.background = '';
+        };
+
+        window.handleDrop = async function(e, targetDate, targetTime) {
+            e.preventDefault();
+            e.currentTarget.style.background = '';
+            const appointmentId = e.dataTransfer.getData('text/plain');
+            if (!appointmentId) return;
+
+            const app = appointments.find(a => a.id === appointmentId);
+            if (!app) return;
+
+            // Si es el mismo destino, no hacemos nada
+            if (app.fecha === targetDate && app.hora === targetTime) return;
+
+            // 1.- Controlar que no esté realizada la sesión
+            if (app.estado === 'completed') {
+                showToast("No se puede mover una cita ya realizada.", "error");
+                return;
+            }
+
+            // 2.- Pedir confirmación
+            const confirmMsg = `¿Desea mover la cita de ${app.paciente} al día ${window.formatDate(targetDate)} a las ${targetTime}?`;
+            if (confirm(confirmMsg)) {
+                try {
+                    // Actualizar en Firestore
+                    await updateDoc(uDoc("citas", appointmentId), {
+                        fecha: targetDate,
+                        hora: targetTime,
+                        estado: 'pending' // Asegurar que sea Pendiente si se mueve (aunque ya lo debería ser)
+                    });
+                    showToast("Cita movida correctamente.", "success");
+                    // Recargar vistas
+                    loadFilteredAppointments();
+                    openTramosModal(targetDate); // Refrescar el modal de tramos
+                } catch (error) {
+                    console.error("Error al mover la cita:", error);
+                    showToast("Error al mover la cita.", "error");
+                }
+            }
+        };
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
