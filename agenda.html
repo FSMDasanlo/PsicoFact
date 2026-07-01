@@ -162,13 +162,21 @@
                         <option value="">Seleccione un paciente...</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="sociedad-cita">Sociedad</label>
-                    <input type="text" id="sociedad-cita" name="sociedad" readonly style="background-color: #f0f0f0;">
-                </div>
-                <div class="form-group">
-                    <label for="clinica-cita">Clínica</label>
-                    <input type="text" id="clinica-cita" name="clinica" readonly style="background-color: #f0f0f0;">
+                <div class="form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="sociedad-cita">Sociedad</label>
+                        <input type="text" id="sociedad-cita" name="sociedad" readonly style="background-color: #f0f0f0; width: 100%;">
+                    </div>
+                    <div>
+                        <label for="clinica-cita">Clínica</label>
+                        <input type="text" id="clinica-cita" name="clinica" readonly style="background-color: #f0f0f0; width: 100%;">
+                    </div>
+                    <div>
+                        <label for="centro-cita">Centro</label>
+                        <select id="centro-cita" name="centro" style="width: 100%;">
+                            <option value="">Seleccione centro...</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group full-width" style="display: flex; flex-direction: row; gap: 15px; align-items: flex-end; width: 100%;">
                     <div style="flex: 2;">
@@ -272,6 +280,7 @@
 
         let patientsMaster = [];
         let clinicsMasterData = [];
+        let centrosMasterData = [];
         let statesMasterData = [];
         let appointments = [];
         let currentCalendarDate = new Date();
@@ -285,6 +294,8 @@
             patientsMaster = snapP.docs.map(d => d.data());
             const snapC = await getDocs(uCol("clinicas"));
             clinicsMasterData = snapC.docs.map(d => d.data());
+            const snapCentros = await getDocs(uCol("centros"));
+            centrosMasterData = snapCentros.docs.map(d => d.data());
             
             // Cargar estados
             try {
@@ -303,7 +314,16 @@
 
             populatePatientDropdown();
             populateStatesDropdowns();
+            populateCentrosDropdown();
             loadFilteredAppointments();
+        }
+
+        function populateCentrosDropdown() {
+            const select = document.getElementById('centro-cita');
+            if (select) {
+                let optionsHtml = centrosMasterData.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+                select.innerHTML = '<option value="">Seleccione centro...</option>' + optionsHtml;
+            }
         }
 
         function populateStatesDropdowns() {
@@ -464,11 +484,18 @@
                 const timeInfo = isFiltering ? `${window.formatDate(app.fecha)}<br><strong>${app.hora}</strong>` : app.hora;
 
                 const displayPct = app.por_seguro ? 50 : (app.porcentaje_facultativo || 0);
+                
+                // Buscar color del centro si existe, si no el de la clínica
+                let mainColor = clinicColor;
+                if (app.centro) {
+                    const centroInfo = centrosMasterData.find(c => c.nombre === app.centro);
+                    if (centroInfo && centroInfo.color) mainColor = centroInfo.color;
+                }
 
                 row.innerHTML = `
                     <td>${timeInfo}</td>
                     <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
-                    <td><span class="clinic-color-dot" style="background-color: ${clinicColor}"></span>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
+                    <td><span class="clinic-color-dot" style="background-color: ${mainColor}"></span>${app.clinica}${app.centro ? ' / ' + app.centro : ''} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
                     <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${displayPct}%)</small></td>
                     <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
                     <td style="text-align: center;">
@@ -541,8 +568,8 @@
             // Primero abrimos el modal (esto hace el reset de campos de repetición y sets flags)
             openAppointmentModal("Editar Cita");
 
-            ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
-                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f)))))));
+            ['fecha', 'hora', 'sociedad', 'clinica', 'centro', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
+                const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'centro' ? 'centro-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f))))))));
                 if(el) {
                     el.value = app[f] || (f === 'estado' ? 'pending' : '');
                 }
@@ -894,17 +921,25 @@
                                      ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">`;
                         citasEnHora.forEach(cita => {
                             const clinicInfo = clinicsMasterData.find(c => c.nombre === cita.clinica);
-                            const clinicColor = clinicInfo ? clinicInfo.color : '#e3f2fd';
-                            // Usar el color de la clínica con opacidad para el fondo
-                            const bgColor = clinicInfo ? `${clinicInfo.color}22` : '#e3f2fd'; // 22 es ~13% opacidad
-                            const borderColor = clinicInfo ? clinicInfo.color : '#bbdefb';
+                            const centroInfo = centrosMasterData.find(c => c.nombre === cita.centro);
+                            
+                            // Prioridad: Color del centro, sino color de la clínica, sino azul por defecto
+                            let baseColor = '#3498db';
+                            if (centroInfo && centroInfo.color) {
+                                baseColor = centroInfo.color;
+                            } else if (clinicInfo && clinicInfo.color) {
+                                baseColor = clinicInfo.color;
+                            }
+
+                            const bgColor = `${baseColor}22`; // 22 es ~13% opacidad
+                            const borderColor = baseColor;
 
                             html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" 
                                         draggable="true" ondragstart="window.handleDragStart(event, '${cita.id}')" ondragend="window.handleDragEnd(event)"
                                         onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
                                         <div style="font-size: 0.8rem;">${cita.hora}</div>
                                         <div>${cita.paciente}</div>
-                                        <div style="font-size: 0.7rem; color: #666; font-weight: 400;">${cita.clinica}</div>
+                                        <div style="font-size: 0.7rem; color: #666; font-weight: 400;">${cita.clinica}${cita.centro ? ' / ' + cita.centro : ''}</div>
                                      </div>`;
                         });
                         html += `</td>`;
