@@ -463,11 +463,13 @@
                 
                 const timeInfo = isFiltering ? `${window.formatDate(app.fecha)}<br><strong>${app.hora}</strong>` : app.hora;
 
+                const displayPct = app.por_seguro ? 50 : (app.porcentaje_facultativo || 0);
+
                 row.innerHTML = `
                     <td>${timeInfo}</td>
                     <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
                     <td><span class="clinic-color-dot" style="background-color: ${clinicColor}"></span>${app.clinica} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
-                    <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${app.porcentaje_facultativo || 0}%)</small></td>
+                    <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${displayPct}%)</small></td>
                     <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment('${app.id}')" title="${isCompleted ? 'Marcar como Pendiente' : 'Marcar como Realizada'}">${checkIcon}</a>

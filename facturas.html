@@ -475,6 +475,7 @@
                 }
 
                 const rowStyle = isExcluded ? 'style="text-decoration: line-through; color: #999; opacity: 0.6; background-color: #fff1f1;"' : '';
+                const displayPct = item.por_seguro ? 50 : (item.porcentaje_facultativo || 0);
 
                 tbody.innerHTML += `
                     <tr ${rowStyle}>
@@ -483,7 +484,7 @@
                         <td>${item.referenciaPaciente || item.paciente}</td>
                         <td>${item.clinica}</td>
                         <td>${importeClinica.toFixed(2)} €</td>
-                        <td style="color: #666; font-size: 0.85rem;">${item.porcentaje_facultativo || 0}%</td>
+                        <td style="color: #666; font-size: 0.85rem;">${displayPct}%</td>
                         <td style="color: var(--turquesa); font-weight: 600;">${importeFacultativo.toFixed(2)} €</td>
                         <td style="text-align: center;">
                             ${item.n_factura ? `<a href="javascript:void(0)" class="action-icon" onclick="triggerFilePicker()" title="Buscar PDF en el equipo" style="margin-right:8px;">📁</a>` : ''}
