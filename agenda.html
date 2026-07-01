@@ -197,6 +197,20 @@
                         <option value="cancelled">Cancelada</option>
                     </select>
                 </div>
+                
+                <!-- Sección para clonar/repetir cita -->
+                <div class="form-group full-width" style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; border: 1px solid #cce5ff; margin-top: 10px;">
+                    <label style="font-weight: 700; color: #004085; display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                        <input type="checkbox" id="repetir-cita" style="width: 20px; height: 20px; cursor: pointer;">
+                        Repetir esta cita semanalmente
+                    </label>
+                    <div id="repeticion-opciones" style="display: none; margin-top: 12px; align-items: center; gap: 10px; padding-left: 30px; font-weight: 600; color: #004085;">
+                        <span>Crear</span>
+                        <input type="number" id="repeticion-veces" value="1" min="1" max="12" style="width: 65px; padding: 8px; border: 1px solid #b8daff; border-radius: 4px; text-align: center;">
+                        <span>citas adicionales (una cada semana)</span>
+                    </div>
+                </div>
+
                 <input type="hidden" id="ref-cita" name="referenciaPaciente">
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
@@ -262,6 +276,7 @@
         let appointments = [];
         let currentCalendarDate = new Date();
         let editingAppointmentId = null;
+        let wasCalendarOpen = false; // Flag para saber si venimos del calendario
         let currentSortField = 'fecha';
         let currentSortOrder = 'asc';
 
@@ -466,15 +481,43 @@
         function openAppointmentModal(title = "Nueva Cita", preselectedDate = null, preselectedTime = null) {
             const modal = document.getElementById('modalCita');
             modal.querySelector('h2').textContent = title;
+            
+            // Ajuste 3: Si el calendario está visible (en fondo), marcamos que volvemos a él
+            if (document.getElementById('modalCalendario').style.display === 'flex') {
+                wasCalendarOpen = true;
+            }
+
+            // Reset de repetición
+            document.getElementById('repetir-cita').checked = false;
+            document.getElementById('repeticion-opciones').style.display = 'none';
+            document.getElementById('repeticion-veces').value = 1;
+
             if (title === "Nueva Cita") {
                 document.getElementById('form-cita').reset();
                 document.getElementById('fecha').value = preselectedDate || new Date().toISOString().split('T')[0];
                 if (preselectedTime) document.getElementById('hora').value = preselectedTime;
+                
+                // Forzamos el estado a 'pending' al crear una nueva cita
+                const estadoCita = document.getElementById('estado-cita');
+                if (estadoCita) estadoCita.value = 'pending';
+                
                 editingAppointmentId = null;
             }
             modal.style.display = 'flex';
         }
-        function closeAppointmentModal() { document.getElementById('modalCita').style.display = 'none'; }
+
+        // Listener para el checkbox de repetición
+        document.getElementById('repetir-cita').onchange = function() {
+            document.getElementById('repeticion-opciones').style.display = this.checked ? 'flex' : 'none';
+        };
+
+        function closeAppointmentModal() { 
+            document.getElementById('modalCita').style.display = 'none'; 
+            if (wasCalendarOpen) {
+                showCalendarView();
+                wasCalendarOpen = false;
+            }
+        }
         
         async function completeAppointment(id) {
             const app = appointments.find(a => a.id === id);
@@ -492,9 +535,15 @@
         function editAppointment(id) {
             const app = appointments.find(a => a.id === id);
             editingAppointmentId = id;
+            
+            // Primero abrimos el modal (esto hace el reset de campos de repetición y sets flags)
+            openAppointmentModal("Editar Cita");
+
             ['fecha', 'hora', 'sociedad', 'clinica', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
                 const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f)))))));
-                if(el) el.value = app[f] || (f === 'estado' ? 'pending' : '');
+                if(el) {
+                    el.value = app[f] || (f === 'estado' ? 'pending' : '');
+                }
             });
             document.getElementById('paciente-select').value = app.paciente;
             document.getElementById('ref-cita').value = app.referenciaPaciente || '';
@@ -508,8 +557,6 @@
                     window.calculateFacultativoAmount();
                 }
             }
-            
-            openAppointmentModal("Editar Cita");
         }
         document.getElementById('form-cita').onsubmit = async function(e) {
             e.preventDefault();
@@ -532,8 +579,66 @@
                 return;
             }
 
-            editingAppointmentId ? await updateDoc(uDoc("citas", editingAppointmentId), data) : await addDoc(uCol("citas"), { ...data, estado: 'pending' });
-            loadFilteredAppointments(); closeAppointmentModal();
+            // Ajuste 2: Evitar estado "Pendiente" en citas pasadas
+            const hoyStr = new Date().toISOString().split('T')[0];
+            if (editingAppointmentId) {
+                // Si editamos y es pasada
+                if (data.fecha < hoyStr && data.estado === 'pending') {
+                    showToast("No se puede poner una cita pasada como Pendiente. Se marcará como Cancelada.", "warning");
+                    data.estado = 'cancelled';
+                }
+                await updateDoc(uDoc("citas", editingAppointmentId), data);
+            } else {
+                // Si es nueva y es pasada
+                if (data.fecha < hoyStr && data.estado === 'pending') {
+                    showToast("No se puede poner una cita pasada como Pendiente. Se marcará como Cancelada.", "warning");
+                    data.estado = 'cancelled';
+                } else if (!data.estado) {
+                    data.estado = 'pending';
+                }
+                await addDoc(uCol("citas"), data);
+            }
+            
+            // Lógica de Repetición (Clonado Semanal)
+            const repetir = document.getElementById('repetir-cita').checked;
+            const veces = parseInt(document.getElementById('repeticion-veces').value) || 0;
+            
+            if (repetir && veces > 0) {
+                let creadas = 0;
+                const baseDate = new Date(`${data.fecha}T${data.hora}`);
+                
+                for (let i = 1; i <= veces; i++) {
+                    const nextDate = new Date(baseDate);
+                    nextDate.setDate(baseDate.getDate() + (i * 7));
+                    const nextDateStr = nextDate.toISOString().split('T')[0];
+                    
+                    // Clonamos los datos con la nueva fecha
+                    const nextData = { ...data, fecha: nextDateStr, estado: 'pending' };
+                    
+                    // Ajuste 2 también para clones: Si la fecha clonada sigue siendo pasada
+                    if (nextDateStr < hoyStr) {
+                        nextData.estado = 'cancelled';
+                    }
+                    
+                    // Si habia un ID de edición, lo quitamos para que sea una nueva inserción
+                    delete nextData.id; 
+
+                    await addDoc(uCol("citas"), nextData);
+                    creadas++;
+                }
+                if (creadas > 0) {
+                    showToast(`Se han creado ${creadas} citas semanales adicionales.`, 'success');
+                }
+            }
+
+            loadFilteredAppointments(); 
+            closeAppointmentModal();
+
+            // Ajuste 3: Volver al calendario si estaba abierto y actualizarlo
+            if (wasCalendarOpen) {
+                showCalendarView();
+                wasCalendarOpen = false;
+            }
         };
 
         function addToGoogleCalendar() {
@@ -664,6 +769,7 @@
                     }
                     clickTimer = setTimeout(() => {
                         if (currentDayDate >= today) {
+                            wasCalendarOpen = true; // Marcamos antes de cerrar
                             closeCalendarModal();
                             openAppointmentModal("Nueva Cita", dateKey);
                         }
@@ -744,8 +850,12 @@
 
             // Asegurar que las citas del rango estén disponibles para editAppointment
             citasRange.forEach(c => {
-                if (!appointments.find(a => a.id === c.id)) {
+                const index = appointments.findIndex(a => a.id === c.id);
+                if (index === -1) {
                     appointments.push(c);
+                } else {
+                    // Actualizar por si ha cambiado el estado
+                    appointments[index] = c;
                 }
             });
 
@@ -786,7 +896,7 @@
                             const bgColor = clinicInfo ? `${clinicInfo.color}22` : '#e3f2fd'; // 22 es ~13% opacidad
                             const borderColor = clinicInfo ? clinicInfo.color : '#bbdefb';
 
-                            html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" onclick="window.closeTramosModal(); window.editAppointment('${cita.id}')">
+                            html += `<div style="font-weight: 600; margin-bottom: 4px; border: 1px solid ${borderColor}; background: ${bgColor}; padding: 4px; border-radius: 4px; color: #333;" onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
                                         <div style="font-size: 0.8rem;">${cita.hora}</div>
                                         <div>${cita.paciente}</div>
                                         <div style="font-size: 0.7rem; color: #666; font-weight: 400;">${cita.clinica}</div>
@@ -797,7 +907,7 @@
                         html += `<td style="border: 1px solid #dee2e6; padding: 6px; cursor: pointer; color: #dee2e6; text-align: center; transition: background 0.2s;" 
                                     onmouseover="this.style.background='#f1f3f5'; this.textContent='+'" 
                                     onmouseout="this.style.background='transparent'; this.textContent=''"
-                                    onclick="window.closeTramosModal(); window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}')"></td>`;
+                                    onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}'), 50)"></td>`;
                     }
                 });
                 html += `</tr>`;
