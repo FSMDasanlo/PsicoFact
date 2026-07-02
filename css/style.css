@@ -181,6 +181,30 @@ footer {
 .completed { background-color: #d1ecf1; color: #0c5460; }
 .cancelled { background-color: #f8d7da; color: #721c24; }
 
+/* Alertas para estados incoherentes */
+.status-pill.pending.overdue {
+    background-color: transparent;
+    color: #d63031;
+    font-weight: 800;
+    border: none;
+    box-shadow: none;
+    animation: pulse-text 2s infinite;
+}
+
+.status-pill.completed.future {
+    background-color: transparent;
+    color: #3498db;
+    font-weight: 800;
+    border: none;
+    box-shadow: none;
+}
+
+@keyframes pulse-text {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
 /* Resaltado para fila completada */
 .row-completed {
     background-color: #f0fdfa !important; /* Un tono turquesa muy suave */
@@ -292,10 +316,60 @@ footer {
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     outline: none;
     border-color: var(--azul-primario);
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
 }
 
 .full-width {
     grid-column: span 2;
+}
+
+/* Nuevos Estilos para secciones de formulario */
+.form-section {
+    background-color: #f8fbff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 5px solid var(--azul-primario);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin: 15px 0;
+}
+
+.section-title {
+    font-size: 0.95rem;
+    color: var(--azul-oscuro);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title::before {
+    content: "📋";
+    font-size: 1.1rem;
+}
+
+.form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+@media (max-width: 650px) {
+    .form-grid-3, .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .modal-content {
+        width: 95%;
+        padding: 1rem;
+    }
+}
+
+.action-icon {
+    text-decoration: none;
+    margin: 0 5px;
+    font-size: 1.2rem;
 }
 
 .form-actions {

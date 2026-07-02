@@ -111,8 +111,8 @@
                         <th onclick="window.sortTable('paciente')" style="cursor:pointer;">Paciente (Sociedad) ↕️</th>
                         <th onclick="window.sortTable('clinica')" style="cursor:pointer;">Clínica / Obs. ↕️</th>
                         <th onclick="window.sortTable('importe_facultativo')" style="cursor:pointer;">Imp. Fac. ↕️</th>
-                        <th onclick="window.sortTable('estado')" style="cursor:pointer;">Estado ↕️</th>
-                        <th style="text-align: center;">Acciones</th>
+                        <th onclick="window.sortTable('estado')" style="min-width: 140px; cursor:pointer;">Estado ↕️</th>
+                        <th style="text-align: center; min-width: 130px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="agenda-body"></tbody>
@@ -372,8 +372,14 @@
             document.getElementById('por-seguro').checked = false;
             const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
             if (patient) {
-                document.getElementById('sociedad-cita').value = patient.sociedad;
-                document.getElementById('clinica-cita').value = patient.clinica;
+                document.getElementById('sociedad-cita').value = patient.sociedad || '';
+                document.getElementById('clinica-cita').value = patient.clinica || '';
+                
+                // Autorellenar centro si el paciente lo tiene asignado
+                const centroCita = document.getElementById('centro-cita');
+                if (centroCita && patient.centro) {
+                    centroCita.value = patient.centro;
+                }
                 
                 const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
                 const pct = clinicData ? (parseFloat(clinicData.porcentaje_facultativo) || 0) : 0;
@@ -390,6 +396,7 @@
             } else {
                 document.getElementById('sociedad-cita').value = '';
                 document.getElementById('clinica-cita').value = '';
+                if (document.getElementById('centro-cita')) document.getElementById('centro-cita').value = '';
                 document.getElementById('importe-cita').value = '';
                 document.getElementById('porcentaje-facultativo-cita').value = '0';
                 document.getElementById('importe-facultativo').value = '';
@@ -468,6 +475,9 @@
             });
 
             const isFiltering = document.getElementById('filtro-paciente').value || document.getElementById('filtro-estado').value;
+            const now = new Date();
+            const hoyStr = now.toISOString().split('T')[0];
+            const horaActual = now.toTimeString().split(' ')[0].substring(0, 5); // HH:mm
 
             appointments.forEach(app => {
                 const clinicInfo = clinicsMasterData.find(c => c.nombre === app.clinica);
@@ -492,13 +502,31 @@
                     if (centroInfo && centroInfo.color) mainColor = centroInfo.color;
                 }
 
+                // Lógica de validación temporal
+                let statusClasses = `status-pill ${app.estado}`;
+                let statusTitle = getStatusLabel(app.estado);
+
+                if (app.estado === 'pending') {
+                    // Cita pendiente en el pasado
+                    if (app.fecha < hoyStr || (app.fecha === hoyStr && app.hora < horaActual)) {
+                        statusClasses += ' overdue';
+                        statusTitle += ' (¡VENCIDA!)';
+                    }
+                } else if (app.estado === 'completed') {
+                    // Cita realizada en el futuro
+                    if (app.fecha > hoyStr || (app.fecha === hoyStr && app.hora > horaActual)) {
+                        statusClasses += ' future';
+                        statusTitle += ' (Anticipada)';
+                    }
+                }
+
                 row.innerHTML = `
                     <td>${timeInfo}</td>
                     <td>${app.paciente} <br><small style="color: #666">(${app.sociedad})</small></td>
                     <td><span class="clinic-color-dot" style="background-color: ${mainColor}"></span>${app.clinica}${app.centro ? ' / ' + app.centro : ''} <br><small style="color: #999">${app.observaciones || app.obs || ''}</small></td>
                     <td><strong>${parseFloat(app.importe_facultativo || 0).toFixed(2)}€</strong> <br> <small style="color:#999">(${displayPct}%)</small></td>
-                    <td><span class="status-pill ${app.estado}">${getStatusLabel(app.estado)}</span></td>
-                    <td style="text-align: center;">
+                    <td><span class="${statusClasses}">${statusTitle}</span></td>
+                    <td style="text-align: center; white-space: nowrap;">
                         <a href="javascript:void(0)" class="action-icon" onclick="completeAppointment('${app.id}')" title="${isCompleted ? 'Marcar como Pendiente' : 'Marcar como Realizada'}">${checkIcon}</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="editAppointment('${app.id}')" title="Editar">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deleteAppointment('${app.id}')" title="Eliminar">🗑️</a>
@@ -565,8 +593,17 @@
             const app = appointments.find(a => a.id === id);
             editingAppointmentId = id;
             
-            // Primero abrimos el modal (esto hace el reset de campos de repetición y sets flags)
+            // Primero abrimos el modal (esto hace el reset de campos de repeticion y sets flags)
             openAppointmentModal("Editar Cita");
+
+            const estadoCita = document.getElementById('estado-cita');
+            
+            // Limpiar estilos previos de advertencia
+            if (estadoCita) {
+                estadoCita.style.backgroundColor = '';
+                estadoCita.style.color = '';
+                estadoCita.style.border = '';
+            }
 
             ['fecha', 'hora', 'sociedad', 'clinica', 'centro', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
                 const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'centro' ? 'centro-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f))))))));
@@ -574,6 +611,20 @@
                     el.value = app[f] || (f === 'estado' ? 'pending' : '');
                 }
             });
+
+            // Lógica de advertencia en el modal de edición
+            const now = new Date();
+            const hoyStr = now.toISOString().split('T')[0];
+            const horaActual = now.toTimeString().split(' ')[0].substring(0, 5);
+
+            if (app.estado === 'pending' && (app.fecha < hoyStr || (app.fecha === hoyStr && app.hora < horaActual))) {
+                if (estadoCita) {
+                    estadoCita.style.backgroundColor = '#ffebeb';
+                    estadoCita.style.color = '#d63031';
+                    estadoCita.style.border = '2px solid #d63031';
+                }
+            }
+
             document.getElementById('paciente-select').value = app.paciente;
             document.getElementById('ref-cita').value = app.referenciaPaciente || '';
             document.getElementById('por-seguro').checked = !!app.por_seguro;

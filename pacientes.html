@@ -44,7 +44,7 @@
                         <th class="sortable" onclick="handleSort('nombre')">Nombre</th>
                         <th class="sortable" onclick="handleSort('apellidos')">Apellidos</th>
                         <th>Referencia</th>
-                        <th>Teléfono</th>
+                        <th>Centro</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -67,48 +67,66 @@
                 <span class="close-modal" onclick="closeModal()">&times;</span>
             </div>
             <form id="form-paciente" class="form-grid">
-                <div class="form-group">
-                    <label for="referencia">Referencia (auto)</label>
-                    <input type="text" id="referencia" name="referencia" readonly style="background-color:#f0f0f0; font-weight:600; letter-spacing:1px;">
+                <div class="form-section full-width" style="border-left-color: var(--turquesa);">
+                    <h3 class="section-title" style="color: var(--turquesa);">Datos Personales</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="referencia">Referencia (auto)</label>
+                            <input type="text" id="referencia" name="referencia" readonly style="background-color:#f0f0f0; font-weight:600; letter-spacing:1px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                            <input type="date" id="fechaNacimiento" name="fechaNacimiento">
+                        </div>
+                        <div class="form-group">
+                            <label for="nombre">Nombre</label>
+                            <input type="text" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="apellidos">Apellidos</label>
+                            <input type="text" id="apellidos" name="apellidos" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="telefono">Teléfono</label>
+                            <input type="tel" id="telefono" name="telefono" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="importe_sesion">Importe sesión (€)</label>
+                            <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="Ej: 60">
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="nombre">Nombre</label>
-                    <input type="text" id="nombre" name="nombre" required>
+
+                <div class="form-section full-width">
+                    <h3 class="section-title">Asignación y Gestión</h3>
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="centro">Centro</label>
+                            <select id="centro" name="centro" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sociedad">Sociedad</label>
+                            <select id="sociedad" name="sociedad" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinica">Clínica</label>
+                            <select id="clinica" name="clinica" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="apellidos">Apellidos</label>
-                    <input type="text" id="apellidos" name="apellidos" required>
-                </div>
-                <div class="form-group">
-                    <label for="telefono">Teléfono</label>
-                    <input type="tel" id="telefono" name="telefono" required>
-                </div>
-                <div class="form-group">
-                    <label for="fechaNacimiento">Fecha de Nacimiento</label>
-                    <input type="date" id="fechaNacimiento" name="fechaNacimiento">
-                </div>
-                <div class="form-group">
-                    <label for="sociedad">Sociedad</label>
-                    <select id="sociedad" name="sociedad" required>
-                        <option value="">Seleccione...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="clinica">Clínica</label>
-                    <select id="clinica" name="clinica" required>
-                        <option value="">Seleccione...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="importe_sesion">Importe sesión (€)</label>
-                    <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="Ej: 60">
-                </div>
+
                 <div class="form-group full-width">
-                    <label for="notas">Notas</label>
-                    <textarea id="notas" name="notas" rows="3"></textarea>
+                    <label for="notas">Notas / Observaciones</label>
+                    <textarea id="notas" name="notas" rows="3" placeholder="Añade aquí cualquier detalle relevante..."></textarea>
                 </div>
                 <div class="form-actions full-width">
-                    <button type="submit" class="btn-turquesa">Guardar Paciente</button>
+                    <button type="submit" class="btn-turquesa" style="padding: 12px 30px; font-size: 1rem;">Guardar Paciente</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
                 </div>
             </form>
@@ -221,22 +239,30 @@
         let editingId = null;
 
         async function loadData() {
-            // Cargar Clínicas y Sociedades desde Firestore para los desplegables
+            // Cargar Centros, Clínicas y Sociedades desde Firestore para los desplegables
+            const snapshotCentros = await getDocs(query(uCol("centros"), orderBy("nombre")));
             const snapshotClinicas = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
             const snapshotSociedades = await getDocs(query(uCol("sociedades"), orderBy("nombre")));
             
+            const selectCentro = document.getElementById('centro');
             const selectClinica = document.getElementById('clinica');
             const selectSociedad = document.getElementById('sociedad');
-            selectClinica.innerHTML = '<option value="">Seleccione...</option>';
-            selectSociedad.innerHTML = '<option value="">Seleccione...</option>';
 
+            if (selectCentro) selectCentro.innerHTML = '<option value="">Seleccione...</option>';
+            if (selectClinica) selectClinica.innerHTML = '<option value="">Seleccione...</option>';
+            if (selectSociedad) selectSociedad.innerHTML = '<option value="">Seleccione...</option>';
+
+            snapshotCentros.forEach(c => {
+                const nombre = c.data().nombre;
+                if (selectCentro) selectCentro.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+            });
             snapshotClinicas.forEach(c => {
                 const nombre = c.data().nombre;
-                selectClinica.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+                if (selectClinica) selectClinica.innerHTML += `<option value="${nombre}">${nombre}</option>`;
             });
             snapshotSociedades.forEach(s => {
                 const nombre = s.data().nombre;
-                selectSociedad.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+                if (selectSociedad) selectSociedad.innerHTML += `<option value="${nombre}">${nombre}</option>`;
             });
 
             // Cargar Pacientes
@@ -258,7 +284,7 @@
                     <td>${p.nombre}</td>
                     <td>${p.apellidos}</td>
                     <td><strong>${p.referencia || '-'}</strong></td>
-                    <td>${p.telefono || '-'}</td>
+                    <td>${p.centro || '-'}</td>
                     <td style="text-align: center;">
                         <a href="javascript:void(0)" class="action-icon" onclick="editPatient('${p.id}')" title="Editar">✏️</a>
                         <a href="javascript:void(0)" class="action-icon" onclick="deletePatient('${p.id}')" title="Eliminar">🗑️</a>
@@ -281,7 +307,7 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'sociedad', 'clinica', 'notas', 'importe_sesion'].forEach(f => {
+            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'centro', 'sociedad', 'clinica', 'notas', 'importe_sesion'].forEach(f => {
                 const el = document.getElementById(f);
                 const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];
                 if (el) el.value = value || '';
