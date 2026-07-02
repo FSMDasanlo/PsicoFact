@@ -233,7 +233,13 @@
     <div id="modalAgendaTramos" class="modal">
         <div class="modal-content" style="max-width: 95%; width: 1000px; height: 85vh; padding: 20px; display: flex; flex-direction: column;">
             <div class="agenda-header" style="margin-bottom: 20px;">
-                <h2 style="margin: 0;">Agenda Detallada (15 min)</h2>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <h2 style="margin: 0;">Agenda Detallada</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-turquesa" id="prev-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana anterior">&larr;</button>
+                        <button class="btn-turquesa" id="next-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana siguiente">&rarr;</button>
+                    </div>
+                </div>
                 <span class="close-modal" onclick="closeTramosModal()">&times;</span>
             </div>
             <div id="tramos-container" style="overflow: auto; flex: 1; border: 1px solid #dee2e6; border-radius: 8px;">
@@ -288,6 +294,7 @@
         let wasCalendarOpen = false; // Flag para saber si venimos del calendario
         let currentSortField = 'fecha';
         let currentSortOrder = 'asc';
+        let currentTramosDate = null; // Guardar la fecha base de la vista detallada
 
         async function init() {
             const snapP = await getDocs(uCol("pacientes"));
@@ -911,9 +918,22 @@
         function closeCalendarModal() { document.getElementById('modalCalendario').style.display = 'none'; }
 
         async function openTramosModal(selectedDateStr) {
+            currentTramosDate = selectedDateStr;
             const container = document.getElementById('tramos-container');
             container.innerHTML = 'Cargando...';
             document.getElementById('modalAgendaTramos').style.display = 'flex';
+
+            // Configurar los listeners de los botones de navegación (una sola vez)
+            document.getElementById('prev-week-btn').onclick = () => {
+                const d = new Date(currentTramosDate + 'T00:00:00');
+                d.setDate(d.getDate() - 7);
+                openTramosModal(d.toISOString().split('T')[0]);
+            };
+            document.getElementById('next-week-btn').onclick = () => {
+                const d = new Date(currentTramosDate + 'T00:00:00');
+                d.setDate(d.getDate() + 7);
+                openTramosModal(d.toISOString().split('T')[0]);
+            };
 
             const selectedDate = new Date(selectedDateStr + 'T00:00:00');
             const dates = [];
@@ -948,7 +968,7 @@
                 const dateObj = new Date(d + 'T00:00:00');
                 const dayName = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][dateObj.getDay()];
                 const isSelected = d === selectedDateStr;
-                const bgColor = isSelected ? 'var(--azul-oscuro)' : '#f8f9fa';
+                const bgColor = isSelected ? '#546e7a' : '#f8f9fa'; // Un gris azulado oscuro más suave que el negro/azul original
                 const textColor = isSelected ? 'white' : 'var(--azul-oscuro)';
                 html += `<th style="border: 1px solid #dee2e6; padding: 12px 8px; background: ${bgColor}; color: ${textColor}; min-width: 140px; text-align: center;">
                             <div style="font-weight: 600;">${dayName}</div>
