@@ -42,21 +42,45 @@
 
         <!-- Historial de Citas -->
         <section class="agenda-container">
-            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Historial de Citas</h3>
-            <table class="agenda-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Hora</th>
-                        <th>Clínica</th>
-                        <th>Observaciones <a href="javascript:void(0)" onclick="showAllNotes()" title="Ver resumen de notas" style="text-decoration:none; margin-left:5px;">📄</a></th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="historial-citas">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="color: var(--azul-oscuro); margin-bottom: 0;">Historial de Citas</h3>
+                <div class="view-toggles">
+                    <button id="btn-toggle-view" class="view-btn" title="Ver Calendario">📅</button>
+                </div>
+            </div>
+
+            <div id="container-list">
+                <table class="agenda-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Clínica</th>
+                            <th>Observaciones <a href="javascript:void(0)" onclick="showAllNotes()" title="Ver resumen de notas" style="text-decoration:none; margin-left:5px;">📄</a></th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historial-citas">
+                        <!-- Se rellena con JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="container-calendar" style="display: none;">
+                <div class="calendar-year-selector">
+                    <button class="btn-turquesa" id="prev-year" style="padding: 2px 10px;">&lt;</button>
+                    <h3 id="calendar-year-display" style="margin: 0;">2026</h3>
+                    <button class="btn-turquesa" id="next-year" style="padding: 2px 10px;">&gt;</button>
+                </div>
+                <div id="annual-calendar" class="calendar-annual-grid">
                     <!-- Se rellena con JS -->
-                </tbody>
-            </table>
+                </div>
+                <div class="legend-container">
+                    <div class="legend-item"><div class="legend-color" style="background-color: #d1ecf1;"></div> Realizada</div>
+                    <div class="legend-item"><div class="legend-color" style="background-color: #fff3cd;"></div> Pendiente</div>
+                    <div class="legend-item"><div class="legend-color" style="background-color: #f8d7da;"></div> Cancelada</div>
+                </div>
+            </div>
         </section>
 
         <!-- Resumen del Expediente -->
@@ -209,9 +233,91 @@
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No hay citas registradas</td></tr>';
                 }
 
+                // Inicializar calendario si hay datos o simplemente limpiar
+                renderAnnualCalendar();
+
             } catch (error) {
                 console.error("Error cargando expediente:", error);
                 alert("Error al cargar los datos del expediente.");
+            }
+        }
+
+        // --- Lógica de Calendario Anual ---
+        let calendarYear = new Date().getFullYear();
+        let currentView = 'list';
+
+        document.getElementById('btn-toggle-view').addEventListener('click', function() {
+            if (currentView === 'list') {
+                document.getElementById('container-list').style.display = 'none';
+                document.getElementById('container-calendar').style.display = 'block';
+                this.textContent = '📋';
+                this.title = 'Ver Tabla';
+                currentView = 'calendar';
+                renderAnnualCalendar();
+            } else {
+                document.getElementById('container-list').style.display = 'block';
+                document.getElementById('container-calendar').style.display = 'none';
+                this.textContent = '📅';
+                this.title = 'Ver Calendario';
+                currentView = 'list';
+            }
+        });
+
+        document.getElementById('prev-year').addEventListener('click', () => { calendarYear--; renderAnnualCalendar(); });
+        document.getElementById('next-year').addEventListener('click', () => { calendarYear++; renderAnnualCalendar(); });
+
+        function renderAnnualCalendar() {
+            const container = document.getElementById('annual-calendar');
+            const yearDisplay = document.getElementById('calendar-year-display');
+            if (!container || !yearDisplay) return;
+            
+            yearDisplay.textContent = calendarYear;
+            container.innerHTML = '';
+
+            const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            const daysNames = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+            for (let m = 0; m < 12; m++) {
+                const monthDiv = document.createElement('div');
+                monthDiv.className = 'calendar-month';
+                
+                let html = `<h4>${months[m]}</h4>`;
+                html += '<div class="calendar-grid">';
+                
+                // Headers de días
+                daysNames.forEach(d => html += `<div class="calendar-grid-header">${d}</div>`);
+                
+                const firstDay = new Date(calendarYear, m, 1).getDay(); // 0(Dom) - 6(Sab)
+                const adjustFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Ajustar a Lunes inicio
+                const daysInMonth = new Date(calendarYear, m + 1, 0).getDate();
+                
+                // Espacios vacíos mes anterior
+                for (let i = 0; i < adjustFirstDay; i++) {
+                    html += '<div class="calendar-day other-month"></div>';
+                }
+                
+                // Días del mes
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${calendarYear}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const apps = patientAppsData.filter(a => a.fecha === dateStr);
+                    
+                    let classes = 'calendar-day';
+                    let title = '';
+                    if (apps.length > 0) {
+                        classes += ' has-app';
+                        // Prioridad de estados: cancelado < pendiente < realizado/confirmado
+                        // Pero aquí mostramos el color de la cita. Si hay varias, mostramos la primera significativa.
+                        const status = apps[0].estado || 'pending';
+                        classes += ` app-${status}`;
+                        title = apps.map(a => `${a.hora || ''} - ${a.observaciones || ''}`).join('\n');
+                    }
+                    
+                    html += `<div class="${classes}" title="${title}">${d}</div>`;
+                }
+                
+                html += '</div>'; // calendar-grid
+                monthDiv.innerHTML = html;
+                container.appendChild(monthDiv);
             }
         }
 
