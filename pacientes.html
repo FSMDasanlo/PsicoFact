@@ -93,6 +93,12 @@
                             <label for="importe_sesion">Importe sesión (€)</label>
                             <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="Ej: 60">
                         </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 5px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; background: #e0f2f1; padding: 10px; border-radius: 6px; border: 1px solid var(--turquesa); width: 100%;">
+                                <input type="checkbox" id="por_seguro" name="por_seguro" style="width: 20px; height: 20px; cursor: pointer;">
+                                ¿ES POR SEGURO?
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -306,10 +312,16 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'centro', 'sociedad', 'clinica', 'notas', 'importe_sesion'].forEach(f => {
+            ['referencia', 'nombre', 'apellidos', 'telefono', 'fechaNacimiento', 'centro', 'sociedad', 'clinica', 'notas', 'importe_sesion', 'por_seguro'].forEach(f => {
                 const el = document.getElementById(f);
-                const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];
-                if (el) el.value = value || '';
+                if (el) {
+                    if (el.type === 'checkbox') {
+                        el.checked = !!p[f];
+                    } else {
+                        const value = (f === 'notas') ? (p.notas || p.observaciones) : p[f];
+                        el.value = value || '';
+                    }
+                }
             });
             openModal("Editar Paciente");
         }
@@ -324,7 +336,10 @@
 
         document.getElementById('form-paciente').onsubmit = async function(e) {
             e.preventDefault();
-            const data = Object.fromEntries(new FormData(e.target));
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            data.por_seguro = document.getElementById('por_seguro').checked;
+
             if (editingId) {
                 await updateDoc(uDoc("pacientes", editingId), data);
                 showToast("Paciente actualizado");

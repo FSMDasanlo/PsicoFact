@@ -375,7 +375,6 @@
 
         function handlePatientChange() {
             const selectedName = document.getElementById('paciente-select').value;
-            document.getElementById('por-seguro').checked = false;
             const patient = patientsMaster.find(p => (p.nombre + " " + p.apellidos) === selectedName);
             if (patient) {
                 document.getElementById('sociedad-cita').value = patient.sociedad || '';
@@ -397,6 +396,9 @@
                 document.getElementById('importe-cita').value = importeTotal > 0 ? importeTotal : '';
                 document.getElementById('porcentaje-facultativo-cita').value = pct;
                 document.getElementById('ref-cita').value = patient.referencia || '';
+                
+                // Aplicar el check de seguro desde el paciente
+                document.getElementById('por-seguro').checked = !!patient.por_seguro;
                 
                 window.calculateFacultativoAmount();
             } else {
@@ -657,7 +659,7 @@
                 if (app.fecha !== data.fecha) return false;
                 const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
                 const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
-                return diferenciaMs < (30 * 60 * 1000); // 30 minutos en ms
+                return diferenciaMs < (10 * 60 * 1000); // Reducido a 10 min para permitir mayor flexibilidad en agenda
             });
 
             if (conflicto) {
@@ -961,7 +963,7 @@
             let html = `<table class="tramos-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white;">
                 <thead>
                     <tr>
-                        <th style="border: 1px solid #dee2e6; padding: 12px 8px; background: #f8f9fa; position: sticky; left: 0; z-index: 2;">Hora</th>`;
+                        <th style="border: 1px solid #dee2e6; padding: 12px 8px; background: #f8f9fa; position: sticky; left: 0; top: 0; z-index: 4;">Hora</th>`;
             
             dates.forEach((d, idx) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -969,7 +971,7 @@
                 const isSelected = d === selectedDateStr;
                 const bgColor = isSelected ? '#546e7a' : '#f8f9fa'; // Un gris azulado oscuro más suave que el negro/azul original
                 const textColor = isSelected ? 'white' : 'var(--azul-oscuro)';
-                html += `<th style="border: 1px solid #dee2e6; padding: 12px 8px; background: ${bgColor}; color: ${textColor}; min-width: 140px; text-align: center;">
+                html += `<th style="border: 1px solid #dee2e6; padding: 12px 8px; background: ${bgColor}; color: ${textColor}; min-width: 140px; text-align: center; position: sticky; top: 0; z-index: 3;">
                             <div style="font-weight: 600;">${dayName}</div>
                             <div style="font-size: 0.75rem;">${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}</div>
                          </th>`;
@@ -978,17 +980,23 @@
             html += `</tr></thead><tbody>`;
 
             for (let hour = 8; hour <= 21; hour++) {
-                const timeStr = `${String(hour).padStart(2, '0')}:00`;
-                html += `<tr>
-                    <td style="border: 1px solid #dee2e6; padding: 10px 5px; text-align: center; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 1;">${timeStr}</td>`;
-                
-                dates.forEach(d => {
-                    // Buscamos si hay alguna cita en esta hora (ej. 08:00, 08:30, etc.)
-                    const citasEnHora = citasRange.filter(c => c.fecha === d && c.hora.startsWith(String(hour).padStart(2, '0') + ':'));
+                for (let min = 0; min < 60; min += 15) {
+                    const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    html += `<tr>
+                        <td style="border: 1px solid #dee2e6; padding: 10px 5px; text-align: center; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 1;">${timeStr}</td>`;
                     
-                    if (citasEnHora.length > 0) {
-                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #fff; cursor: pointer; text-align: center;" 
-                                     ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">`;
+                    dates.forEach(d => {
+                        // Buscamos si hay alguna cita en este tramo de 15 min
+                        const nextTimeMin = min + 15;
+                        const nextTimeStr = nextTimeMin < 60 
+                            ? `${String(hour).padStart(2, '0')}:${String(nextTimeMin).padStart(2, '0')}`
+                            : `${String(hour + 1).padStart(2, '0')}:00`;
+
+                        const citasEnHora = citasRange.filter(c => c.fecha === d && c.hora >= timeStr && c.hora < nextTimeStr);
+                        
+                        if (citasEnHora.length > 0) {
+                            html += `<td style="border: 1px solid #dee2e6; padding: 6px; background: #fff; cursor: pointer; text-align: center;" 
+                                        ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">`;
                         citasEnHora.forEach(cita => {
                             const clinicInfo = clinicsMasterData.find(c => c.nombre === cita.clinica);
                             const centroInfo = centrosMasterData.find(c => c.nombre === cita.centro);
@@ -1022,6 +1030,7 @@
                     }
                 });
                 html += `</tr>`;
+                }
             }
 
             html += `</tbody></table>`;
