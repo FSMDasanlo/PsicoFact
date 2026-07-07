@@ -12,7 +12,7 @@
     <header class="navbar">
         <div class="logo-container">
             <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
-                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
+                <img src="img/Psia.png" alt="Logo" class="logo-img">
             </a>
         </div>
         <div class="user-info-container">
@@ -90,16 +90,15 @@
                 <thead>
                     <tr>
                         <th class="sortable" onclick="handleSort('nombre_completo')">Nombre Paciente ↕️</th>
-                        <th class="sortable" onclick="handleSort('telefono')">Teléfono ↕️</th>
                         <th class="sortable" onclick="handleSort('sociedad')">Sociedad ↕️</th>
                         <th class="sortable" onclick="handleSort('clinica')">Clínica ↕️</th>
-                        <th class="sortable" onclick="handleSort('importe_sesion')">Importe Sesión (€) ↕️</th>
+                        <th class="sortable" onclick="handleSort('importe_sesion')" style="text-align: right;">Importe Sesión (€) ↕️</th>
                         <th style="text-align: center;">Expediente</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-busqueda">
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
+                        <td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
                     </tr>
                 </tbody>
             </table>
@@ -273,7 +272,7 @@
         function renderResults(lista) {
             const tbody = document.getElementById('resultados-busqueda');
             if (lista.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
                 return;
             }
 
@@ -283,12 +282,14 @@
                 tbody.innerHTML += `
                     <tr>
                         <td>${p.nombre} ${p.apellidos}</td>
-                        <td>${p.telefono || '-'}</td>
                         <td>${p.sociedad || '-'}</td>
                         <td>${p.clinica || '-'}</td>
-                        <td style="font-weight: 600;">${importe > 0 ? importe.toFixed(2) + ' €' : '-'}</td>
+                        <td style="font-weight: 600; text-align: right;">${importe > 0 ? importe.toFixed(2) + ' €' : '-'}</td>
                         <td style="text-align: center;">
-                            <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente">📂</a>
+                            <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente" style="font-size: 1.4rem;">📂</a>
+                            <a href="psilogia.html?id=${p.id}" class="action-icon-ia" title="IA PsicoFact" style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #f0f7ff; border-radius: 10px; border: 1px solid #3498db; margin-left: 10px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);">
+                                <img src="img/Psia.png" alt="IA" style="width: 32px; height: auto;">
+                            </a>
                         </td>
                     </tr>`;
             });
