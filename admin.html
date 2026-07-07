@@ -46,6 +46,11 @@
                 <h2>Eliminar Datos</h2>
                 <p>Borrar datos de Firestore por UID</p>
             </a>
+            <a href="javascript:void(0)" class="menu-card" onclick="openBillingControl()" style="border-bottom-color: var(--turquesa);">
+                <div class="icon">💰</div>
+                <h2>Control de Pagos</h2>
+                <p>Estado de citas y cobros por facultativo</p>
+            </a>
         </nav>
     </main>
 
@@ -84,6 +89,33 @@
         </div>
     </div>
 
+    <!-- Modal Control de Pagos -->
+    <div id="modalBillingControl" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; padding:2rem; border-radius:12px; max-width:900px; width:100%; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3>Estado de Pagos y Citas</h3>
+                <button class="btn-turquesa" onclick="closeModal('modalBillingControl')">Cerrar</button>
+            </div>
+            <p style="font-size:0.85rem; color:#666; margin-bottom:1rem;">Aquí puedes consultar el estado de cada facultativo basado en sus citas realizadas y pagos informados.</p>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size: 0.8rem; font-weight: 600;">Filtrar Mes/Año</label>
+                    <input type="month" id="billing-filter-month" onchange="openBillingControl()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <button class="btn-turquesa" onclick="document.getElementById('billing-filter-month').value=''; openBillingControl()" style="padding: 8px 15px; font-size: 0.8rem;">Ver Todo</button>
+                
+                <div id="billing-totals-summary" style="margin-left: auto; display: flex; gap: 20px;">
+                    <!-- Sumatorios aparecerán aquí -->
+                </div>
+            </div>
+
+            <div id="billing-table-container">
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
     </footer>
@@ -93,7 +125,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, query, where, collectionGroup, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         const firebaseConfig = window.APP_CONFIG.firebase;
         const app = initializeApp(firebaseConfig);
@@ -239,6 +271,133 @@
                 await deleteDoc(doc(db, 'usuarios', uid, 'facultativo', 'perfil'));
                 alert("Datos médicos eliminados.");
             } catch (err) { alert("Error: " + err.message); }
+        };
+
+        window.openBillingControl = async () => {
+            document.getElementById('modalBillingControl').style.display = 'flex';
+            const container = document.getElementById('billing-table-container');
+            const summaryContainer = document.getElementById('billing-totals-summary');
+            const filterMonth = document.getElementById('billing-filter-month').value; // format: "YYYY-MM"
+            
+            container.innerHTML = '<p>Analizando facultativos y citas... esto puede tardar unos segundos.</p>';
+
+            try {
+                const profilesSnap = await getDocs(collectionGroup(db, 'facultativo'));
+                const usersData = [];
+                let totalDeudaGlobal = 0;
+                let totalPagadoGlobal = 0;
+
+                for (const facultativoDoc of profilesSnap.docs) {
+                    if (facultativoDoc.id !== 'perfil') continue;
+
+                    const profile = facultativoDoc.data();
+                    const pathParts = facultativoDoc.ref.path.split('/');
+                    const uid = pathParts[1];
+                    
+                    if (!uid) continue;
+
+                    // 1. Citas realizadas (filtradas por mes si aplica)
+                    let constraints = [where("estado", "==", "completed")];
+                    
+                    const citasSnap = await getDocs(query(collection(db, "usuarios", uid, "citas"), ...constraints));
+                    let allCompletedCitas = citasSnap.docs;
+
+                    // Filtrado manual por fecha para mayor precisión y evitar problemas de rangos de cadena
+                    if (filterMonth) {
+                        allCompletedCitas = allCompletedCitas.filter(doc => {
+                            const fecha = doc.data().fecha; // Formato esperado: YYYY-MM-DD
+                            return fecha && fecha.startsWith(filterMonth);
+                        });
+                    }
+
+                    const pendingCitas = allCompletedCitas.filter(d => d.data().billingStatus !== 'paid');
+                    const paidCitas = allCompletedCitas.filter(d => d.data().billingStatus === 'paid');
+
+                    const deudaUsuario = pendingCitas.length * 0.30;
+                    const pagadoUsuario = paidCitas.length * 0.30;
+
+                    totalDeudaGlobal += deudaUsuario;
+                    totalPagadoGlobal += pagadoUsuario;
+
+                    // 2. Último pago (independiente del filtro para referencia, o filtrado si prefieres)
+                    const pagosSnap = await getDocs(query(
+                        collection(db, "usuarios", uid, "pagos_app"),
+                        orderBy("fecha", "desc"),
+                        limit(1)
+                    ));
+                    const lastPago = pagosSnap.docs.length > 0 ? pagosSnap.docs[0].data() : null;
+
+                    usersData.push({
+                        uid,
+                        nombre: `${profile.nombre || ''} ${profile.apellidos || ''}`.trim() || 'Sin nombre',
+                        email: profile.email || 'N/A',
+                        pendingCount: pendingCitas.length,
+                        pendingAmount: deudaUsuario.toFixed(2),
+                        paidAmount: pagadoUsuario.toFixed(2),
+                        lastPagoDate: lastPago ? new Date(lastPago.fecha).toLocaleDateString() : 'Nunca',
+                        lastPagoAmount: lastPago ? lastPago.importe : '-'
+                    });
+                }
+
+                // Render Summary
+                summaryContainer.innerHTML = `
+                    <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+                        <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Pendiente</div>
+                        <div style="font-size:1.1rem; font-weight:700; color:#e74c3c;">${totalDeudaGlobal.toFixed(2)} €</div>
+                    </div>
+                    <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+                        <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Cobrado</div>
+                        <div style="font-size:1.1rem; font-weight:700; color:#27ae60;">${totalPagadoGlobal.toFixed(2)} €</div>
+                    </div>
+                `;
+
+                if (usersData.length === 0) {
+                    container.innerHTML = '<p>No se han encontrado facultativos con perfiles configurados.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.9rem;">
+                        <thead>
+                            <tr style="background:#f8f9fa; border-bottom:2px solid #dee2e6;">
+                                <th style="padding:12px; text-align:left;">Facultativo</th>
+                                <th style="padding:12px; text-align:center;">Citas Pend.</th>
+                                <th style="padding:12px; text-align:center;">Deuda (€)</th>
+                                <th style="padding:12px; text-align:center;">Informado Pago (€)</th>
+                                <th style="padding:12px; text-align:center;">Últ. Notificación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                usersData.forEach(u => {
+                    const rowStyle = parseFloat(u.pendingAmount) > 0 ? 'color:#e74c3c; font-weight:600;' : '';
+                    html += `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:12px;">
+                                <div>${u.nombre}</div>
+                                <div style="font-size:0.75rem; color:#888;">${u.email}</div>
+                            </td>
+                            <td style="padding:12px; text-align:center; ${rowStyle}">${u.pendingCount}</td>
+                            <td style="padding:12px; text-align:center; ${rowStyle}">${u.pendingAmount} €</td>
+                            <td style="padding:12px; text-align:center; color:#27ae60; font-weight:600;">${u.paidAmount} €</td>
+                            <td style="padding:12px; text-align:center;">
+                                <div style="font-size:0.85rem;">${u.lastPagoDate}</div>
+                                <div style="font-size:0.7rem; color:#999;">${u.lastPagoAmount ? u.lastPagoAmount + ' €' : ''}</div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error("Error al cargar control de pagos:", err);
+                container.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:8px; color:#856404; font-size:0.9rem;">
+                    <strong>Error de acceso:</strong> ${err.message}
+                </div>`;
+            }
         };
     </script>
 </body>

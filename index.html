@@ -343,13 +343,38 @@
     </div>
 
     <!-- Firebase SDK -->
+    <!-- Modal para Cobro por Uso -->
+    <div id="modalBilling" class="modal" style="display:none; z-index: 2000;">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div class="agenda-header">
+                <h2 style="color: var(--azul-oscuro);">Control de Citas</h2>
+            </div>
+            <div style="margin: 20px 0; line-height: 1.6;">
+                <p>Hola, aquí tienes el resumen de tus citas pendientes de liquidar:</p>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="font-size: 1.2rem; margin: 0;">Citas pendientes: <strong id="billing-count">0</strong></p>
+                    <p style="font-size: 1.5rem; color: var(--turquesa); font-weight: 600; margin: 10px 0;">Total a abonar: <span id="billing-amount">0.00</span>€</p>
+                </div>
+                <p style="font-size: 0.9rem; color: #666;">Tu cuota de PsicoFact es de 0,30€ por cita realizada.</p>
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: left;">
+                    <p><strong>📱 Bizum:</strong> 626534484</p>
+                    <p><strong>🏦 Transferencia:</strong> <br><small>1111 1111 1111 1111 1111 1111</small></p>
+                </div>
+            </div>
+            <div class="form-actions full-width" style="display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" class="btn-turquesa" id="btn-mark-paid" style="width: 100%;">He realizado el pago</button>
+                <button type="button" class="btn-logout" onclick="document.getElementById('modalBilling').style.display='none'" style="background: #999; border:none; width: 100%;">Recordar más tarde</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
                  onAuthStateChanged, signOut, sendPasswordResetEmail }
             from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         const firebaseConfig = window.APP_CONFIG.firebase;
 
@@ -413,12 +438,72 @@
         document.getElementById('forgot-password').addEventListener('click', handleResetPassword);
         document.getElementById('forgot-password-login').addEventListener('click', handleResetPassword);
 
+        // ── Cobro por Uso ──
+        async function checkBilling(uid) {
+            const isFriday = new Date().getDay() === 5;
+            const isTest = new URLSearchParams(window.location.search).has('testBilling');
+
+            if (!isFriday && !isTest) return;
+
+            try {
+                // Obtener todas las citas finalizadas
+                const q = query(collection(db, "usuarios", uid, "citas"), where("estado", "==", "completed"));
+                const snap = await getDocs(q);
+                
+                // Filtrar las que no están pagadas
+                const pendingCitas = snap.docs.filter(d => d.data().billingStatus !== 'paid');
+
+                if (pendingCitas.length > 0) {
+                    document.getElementById('billing-count').textContent = pendingCitas.length;
+                    document.getElementById('billing-amount').textContent = (pendingCitas.length * 0.30).toFixed(2);
+                    document.getElementById('modalBilling').style.display = 'flex';
+
+                    document.getElementById('btn-mark-paid').onclick = async () => {
+                        const btn = document.getElementById('btn-mark-paid');
+                        const originalText = btn.textContent;
+                        btn.disabled = true;
+                        btn.textContent = 'Procesando...';
+                        
+                        try {
+                            // Actualizar todas las citas a 'paid'
+                            const batchPromises = pendingCitas.map(citaDoc => 
+                                updateDoc(doc(db, "usuarios", uid, "citas", citaDoc.id), { billingStatus: 'paid' })
+                            );
+                            await Promise.all(batchPromises);
+                            
+                            // Registrar el pago
+                            await addDoc(collection(db, "usuarios", uid, "pagos_app"), {
+                                fecha: new Date().toISOString(),
+                                citas: pendingCitas.length,
+                                importe: (pendingCitas.length * 0.30).toFixed(2),
+                                metodo: 'Pendiente verificación'
+                            });
+
+                            alert('¡Gracias! Se ha registrado el aviso de pago. Se revisará en breve.');
+                            document.getElementById('modalBilling').style.display = 'none';
+                        } catch (e) {
+                            console.error("Error al marcar como pagado:", e);
+                            alert("Error al actualizar. Por favor, inténtalo de nuevo.");
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = originalText;
+                        }
+                    };
+                }
+            } catch (err) {
+                console.error("Error en checkBilling:", err);
+            }
+        }
+
         // ── Estado de autenticación ──
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 console.log("Usuario autenticado:", user.email);
                 authScreen.style.display = 'none';
                 appWrapper.style.display = 'block';
+
+                // Verificar cobros pendientes
+                checkBilling(user.uid);
 
                 // Mostrar tarjeta de Admin solo si es el usuario jesus.samperruiz@gmail.com
                 const adminCard = document.getElementById('admin-card');
