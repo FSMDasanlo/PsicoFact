@@ -62,7 +62,7 @@
     <div id="modalDuplicate" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
         <div style="background:white; padding:2rem; border-radius:12px; max-width:450px; width:100%;">
             <h3>Duplicar Usuario</h3>
-            <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Se clonará el perfil, clínicas y sociedades del UID origen.</p>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Se clonará el perfil, centros, clínicas, sociedades y estados del UID origen.</p>
             <form id="form-duplicate">
                 <div style="margin-bottom:1rem;">
                     <label style="display:block; font-size:0.8rem; font-weight:600;">UID Usuario origen (Cópialo de Authentication)</label>
@@ -291,16 +291,18 @@
                 
                 const clinicas = await fetchCol('clinicas');
                 const sociedades = await fetchCol('sociedades');
+                const centros = await fetchCol('centros');
+                const estados = await fetchCol('estados');
                 const pacientes = await fetchCol('pacientes');
                 const citas = await fetchCol('citas');
                 const evaluaciones = await fetchCol('evaluaciones_completas');
 
-                const totalItems = clinicas.length + sociedades.length + pacientes.length + citas.length + evaluaciones.length;
+                const totalItems = clinicas.length + sociedades.length + centros.length + estados.length + pacientes.length + citas.length + evaluaciones.length;
                 if (totalItems === 0 && !profileData) {
                     throw new Error("No se han encontrado datos en el UID de origen. Verifica que sea el correcto.");
                 }
 
-                if (!confirm(`Se han encontrado:\n- ${pacientes.length} Pacientes\n- ${citas.length} Citas\n- ${evaluaciones.length} Evaluaciones\n- ${clinicas.length} Clínicas\n- ${sociedades.length} Sociedades\n\n¿Deseas continuar con la creación del nuevo usuario?`)) {
+                if (!confirm(`Se han encontrado:\n- ${pacientes.length} Pacientes\n- ${citas.length} Citas\n- ${evaluaciones.length} Evaluaciones\n- ${clinicas.length} Clínicas\n- ${sociedades.length} Sociedades\n- ${centros.length} Centros\n- ${estados.length} Estados\n\n¿Deseas continuar con la creación del nuevo usuario?`)) {
                     btn.disabled = false;
                     btn.textContent = originalText;
                     return;
@@ -328,6 +330,8 @@
                 
                 await writeCol('clinicas', clinicas);
                 await writeCol('sociedades', sociedades);
+                await writeCol('centros', centros);
+                await writeCol('estados', estados);
                 await writeCol('pacientes', pacientes);
                 await writeCol('citas', citas);
                 await writeCol('evaluaciones_completas', evaluaciones);
@@ -355,6 +359,8 @@
                 const collectionsToDelete = [
                     'clinicas', 
                     'sociedades', 
+                    'centros',
+                    'estados',
                     'pacientes', 
                     'citas', 
                     'evaluaciones_completas', 
