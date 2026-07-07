@@ -57,9 +57,9 @@
     </header>
 
     <main class="container">
-        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 15px;">
-            <img src="img/psia_new.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
-            <h2 id="paciente-nombre" style="margin: 0;">Cargando...</h2>
+        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
+            <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
+            <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
             <div class="agenda-actions" style="margin-left: auto;">
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="Con_pacientes.html" class="back-link">&larr; Volver</a>
@@ -72,22 +72,22 @@
 
         <!-- Menú de Tarjetas IA -->
         <div class="main-menu">
-            <a href="#" class="menu-card card-ia sentiment">
+            <a href="#" id="link-sentiment" class="menu-card card-ia sentiment">
                 <h3 style="color: var(--azul-oscuro);">Sentiment Dashboard <span class="ia-badge" style="background: #6e8efb;">Próximamente</span></h3>
                 <p class="card-description">Evolución visual del alma. Analiza el progreso emocional del paciente a lo largo del tiempo.</p>
             </a>
 
-            <a href="#" class="menu-card card-ia pautas">
+            <a href="#" id="link-pautas" class="menu-card card-ia pautas">
                 <h3 style="color: var(--azul-oscuro);">Generador de Pautas <span class="ia-badge" style="background: #1abc9c;">Próximamente</span></h3>
                 <p class="card-description">Crea automáticamente recomendaciones personalizadas basadas en el contenido de la sesión.</p>
             </a>
 
-            <a href="#" class="menu-card card-ia mapa">
+            <a href="#" id="link-mapa" class="menu-card card-ia mapa">
                 <h3 style="color: var(--azul-oscuro);">Mapa de Calor <span class="ia-badge" style="background: #f39c12;">Próximamente</span></h3>
                 <p class="card-description">Análisis lingüístico de adjetivos terapéuticos para detectar patrones cognitivos sutiles.</p>
             </a>
 
-            <a href="#" class="menu-card card-ia copiloto">
+            <a href="#" id="link-copiloto" class="menu-card card-ia copiloto">
                 <h3 style="color: var(--azul-oscuro);">Copiloto de Sesión <span class="ia-badge" style="background: #e74c3c;">Próximamente</span></h3>
                 <p class="card-description">Transcripción inteligente y generación automática de borradores de notas en tiempo real.</p>
             </a>
@@ -129,7 +129,13 @@
                     const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
                     if (pSnap.exists()) {
                         const p = pSnap.data();
-                        document.getElementById('paciente-nombre').textContent = `Psilogia IA: ${p.nombre} ${p.apellidos}`;
+                        document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
+                        
+                        // Actualizar enlaces de las tarjetas
+                        document.getElementById('link-sentiment').href = `Sentiment_dashboard.html?id=${patientId}`;
+                        document.getElementById('link-pautas').href = `Pautas.html?id=${patientId}`;
+                        document.getElementById('link-mapa').href = `Mapa_calor.html?id=${patientId}`;
+                        document.getElementById('link-copiloto').href = `Copiloto.html?id=${patientId}`;
                     }
                 } catch(e) { console.error(e); }
             }

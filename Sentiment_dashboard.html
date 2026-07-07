@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Dashboard - Psilogia IA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
+            </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
+            <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
+            <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
+            <div class="agenda-actions" style="margin-left: auto;">
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="psilogia.html" id="back-to-ia" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <section class="agenda-container" style="margin-top: 2rem; text-align: left; border-left: 5px solid #6e8efb;">
+            <h2 style="color: #6e8efb; margin-bottom: 1.5rem;">Sentiment Clinical Dashboard (Evolución Visual del Alma)</h2>
+            <div style="background: #f8fbff; padding: 25px; border-radius: 8px; line-height: 1.8; color: #444;">
+                <p>En vez de guardar texto plano que se pierde en el olvido, la Idea es un <strong>gráfico dinámico</strong> en el expediente que convierta las notas de texto en indicadores emocionales.</p>
+                
+                <p style="margin-top: 15px;"><strong>Cómo funciona:</strong> Usando el mismo motor de IA de la app analiza el "sentimiento" y los "conceptos clave" de cada sesión.</p>
+                
+                <p style="margin-top: 15px;"><strong>El impacto:</strong> El psicólogo puede ver gráficamente si la "ansiedad" del paciente está bajando a lo largo de 6 meses o si hubo picos emocionales coincidentes con fechas específicas. Es ver el progreso del paciente en un vistazo.</p>
+            </div>
+
+            <div style="margin-top: 3rem; text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 12px; color: #999;">
+                <p style="font-size: 1.2rem;">✨ Módulo de Análisis Gráfico en Desarrollo ✨</p>
+                <p style="font-size: 0.9rem; margin-top: 10px;">Aquí se mostrará la evolución emocional analizada por IA.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    document.getElementById('user-name').textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ') || user.email;
+                }
+            } catch(e) { console.error(e); }
+
+            const params = new URLSearchParams(window.location.search);
+            const patientId = params.get('id');
+            if (patientId) {
+                document.getElementById('back-to-ia').href = `psilogia.html?id=${patientId}`;
+                try {
+                    const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
+                    if (pSnap.exists()) {
+                        const p = pSnap.data();
+                        document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
+                    }
+                } catch(e) { console.error(e); }
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>

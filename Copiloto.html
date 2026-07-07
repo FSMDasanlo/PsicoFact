@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copiloto de Sesión - Psilogia IA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
+            </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
+            <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
+            <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
+            <div class="agenda-actions" style="margin-left: auto;">
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="psilogia.html" id="back-to-ia" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <section class="agenda-container" style="margin-top: 2rem; text-align: left; border-left: 5px solid #e74c3c;">
+            <h2 style="color: #e74c3c; margin-bottom: 1.5rem;">"Copiloto de Sesión" (Voice-to-Insight)</h2>
+            <div style="background: #fdf5f4; padding: 25px; border-radius: 8px; line-height: 1.8; color: #444;">
+                <p><strong>La Idea:</strong> Un modo "Escucha Activa" durante la sesión.</p>
+                
+                <p style="margin-top: 15px;"><strong>Cómo funciona:</strong> Mediante la transcripción de voz a texto (en tiempo real o diferido), la app detecta automáticamente palabras clave del "Banco de Adjetivos" y rellena un borrador de la nota clínica.</p>
+                
+                <p style="margin-top: 15px;"><strong>El impacto:</strong> El psicólogo deja de mirar la pantalla y se centra 100% en mirar a los ojos del paciente. El software trabaja de fondo para que, al terminar, el 80% del informe esté ya hecho.</p>
+            </div>
+
+            <div style="margin-top: 3rem; text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 12px; color: #999;">
+                <p style="font-size: 1.2rem;">✨ Módulo de Voz e Inteligencia en Desarrollo ✨</p>
+                <p style="font-size: 0.9rem; margin-top: 10px;">Aquí se gestionará la transcripción y el análisis en tiempo real.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    document.getElementById('user-name').textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ') || user.email;
+                }
+            } catch(e) { console.error(e); }
+
+            const params = new URLSearchParams(window.location.search);
+            const patientId = params.get('id');
+            if (patientId) {
+                document.getElementById('back-to-ia').href = `psilogia.html?id=${patientId}`;
+                try {
+                    const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
+                    if (pSnap.exists()) {
+                        const p = pSnap.data();
+                        document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
+                    }
+                } catch(e) { console.error(e); }
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>
