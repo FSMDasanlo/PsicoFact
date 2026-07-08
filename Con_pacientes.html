@@ -92,8 +92,8 @@
                         <th class="sortable" onclick="handleSort('nombre_completo')">Nombre Paciente ↕️</th>
                         <th class="sortable" onclick="handleSort('sociedad')">Sociedad ↕️</th>
                         <th class="sortable" onclick="handleSort('clinica')">Clínica ↕️</th>
-                        <th class="sortable" onclick="handleSort('importe_sesion')" style="text-align: right;">Importe Sesión (€) ↕️</th>
-                        <th style="text-align: center;">Expediente</th>
+                        <th class="sortable" onclick="handleSort('importe_sesion')" style="text-align: right; width: 100px;">Importe ↕️</th>
+                        <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-busqueda">
@@ -287,8 +287,11 @@
                         <td style="font-weight: 600; text-align: right;">${importe > 0 ? importe.toFixed(2) + ' €' : '-'}</td>
                         <td style="text-align: center;">
                             <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente" style="font-size: 1.4rem;">📂</a>
-                            <a href="psilogia.html?id=${p.id}" class="action-icon-ia" title="IA PsicoFact" style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #f0f7ff; border-radius: 10px; border: 1px solid #3498db; margin-left: 10px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);">
-                                <img src="img/Psia.png" alt="IA" style="width: 32px; height: auto;">
+                            <a href="evaluacion.html?id=${p.id}" class="action-icon" title="Evaluación" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: white; border-radius: 10px; border: 1px solid #ddd; margin-left: 10px; transition: all 0.3s ease;">
+                                <img src="img/evaluación.png" alt="Eval" style="width: 26px; height: auto;">
+                            </a>
+                            <a href="psilogia.html?id=${p.id}" class="action-icon-ia" title="IA PsicoFact" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #f0f7ff; border-radius: 10px; border: 1px solid #3498db; margin-left: 10px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);">
+                                <img src="img/Psia.png" alt="IA" style="width: 28px; height: auto;">
                             </a>
                         </td>
                     </tr>`;
