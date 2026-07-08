@@ -11,5 +11,6 @@ window.APP_CONFIG = {
         appId: "TU_APP_ID",
         measurementId: "TU_MEASUREMENT_ID"
     },
-    groqApiKey: "TU_GROQ_API_KEY"
+    groqApiKey: "TU_GROQ_API_KEY",
+    geminiApiKey: "TU_GEMINI_API_KEY"
 };
