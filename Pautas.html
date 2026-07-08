@@ -6,6 +6,24 @@
     <title>Pautas para el Paciente - Psilogia IA</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .pauta-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: #f4fdfb; border-radius: 8px; border-left: 3px solid #1abc9c; margin-bottom: 8px; }
+        .pauta-num  { background: #1abc9c; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; margin-top: 1px; }
+        .output-box { background: white; border-radius: 12px; border: 1px solid #e0e0e0; padding: 28px; min-height: 100px; }
+        .output-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+        .btn-action { padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: opacity 0.2s; }
+        .btn-action:hover { opacity: 0.85; }
+        .btn-copy   { background: #1abc9c; color: white; }
+        .btn-print  { background: #0A2B42; color: white; }
+        .btn-reset  { background: #f0f0f0; color: #555; }
+        .spinner-sm { width: 20px; height: 20px; border: 3px solid #eee; border-top-color: #1abc9c; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #session-select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.92rem; margin-top: 6px; background: white; }
+        #notes-input { width: 100%; min-height: 120px; padding: 12px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical; box-sizing: border-box; margin-top: 6px; }
+        .form-label { font-weight: 600; font-size: 0.88rem; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
+        .pauta-motivacion { background: #fffbea; border-left: 3px solid #f39c12; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-style: italic; color: #7d6608; }
+        .tag-badge { display: inline-block; background: #e8f8f0; color: #1e8449; padding: 2px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin-right: 6px; }
+    </style>
 </head>
 <body>
 
@@ -24,29 +42,59 @@
     <main class="container">
         <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
             <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
-            <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
+            <div>
+                <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
+                <p style="margin: 2px 0 0; color: #888; font-size: 0.85rem;">Generador de Pautas</p>
+            </div>
             <div class="agenda-actions" style="margin-left: auto;">
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="psilogia.html" id="back-to-ia" class="back-link">&larr; Volver</a>
             </div>
         </div>
 
-        <section class="agenda-container" style="margin-top: 2rem; text-align: left; border-left: 5px solid #1abc9c;">
-            <h2 style="color: #1abc9c; margin-bottom: 1.5rem;">Generador Automático de "Pautas para el Paciente"</h2>
-            <div style="background: #f4fdfb; padding: 25px; border-radius: 8px; line-height: 1.8; color: #444;">
-                <p>Al final de la sesión, el paciente suele preguntar: <em>"¿Qué tengo que trabajar esta semana?"</em>.</p>
-                
-                <p style="margin-top: 15px;"><strong>La Idea:</strong> Un botón que, basándose en la nota que el psicólogo acaba de escribir, genere un documento (o mensaje copiable) amigable y estructurado para el paciente.</p>
-                
-                <p style="margin-top: 15px;"><strong>Cómo funciona:</strong> La IA extrae los "deberes" o consejos mencionados en la sesión (ej: "Practicar respiración diafragmática", "Limitar uso de móvil tras las 22:00") y los redacta en un tono motivador.</p>
-                
-                <p style="margin-top: 15px;"><strong>El impacto:</strong> Añade un valor enorme al servicio del psicólogo. El paciente se va con "algo físico" y personalizado, aumentando la adherencia al tratamiento.</p>
+        <!-- Bloque explicativo (compacto) -->
+        <section class="agenda-container" style="margin-top: 2rem; background: #f4fdfb; border-left: 5px solid #1abc9c; padding: 18px 24px;">
+            <p style="margin: 0; color: #555; line-height: 1.65;">
+                <strong style="color: #1abc9c;">Generador Automático de Pautas para el Paciente.</strong>
+                Al terminar la sesión, el paciente suele preguntar: <em>"¿Qué tengo que trabajar esta semana?"</em>.
+                La IA extrae los consejos y &ldquo;deberes&rdquo; de tus notas (ej: <em>"Practicar respiración diafragmática"</em>) y los redacta en un tono motivador y personalizado.
+                El paciente se va con algo <strong>físico y concreto</strong>, aumentando la adherencia al tratamiento.
+            </p>
+        </section>
+
+        <!-- Sección de trabajo -->
+        <section class="agenda-container" style="margin-top: 1.5rem; text-align: left; border-left: 5px solid #1abc9c;">
+
+            <!-- Paso 1: Seleccionar sesión o escribir nota libre -->
+            <div style="margin-bottom: 24px;">
+                <div class="form-label">1 · Selecciona una sesión reciente (o escribe una nota libre)</div>
+                <select id="session-select">
+                    <option value="">— Cargando sesiones... —</option>
+                </select>
             </div>
 
-            <div style="margin-top: 3rem; text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 12px; color: #999;">
-                <p style="font-size: 1.2rem;">✨ Motor de Generación de Pautas en Desarrollo ✨</p>
-                <p style="font-size: 0.9rem; margin-top: 10px;">Aquí se generarán los consejos personalizados para el paciente.</p>
+            <div style="margin-bottom: 24px;">
+                <div class="form-label">2 · Nota clínica de la sesión</div>
+                <textarea id="notes-input" placeholder="Escribe o pega aquí las observaciones de la sesión...&#10;&#10;La IA extraerá los puntos clave para generar las pautas."></textarea>
             </div>
+
+            <button id="btn-generar" class="btn-turquesa" style="padding: 11px 28px; font-size: 0.95rem; background: #1abc9c; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                ✨ Generar Pautas con IA
+            </button>
+
+            <!-- Resultado -->
+            <div id="resultado-container" style="display: none; margin-top: 28px;">
+                <div style="font-weight: 600; color: var(--azul-oscuro); font-size: 1.05rem; margin-bottom: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                    📋 Pautas para <span id="result-nombre"></span> · <span id="result-fecha" style="color: #888; font-weight: 400;"></span>
+                </div>
+                <div id="output-box" class="output-box"></div>
+                <div class="output-actions">
+                    <button class="btn-action btn-copy"  id="btn-copy">📋 Copiar texto</button>
+                    <button class="btn-action btn-print" id="btn-print">🖨️ Imprimir</button>
+                    <button class="btn-action btn-reset" id="btn-reset">↺ Nueva generación</button>
+                </div>
+            </div>
+
         </section>
     </main>
 
@@ -57,17 +105,162 @@
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
         const firebaseConfig = window.APP_CONFIG.firebase;
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const db  = getFirestore(app);
         const auth = getAuth(app);
+        const GROQ_KEY = window.APP_CONFIG.groqApiKey;
 
+        let currentPatient = null;
+
+        // ─── CARGAR SESIONES DEL PACIENTE ────────────────────────────────────────
+        async function loadSessions(uid, patientData) {
+            const citasSnap = await getDocs(collection(db, 'usuarios', uid, 'citas'));
+            const patientName = `${patientData.nombre} ${patientData.apellidos}`;
+            const sessions = [];
+
+            citasSnap.forEach(d => {
+                const c = d.data();
+                const isPatient = c.referenciaPaciente === patientData.referencia || c.paciente === patientName;
+                const hasNotes  = (c.observaciones || '').trim().length > 5;
+                if (isPatient && hasNotes) {
+                    sessions.push({ fecha: c.fecha, observaciones: c.observaciones.trim() });
+                }
+            });
+
+            sessions.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+            const select = document.getElementById('session-select');
+            if (sessions.length === 0) {
+                select.innerHTML = '<option value="">— No hay sesiones con notas disponibles —</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">— Selecciona una sesión (opcional) —</option>' +
+                sessions.map((s, i) =>
+                    `<option value="${i}">${s.fecha} · ${s.observaciones.slice(0, 60)}${s.observaciones.length > 60 ? '…' : ''}</option>`
+                ).join('');
+
+            select.addEventListener('change', () => {
+                const idx = select.value;
+                document.getElementById('notes-input').value = idx !== '' ? sessions[idx].observaciones : '';
+            });
+
+            // Autocargar la sesión más reciente
+            select.value = '0';
+            document.getElementById('notes-input').value = sessions[0].observaciones;
+        }
+
+        // ─── GENERAR PAUTAS CON IA ───────────────────────────────────────────────
+        async function generatePautas(nota, nombrePaciente) {
+            const prompt = `Eres un psicólogo clínico experto. Basándote en la siguiente nota de sesión, genera un documento de "Pautas para la semana" para el paciente llamado ${nombrePaciente}.
+
+NOTA DE SESIÓN:
+"${nota}"
+
+Genera un JSON con esta estructura exacta:
+{
+  "saludo": "<frase motivadora personalizada de bienvenida, 1-2 frases>",
+  "pautas": [
+    { "titulo": "<nombre corto de la pauta>", "descripcion": "<instrucción clara y motivadora en 1-2 frases>" }
+  ],
+  "cierre": "<frase de cierre motivadora y cálida, 1-2 frases>"
+}
+
+REGLAS:
+- Máximo 5 pautas. Mínimo 2.
+- Tono: cercano, motivador, profesional. Habla de "tú".
+- Las pautas deben ser concretas y accionables.
+- Responde SOLO con el JSON válido. Sin markdown. Sin texto adicional.`;
+
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${GROQ_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'system', content: 'Eres un psicólogo clínico. Respondes siempre con JSON válido y nada más.' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.6,
+                    max_tokens: 1000
+                })
+            });
+
+            const data = await res.json();
+            if (!data.choices?.[0]) throw new Error(data.error?.message || 'Error de API');
+            const raw = data.choices[0].message.content.trim()
+                .replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/```$/, '').trim();
+            return JSON.parse(raw);
+        }
+
+        // ─── RENDERIZAR RESULTADO ────────────────────────────────────────────────
+        function renderResult(result, nombrePaciente) {
+            const box = document.getElementById('output-box');
+
+            const pautasHTML = result.pautas.map((p, i) => `
+                <div class="pauta-item">
+                    <div class="pauta-num">${i + 1}</div>
+                    <div>
+                        <strong style="color: #0A2B42;">${p.titulo}</strong>
+                        <p style="margin: 4px 0 0; color: #555; font-size: 0.92rem; line-height: 1.5;">${p.descripcion}</p>
+                    </div>
+                </div>`).join('');
+
+            box.innerHTML = `
+                <div class="pauta-motivacion">💬 ${result.saludo}</div>
+                <p style="font-weight: 600; color: #1abc9c; margin-bottom: 12px; font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;">TUS PAUTAS PARA ESTA SEMANA</p>
+                ${pautasHTML}
+                <p style="margin-top: 18px; color: #888; font-style: italic; font-size: 0.9rem;">🌱 ${result.cierre}</p>
+            `;
+
+            document.getElementById('result-nombre').textContent = nombrePaciente;
+            document.getElementById('result-fecha').textContent = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+            document.getElementById('resultado-container').style.display = 'block';
+            document.getElementById('resultado-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ─── IMPRIMIR ────────────────────────────────────────────────────────────
+        function printPautas() {
+            const nombre  = document.getElementById('result-nombre').textContent;
+            const fecha   = document.getElementById('result-fecha').textContent;
+            const content = document.getElementById('output-box').innerHTML;
+
+            // Usamos concatenación + <\/ para evitar que el parser HTML cierre el tag script prematuramente
+            const css = 'body{font-family:"Segoe UI",Tahoma,sans-serif;padding:40px;color:#333;max-width:680px;margin:0 auto}' +
+                'h2{color:#0A2B42;border-bottom:2px solid #1abc9c;padding-bottom:8px}' +
+                '.pauta-item{display:flex;gap:12px;padding:10px 14px;background:#f4fdfb;border-left:3px solid #1abc9c;margin-bottom:8px;border-radius:6px}' +
+                '.pauta-num{background:#1abc9c;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0}' +
+                '.pauta-motivacion{background:#fffbea;border-left:3px solid #f39c12;padding:10px 14px;border-radius:6px;margin-bottom:14px;font-style:italic;color:#7d6608}' +
+                'strong{color:#0A2B42}p{margin:4px 0 0;font-size:.92rem;line-height:1.5}';
+
+            const html = '<!DOCTYPE html><html>' +
+                '<head><meta charset="UTF-8"><title>Pautas - ' + nombre + '<\/title>' +
+                '<style>' + css + '<\/style><\/head>' +
+                '<body>' +
+                '<h2>Pautas para ' + nombre + '<\/h2>' +
+                '<p style="color:#888;margin-bottom:20px">' + fecha + '<\/p>' +
+                content +
+                '<p style="margin-top:40px;font-size:.8rem;color:#ccc;border-top:1px solid #eee;padding-top:10px">Generado por PsicoFact &middot; Psilogia IA<\/p>' +
+                '<\/body><\/html>';
+
+            const win = window.open('', '', 'height=700,width=800');
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            win.print();
+        }
+
+        // ─── MAIN ────────────────────────────────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
-            
+
             try {
                 const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
                 if (snap.exists()) {
@@ -78,16 +271,65 @@
 
             const params = new URLSearchParams(window.location.search);
             const patientId = params.get('id');
-            if (patientId) {
-                document.getElementById('back-to-ia').href = `psilogia.html?id=${patientId}`;
-                try {
-                    const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
-                    if (pSnap.exists()) {
-                        const p = pSnap.data();
-                        document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
-                    }
-                } catch(e) { console.error(e); }
+            if (!patientId) { window.location.href = 'Con_pacientes.html'; return; }
+
+            document.getElementById('back-to-ia').href = `psilogia.html?id=${patientId}`;
+
+            try {
+                const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
+                if (!pSnap.exists()) { window.location.href = 'Con_pacientes.html'; return; }
+
+                const p = pSnap.data();
+                currentPatient = p;
+                document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
+
+                await loadSessions(user.uid, p);
+            } catch(e) { console.error('Error cargando paciente:', e); }
+        });
+
+        // Botón generar
+        document.getElementById('btn-generar').addEventListener('click', async () => {
+            const nota = document.getElementById('notes-input').value.trim();
+            if (!nota) { alert('Por favor escribe o selecciona una nota de sesión antes de generar.'); return; }
+
+            const btn = document.getElementById('btn-generar');
+            btn.innerHTML = '<span class="spinner-sm"></span> Generando pautas...';
+            btn.disabled = true;
+
+            try {
+                const nombrePaciente = currentPatient
+                    ? `${currentPatient.nombre} ${currentPatient.apellidos}`
+                    : 'el paciente';
+
+                const result = await generatePautas(nota, nombrePaciente.split(' ')[0]);
+                renderResult(result, nombrePaciente);
+            } catch(e) {
+                console.error('Error generando pautas:', e);
+                alert('Ha habido un problema al contactar con la IA. Inténtalo de nuevo.');
+            } finally {
+                btn.innerHTML = '✨ Generar Pautas con IA';
+                btn.disabled = false;
             }
+        });
+
+        // Copiar al portapapeles (texto plano)
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            const nombre = document.getElementById('result-nombre').textContent;
+            const fecha  = document.getElementById('result-fecha').textContent;
+            const plain  = document.getElementById('output-box').innerText;
+            navigator.clipboard.writeText(`Pautas para ${nombre} · ${fecha}\n\n${plain}`)
+                .then(() => alert('¡Texto copiado al portapapeles!'))
+                .catch(() => alert('No se pudo copiar. Usa el botón de imprimir.'));
+        });
+
+        // Imprimir
+        document.getElementById('btn-print').addEventListener('click', printPautas);
+
+        // Resetear
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            document.getElementById('resultado-container').style.display = 'none';
+            document.getElementById('output-box').innerHTML = '';
+            document.getElementById('notes-input').focus();
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));

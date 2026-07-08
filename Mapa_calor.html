@@ -6,7 +6,421 @@
     <title>Mapa de Calor - Psilogia IA</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .word-cloud  { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px; align-items: center; min-height: 150px; }
+        .word-tag    { border-radius: 5px; padding: 3px 10px; cursor: default; transition: transform 0.2s; font-weight: 600; }
+        .word-tag:hover { transform: scale(1.12); }
+        .cat-positivo   { background: #d5f5e3; color: #1e8449; }
+        .cat-negativo   { background: #fadbd8; color: #c0392b; }
+        .cat-ansiedad   { background: #fef9e7; color: #9a7d0a; }
+        .cat-cognitivo  { background: #f0e6ff; color: #6c3483; }
+        .cat-social     { background: #d6eaf8; color: #1a5276; }
+        .cat-energia    { background: #f2f3f4; color: #566573; border: 1px solid #e5e7e9; }
+        .cat-existencial{ background: #e8f8f5; color: #0e6655; }
+
+        .split-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .period-card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .period-header { padding: 12px 20px; font-weight: 700; font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .ph-inicio  { background: #fef9e7; color: #9a7d0a; border-bottom: 2px solid #f39c12; }
+        .ph-actual  { background: #d5f5e3; color: #1e8449; border-bottom: 2px solid #27ae60; }
+
+        .legend-bar { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 1.5rem; }
+        .lpill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+
+        .chart-box  { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
+        .chart-title{ font-size: 1rem; font-weight: 600; color: var(--azul-oscuro); margin-bottom: 16px; }
+
+        .change-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: white; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+        .change-arrow { font-size: 1.3rem; flex-shrink: 0; width: 32px; text-align: center; }
+        .ia-box { background: #f0f7ff; border-left: 4px solid #6e8efb; border-radius: 8px; padding: 18px 20px; margin-bottom: 1.5rem; color: #2c3e50; line-height: 1.7; font-size: 0.92rem; }
+
+        #loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 15px; }
+        .spinner { width: 44px; height: 44px; border: 4px solid #eee; border-top-color: #f39c12; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) { .split-grid { grid-template-columns: 1fr; } }
+    </style>
 </head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
+            </a>
+        </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
+            <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
+            <div>
+                <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
+                <p style="margin: 2px 0 0; color: #888; font-size: 0.85rem;">Mapa de Calor · Nube de Evolución</p>
+            </div>
+            <div class="agenda-actions" style="margin-left: auto;">
+                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
+                <a href="psilogia.html" id="back-to-ia" class="back-link">&larr; Volver</a>
+            </div>
+        </div>
+
+        <!-- Bloque explicativo compacto -->
+        <section class="agenda-container" style="margin-top: 2rem; background: #fffaf0; border-left: 5px solid #f39c12; padding: 18px 24px;">
+            <p style="margin: 0; color: #555; line-height: 1.65;">
+                <strong style="color: #d35400;">Mapa de Calor de Adjetivos Terapéuticos.</strong>
+                Cruza el <strong>Banco de Adjetivos</strong> con el historial clínico para crear una &ldquo;Nube de Evolución&rdquo;.
+                Compara qué grupos (Positivos, Ansógenos, Cognitivos&hellip;) predominaban al <em>inicio del tratamiento</em> frente a los que predominan <em>ahora</em>.
+                Detecta cambios sutiles en el lenguaje del paciente con rigor científico.
+            </p>
+        </section>
+
+        <!-- Análisis -->
+        <section class="agenda-container" style="margin-top: 1.5rem; border-left: 5px solid #f39c12;">
+
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+                <p id="loading-text" style="color: #888; margin: 0;">Cargando historial...</p>
+            </div>
+
+            <div id="empty-state" style="display: none; text-align: center; padding: 50px; color: #999;">
+                <p style="font-size: 2rem;">📭</p>
+                <p style="font-size: 1.1rem; font-weight: 600;">Sin datos suficientes</p>
+                <p style="font-size: 0.88rem; margin-top: 8px;">Se necesitan al menos 2 sesiones con observaciones que contengan adjetivos del banco terapéutico.</p>
+            </div>
+
+            <div id="dashboard-content" style="display: none;">
+
+                <!-- Leyenda de categorías -->
+                <div class="legend-bar">
+                    <span class="lpill cat-positivo">😊 Positivos</span>
+                    <span class="lpill cat-negativo">😔 Negativos</span>
+                    <span class="lpill cat-ansiedad">😰 Ansiedad</span>
+                    <span class="lpill cat-cognitivo">🧠 Cognitivos</span>
+                    <span class="lpill cat-social">🤝 Sociales</span>
+                    <span class="lpill cat-energia">⚡ Energía</span>
+                    <span class="lpill cat-existencial">🌌 Existencial</span>
+                </div>
+
+                <!-- Nubes comparativas -->
+                <div class="split-grid">
+                    <div class="period-card">
+                        <div class="period-header ph-inicio">🌱 Inicio del tratamiento · <span id="inicio-label" style="font-weight:400;"></span></div>
+                        <div class="word-cloud" id="cloud-inicio"></div>
+                    </div>
+                    <div class="period-card">
+                        <div class="period-header ph-actual">🌟 Estado actual · <span id="actual-label" style="font-weight:400;"></span></div>
+                        <div class="word-cloud" id="cloud-actual"></div>
+                    </div>
+                </div>
+
+                <!-- Radar comparativo -->
+                <div class="chart-box">
+                    <div class="chart-title">📊 Balance de Categorías: Inicio vs Ahora</div>
+                    <canvas id="chartRadar" height="100"></canvas>
+                </div>
+
+                <!-- Interpretación IA -->
+                <div id="ia-interpretacion" class="ia-box" style="display:none;">
+                    <p style="font-weight: 700; color: #6e8efb; margin-bottom: 8px; font-size: 0.82rem; text-transform: uppercase;">🤖 Interpretación Clínica IA</p>
+                    <p id="ia-texto" style="margin: 0;"></p>
+                </div>
+
+                <!-- Cambios más significativos -->
+                <div class="chart-box">
+                    <div class="chart-title">🔍 Cambios más Significativos</div>
+                    <div id="changes-list"></div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app  = initializeApp(firebaseConfig);
+        const db   = getFirestore(app);
+        const auth = getAuth(app);
+        const GROQ_KEY = window.APP_CONFIG.groqApiKey;
+
+        // ─── BANCO DE ADJETIVOS ────────────────────────────────────────────────
+        const BANCO = {
+            positivo:    ['Alegre','Feliz','Contento','Entusiasmado','Motivado','Optimista','Esperanzado','Satisfecho','Tranquilo','Sereno','Relajado','Confiado','Seguro','Animado','Eufórico','Agradecido','Inspirado','Ilusionado','Cariñoso','Compasivo','Empático','Afable','Sociable','Vital','Energético'],
+            negativo:    ['Triste','Deprimido','Melancólico','Desanimado','Abatido','Desesperanzado','Apático','Indiferente','Irritable','Enfadado','Furioso','Hostil','Resentido','Frustrado','Decepcionado','Culpable','Avergonzado','Humillado','Inseguro','Vulnerable','Rechazado','Solo','Aislado','Desconectado','Vacío'],
+            ansiedad:    ['Ansioso','Nervioso','Preocupado','Inquieto','Agobiado','Estresado','Tenso','Sobrecargado','Alarmado','Asustado','Temeroso','Aterrado','Hipervigilante','Impaciente','Incómodo'],
+            cognitivo:   ['Confundido','Desorientado','Indeciso','Dubitativo','Perplejo','Concentrado','Reflexivo','Pensativo','Lúcido','Clarividente','Distraído','Saturado','Bloqueado','Desbordado','Obsesivo'],
+            social:      ['Querido','Aceptado','Valorado','Comprendido','Acompañado','Protegido','Celoso','Dependiente','Desconfiado','Suspicaz','Manipulado','Abandonado','Ignorado','Marginado','Intimidado'],
+            energia:     ['Cansado','Exhausto','Fatigado','Somnoliento','Letárgico','Activo','Dinámico','Hiperactivo','Revitalizado'],
+            existencial: ['Pleno','Realizado','Equilibrado','Vacío','Perdido','Desesperado','Trascendente','Desmotivado','Estancado','Alienado','Desvinculado','Reconectado']
+        };
+
+        const CAT_CONFIG = {
+            positivo:    { label: '😊 Positivos',    color: 'rgba(39,174,96,0.7)',   border: '#27ae60' },
+            negativo:    { label: '😔 Negativos',    color: 'rgba(192,57,43,0.7)',   border: '#c0392b' },
+            ansiedad:    { label: '😰 Ansiedad',     color: 'rgba(230,126,34,0.7)',  border: '#e67e22' },
+            cognitivo:   { label: '🧠 Cognitivos',   color: 'rgba(108,52,131,0.7)',  border: '#6c3483' },
+            social:      { label: '🤝 Sociales',     color: 'rgba(52,152,219,0.7)',  border: '#3498db' },
+            energia:     { label: '⚡ Energía',      color: 'rgba(127,140,141,0.7)', border: '#7f8c8d' },
+            existencial: { label: '🌌 Existencial',  color: 'rgba(22,160,133,0.7)',  border: '#16a085' }
+        };
+
+        // ─── CONTAR ADJETIVOS EN TEXTO ─────────────────────────────────────────
+        function countAdjectives(sessions) {
+            const allText = sessions.map(s => s.observaciones).join(' ');
+            const counts  = {};
+
+            Object.entries(BANCO).forEach(([cat, words]) => {
+                words.forEach(word => {
+                    // Escapar caracteres especiales para regex (ej: "En paz")
+                    const esc  = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+                    const hits = (allText.match(new RegExp(esc, 'gi')) || []).length;
+                    if (hits > 0) counts[word] = { count: hits, cat };
+                });
+            });
+            return counts;
+        }
+
+        // ─── RENDERIZAR NUBE DE PALABRAS ───────────────────────────────────────
+        function renderCloud(counts, containerId) {
+            const el = document.getElementById(containerId);
+            const entries = Object.entries(counts).sort((a, b) => b[1].count - a[1].count);
+
+            if (entries.length === 0) {
+                el.innerHTML = '<p style="color:#bbb;font-style:italic;padding:16px;font-size:0.88rem;">No se detectaron adjetivos del banco en estas sesiones.</p>';
+                return;
+            }
+
+            const maxC = Math.max(...entries.map(([, v]) => v.count));
+            el.innerHTML = entries.map(([word, { count, cat }]) => {
+                const size = (0.8 + (count / maxC) * 1.6).toFixed(2);
+                return '<span class="word-tag cat-' + cat + '" style="font-size:' + size + 'rem" title="' + count + ' vez' + (count > 1 ? 'ces' : '') + '">' + word + '</span>';
+            }).join('');
+        }
+
+        // ─── SUMAR POR CATEGORÍA ───────────────────────────────────────────────
+        function sumByCategory(counts) {
+            const sums = {};
+            Object.keys(BANCO).forEach(cat => { sums[cat] = 0; });
+            Object.values(counts).forEach(({ count, cat }) => { sums[cat] += count; });
+            return sums;
+        }
+
+        // ─── GRÁFICO RADAR ─────────────────────────────────────────────────────
+        function renderRadar(sumsInicio, sumsActual) {
+            const cats   = Object.keys(BANCO);
+            const labels = cats.map(c => CAT_CONFIG[c].label);
+
+            new Chart(document.getElementById('chartRadar'), {
+                type: 'radar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Inicio',
+                            data: cats.map(c => sumsInicio[c]),
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243,156,18,0.15)',
+                            pointBackgroundColor: '#f39c12',
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'Ahora',
+                            data: cats.map(c => sumsActual[c]),
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39,174,96,0.15)',
+                            pointBackgroundColor: '#27ae60',
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { size: 10 } },
+                            pointLabels: { font: { size: 11 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // ─── CAMBIOS MÁS SIGNIFICATIVOS ────────────────────────────────────────
+        function renderChanges(inicioC, actualC) {
+            const allWords = new Set([...Object.keys(inicioC), ...Object.keys(actualC)]);
+            const deltas = [];
+
+            allWords.forEach(w => {
+                const ci = inicioC[w]?.count || 0;
+                const ca = actualC[w]?.count || 0;
+                const cat = inicioC[w]?.cat || actualC[w]?.cat;
+                if (ci !== ca) deltas.push({ w, ci, ca, delta: ca - ci, cat });
+            });
+
+            deltas.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+            const container = document.getElementById('changes-list');
+            if (deltas.length === 0) {
+                container.innerHTML = '<p style="color:#999;font-style:italic;">No hay cambios detectables entre los períodos.</p>';
+                return;
+            }
+
+            container.innerHTML = deltas.slice(0, 8).map(d => {
+                const up   = d.delta > 0;
+                const icon = up ? '⬆️' : '⬇️';
+                const desc = up
+                    ? 'Aumentó de ' + d.ci + ' a ' + d.ca + ' mención' + (d.ca > 1 ? 'es' : '')
+                    : 'Bajó de ' + d.ci + ' a ' + d.ca + ' mención' + (d.ca > 1 ? 'es' : '');
+                const borderColor = up
+                    ? (d.cat === 'positivo' ? '#27ae60' : '#e74c3c')
+                    : (d.cat === 'positivo' ? '#e74c3c' : '#27ae60');
+
+                return '<div class="change-item" style="border-left:4px solid ' + borderColor + '">' +
+                    '<div class="change-arrow">' + icon + '</div>' +
+                    '<div><strong class="cat-' + d.cat + '" style="background:none;padding:0;font-size:1rem;">' + d.w + '</strong>' +
+                    '<span style="color:#888;font-size:0.82rem;margin-left:10px;">' + desc + '</span></div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        // ─── INTERPRETACIÓN IA ─────────────────────────────────────────────────
+        async function getIAInterpretation(inicioC, actualC) {
+            const topInicio = Object.entries(inicioC).sort((a,b) => b[1].count - a[1].count).slice(0, 8)
+                .map(([w, { count, cat }]) => w + '(' + cat + 'x' + count + ')').join(', ');
+            const topActual = Object.entries(actualC).sort((a,b) => b[1].count - a[1].count).slice(0, 8)
+                .map(([w, { count, cat }]) => w + '(' + cat + 'x' + count + ')').join(', ');
+
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'system', content: 'Eres un psicólogo clínico experto. Respondes en español con 3-4 frases concisas.' },
+                        { role: 'user', content: 'Analiza la evolución del léxico terapéutico de un paciente:\n\nINICIO: ' + topInicio + '\n\nAHORA: ' + topActual + '\n\nDa una interpretación clínica breve (3-4 frases) sobre los cambios detectados y su significado para el tratamiento.' }
+                    ],
+                    temperature: 0.4,
+                    max_tokens: 300
+                })
+            });
+            const data = await res.json();
+            return data.choices?.[0]?.message?.content || null;
+        }
+
+        // ─── MAIN ──────────────────────────────────────────────────────────────
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+
+            try {
+                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    document.getElementById('user-name').textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ') || user.email;
+                }
+            } catch(e) { console.error(e); }
+
+            const params    = new URLSearchParams(window.location.search);
+            const patientId = params.get('id');
+            if (!patientId) { window.location.href = 'Con_pacientes.html'; return; }
+
+            document.getElementById('back-to-ia').href = 'psilogia.html?id=' + patientId;
+
+            try {
+                const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
+                if (!pSnap.exists()) { window.location.href = 'Con_pacientes.html'; return; }
+
+                const p = pSnap.data();
+                document.getElementById('paciente-nombre').textContent = p.nombre + ' ' + p.apellidos;
+
+                document.getElementById('loading-text').textContent = 'Analizando historial de sesiones...';
+
+                // Cargar citas con observaciones
+                const citasSnap = await getDocs(collection(db, 'usuarios', user.uid, 'citas'));
+                const patientName = p.nombre + ' ' + p.apellidos;
+                const sessions = [];
+
+                citasSnap.forEach(d => {
+                    const c = d.data();
+                    const isPatient = c.referenciaPaciente === p.referencia || c.paciente === patientName;
+                    const hasNotes  = (c.observaciones || '').trim().length > 5;
+                    if (isPatient && hasNotes) {
+                        sessions.push({ fecha: c.fecha, observaciones: c.observaciones.trim() });
+                    }
+                });
+
+                sessions.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+                if (sessions.length < 2) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('empty-state').style.display = 'block';
+                    return;
+                }
+
+                // Dividir en período "inicio" (primer tercio) y "actual" (último tercio)
+                const cutoff = Math.max(1, Math.floor(sessions.length / 3));
+                const inicioSessions = sessions.slice(0, cutoff);
+                const actualSessions = sessions.slice(sessions.length - cutoff);
+
+                document.getElementById('inicio-label').textContent =
+                    inicioSessions[0].fecha + (inicioSessions.length > 1 ? ' – ' + inicioSessions[inicioSessions.length-1].fecha : '');
+                document.getElementById('actual-label').textContent =
+                    actualSessions[0].fecha + (actualSessions.length > 1 ? ' – ' + actualSessions[actualSessions.length-1].fecha : '');
+
+                const inicioC = countAdjectives(inicioSessions);
+                const actualC = countAdjectives(actualSessions);
+
+                const hasData = Object.keys(inicioC).length > 0 || Object.keys(actualC).length > 0;
+                if (!hasData) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('empty-state').style.display = 'block';
+                    return;
+                }
+
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+
+                renderCloud(inicioC, 'cloud-inicio');
+                renderCloud(actualC, 'cloud-actual');
+                renderRadar(sumByCategory(inicioC), sumByCategory(actualC));
+                renderChanges(inicioC, actualC);
+
+                // Interpretación IA (async, no bloquea el render)
+                document.getElementById('loading-text').textContent = 'Generando interpretación clínica...';
+                try {
+                    const texto = await getIAInterpretation(inicioC, actualC);
+                    if (texto) {
+                        document.getElementById('ia-texto').textContent = texto;
+                        document.getElementById('ia-interpretacion').style.display = 'block';
+                    }
+                } catch(e) { console.warn('Interpretación IA no disponible:', e); }
+
+            } catch(e) {
+                console.error('Error en Mapa de Calor:', e);
+                document.getElementById('loading-text').textContent = 'Error al cargar los datos.';
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>
 <body>
 
     <header class="navbar">
