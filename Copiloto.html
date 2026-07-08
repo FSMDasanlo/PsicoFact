@@ -96,8 +96,18 @@
             </div>
         </div>
 
-        <!-- 1) DESCRIPCIÓN — prominente, siempre lo primero -->
-        <div style="margin-top:2rem; background:linear-gradient(135deg,#fdf0ef,#fce4e1); border-left:6px solid #e74c3c; border-radius:12px; padding:22px 28px; box-shadow:0 4px 10px rgba(231,76,60,0.12);">
+        <!-- 1) INTRODUCCIÓN — Movida desde abajo -->
+        <section class="agenda-container" style="margin-top: 2rem; text-align: left; border-left: 5px solid #e74c3c; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,.05);">
+            <h2 style="color: #e74c3c; margin-bottom: 1.5rem; font-size: 1.4rem;">"Copiloto de Sesión" (Voice-to-Insight)</h2>
+            <div style="background: #fdf5f4; padding: 20px; border-radius: 8px; line-height: 1.8; color: #444;">
+                <p><strong>La Idea:</strong> Un modo "Escucha Activa" durante la sesión.</p>
+                <p style="margin-top: 15px;"><strong>Cómo funciona:</strong> Mediante la transcripción de voz a texto (en tiempo real o diferido), la app detecta automáticamente palabras clave del "Banco de Adjetivos" y rellena un borrador de la nota clínica.</p>
+                <p style="margin-top: 15px;"><strong>El impacto:</strong> El psicólogo deja de mirar la pantalla y se centra 100% en mirar a los ojos del paciente. El software trabaja de fondo para que, al terminar, el 80% del informe esté ya hecho.</p>
+            </div>
+        </section>
+
+          <!-- 3) GUÍA DE USO — Movida desde arriba -->
+        <div style="margin-top:2rem; background:linear-gradient(135deg,#fdf0ef,#fce4e1); border-left:6px solid #e74c3c; border-radius:12px; padding:22px 28px; box-shadow:0 4px 10px rgba(231,76,60,0.12); margin-bottom: 2rem;">
             <h3 style="margin:0 0 12px; color:#c0392b; font-size:1.05rem; display:flex; align-items:center; gap:8px;">🎙️ ¿Cómo usar el Copiloto?</h3>
             <p style="margin:0 0 10px; color:#555; line-height:1.65;">
                 <strong>Activa el micrófono</strong> y olvídate de la pantalla durante la sesión.
@@ -110,8 +120,8 @@
                 <span style="font-size:0.85rem; color:#c0392b;">③ Pulsa &ldquo;Finalizar&rdquo; para generar la nota</span>
             </div>
         </div>
-
-        <!-- 2) ÁREA DE TRABAJO — debajo de la descripción -->
+        
+        <!-- 2) ÁREA DE TRABAJO — El centro de la herramienta -->
         <div style="margin-top:1.5rem; background:white; border-left:5px solid #e74c3c; border-radius:12px; padding:2rem; box-shadow:0 4px 6px rgba(0,0,0,.05); text-align:left;">
 
             <!-- Aviso si el navegador no soporta -->
@@ -170,8 +180,9 @@
                     <button class="btn-note btn-reset-note" id="btn-reset-nota">↺ Volver</button>
                 </div>
             </div>
-
         </div>
+
+      
     </main>
 
     <footer>
@@ -242,6 +253,7 @@
 
         // ─── TEMPORIZADOR ──────────────────────────────────────────────────────
         function startTimer() {
+            stopTimer(); // Limpiar cualquier intervalo previo por seguridad
             sessionSeconds = 0;
             const el = document.getElementById('session-timer');
             el.style.display = 'block';
@@ -254,7 +266,8 @@
         }
 
         function stopTimer() {
-            clearInterval(timerInterval);
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = null;
         }
 
         // ─── WEB SPEECH API ────────────────────────────────────────────────────
@@ -321,16 +334,25 @@
                 return;
             }
 
-            isRecording = true;
-            recognition.start();
-            document.getElementById('btn-mic').classList.add('recording');
-            document.getElementById('btn-mic').textContent = '⏸️';
-            document.getElementById('btn-mic').title = 'Detener grabación';
-            document.getElementById('rec-dot').classList.add('active');
-            document.getElementById('status-text').innerHTML = '<span class="rec-dot active"></span>Escuchando...';
-            document.getElementById('live-panels').style.display = 'grid';
-            document.getElementById('btn-finalizar').style.display = 'inline-block';
-            startTimer();
+            try {
+                isRecording = true;
+                recognition.start();
+                document.getElementById('btn-mic').classList.add('recording');
+                document.getElementById('btn-mic').textContent = '⏸️';
+                document.getElementById('btn-mic').title = 'Detener grabación';
+                document.getElementById('rec-dot').classList.add('active');
+                document.getElementById('status-text').innerHTML = '<span class="rec-dot active"></span>Escuchando...';
+                document.getElementById('live-panels').style.display = 'grid';
+                document.getElementById('btn-finalizar').style.display = 'inline-block';
+                startTimer();
+            } catch (err) {
+                console.error('Error starting recognition:', err);
+                // Si ya estaba iniciado, simplemente nos aseguramos de que el estado sea coherente
+                if (err.name === 'InvalidStateError') {
+                    stopRecording();
+                    setTimeout(startRecording, 100);
+                }
+            }
         }
 
         function stopRecording() {
@@ -404,6 +426,7 @@
                 document.getElementById('nota-container').scrollIntoView({ behavior: 'smooth' });
                 document.getElementById('live-panels').style.display = 'none';
                 document.getElementById('btn-finalizar').style.display = 'none';
+                document.getElementById('btn-mic').style.display = 'none'; // Ocultamos el mic tras generar nota
                 document.getElementById('btn-limpiar').style.display = 'inline-block';
 
             } catch(e) {
@@ -441,27 +464,9 @@
 
         // ─── RESET ─────────────────────────────────────────────────────────────
         function resetSession() {
-            finalTranscript = '';
-            detectedAdj = {};
-            sessionSeconds = 0;
-            isRecording = false;
-            if (recognition) { try { recognition.abort(); } catch(e) { /* */ } }
-            stopTimer();
-
-            document.getElementById('transcript-box').innerHTML = '';
-            document.getElementById('manual-input').value = '';
-            document.getElementById('adj-detected').innerHTML = '<p style="color:#ccc;font-size:0.85rem;font-style:italic;">Comenzarán a aparecer al hablar...</p>';
-            document.getElementById('adj-count').textContent = '0';
-            document.getElementById('session-timer').style.display = 'none';
-            document.getElementById('nota-container').style.display = 'none';
-            document.getElementById('live-panels').style.display = 'none';
-            document.getElementById('btn-finalizar').style.display = 'none';
-            document.getElementById('btn-limpiar').style.display = 'none';
-            document.getElementById('btn-mic').classList.remove('recording');
-            document.getElementById('btn-mic').textContent = '🎙️';
-            document.getElementById('btn-mic').style.display = 'inline-flex';
-            document.getElementById('status-text').innerHTML = '<span class="rec-dot"></span>Listo para escuchar';
-            renderAdjectives();
+            if (confirm('¿Deseas iniciar una nueva sesión? Se perderá la transcripción y nota actual si no las has guardado.')) {
+                window.location.reload();
+            }
         }
 
         // ─── MAIN ──────────────────────────────────────────────────────────────
@@ -518,90 +523,6 @@
 
         document.getElementById('btn-print-nota').addEventListener('click', printNota);
         document.getElementById('btn-reset-nota').addEventListener('click', resetSession);
-        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-    </script>
-</body>
-</html>
-<body>
-
-    <header class="navbar">
-        <div class="logo-container">
-            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
-                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
-            </a>
-        </div>
-        <div class="user-info-container">
-            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
-            <span id="user-name"></span>
-        </div>
-    </header>
-
-    <main class="container">
-        <div class="agenda-header" style="text-align: left; display: flex; align-items: center; gap: 20px;">
-            <img src="img/psia_new2.png" alt="Psilogia Logo" style="height: 60px; width: auto;">
-            <h2 id="paciente-nombre" style="margin: 0; font-size: 1.8rem; color: var(--azul-oscuro); font-weight: 600;">Cargando...</h2>
-            <div class="agenda-actions" style="margin-left: auto;">
-                <a href="index.html" class="home-icon" title="Inicio">🏠</a>
-                <a href="psilogia.html" id="back-to-ia" class="back-link">&larr; Volver</a>
-            </div>
-        </div>
-
-        <section class="agenda-container" style="margin-top: 2rem; text-align: left; border-left: 5px solid #e74c3c;">
-            <h2 style="color: #e74c3c; margin-bottom: 1.5rem;">"Copiloto de Sesión" (Voice-to-Insight)</h2>
-            <div style="background: #fdf5f4; padding: 25px; border-radius: 8px; line-height: 1.8; color: #444;">
-                <p><strong>La Idea:</strong> Un modo "Escucha Activa" durante la sesión.</p>
-                
-                <p style="margin-top: 15px;"><strong>Cómo funciona:</strong> Mediante la transcripción de voz a texto (en tiempo real o diferido), la app detecta automáticamente palabras clave del "Banco de Adjetivos" y rellena un borrador de la nota clínica.</p>
-                
-                <p style="margin-top: 15px;"><strong>El impacto:</strong> El psicólogo deja de mirar la pantalla y se centra 100% en mirar a los ojos del paciente. El software trabaja de fondo para que, al terminar, el 80% del informe esté ya hecho.</p>
-            </div>
-
-            <div style="margin-top: 3rem; text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 12px; color: #999;">
-                <p style="font-size: 1.2rem;">✨ Módulo de Voz e Inteligencia en Desarrollo ✨</p>
-                <p style="font-size: 0.9rem; margin-top: 10px;">Aquí se gestionará la transcripción y el análisis en tiempo real.</p>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
-    </footer>
-
-    <script src="js/config.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-        const firebaseConfig = window.APP_CONFIG.firebase;
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) { window.location.href = 'index.html'; return; }
-            try {
-                const snap = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
-                if (snap.exists()) {
-                    const d = snap.data();
-                    document.getElementById('user-name').textContent = [d.nombre, d.apellidos].filter(Boolean).join(' ') || user.email;
-                }
-            } catch(e) { console.error(e); }
-
-            const params = new URLSearchParams(window.location.search);
-            const patientId = params.get('id');
-            if (patientId) {
-                document.getElementById('back-to-ia').href = `psilogia.html?id=${patientId}`;
-                try {
-                    const pSnap = await getDoc(doc(db, 'usuarios', user.uid, 'pacientes', patientId));
-                    if (pSnap.exists()) {
-                        const p = pSnap.data();
-                        document.getElementById('paciente-nombre').textContent = `${p.nombre} ${p.apellidos}`;
-                    }
-                } catch(e) { console.error(e); }
-            }
-        });
-
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
     </script>
 </body>
