@@ -140,6 +140,31 @@
         </div>
     </div>
 
+    <!-- Modal de Alerta de Duplicados -->
+    <div id="modalDuplicateAlert" class="modal" style="display:none; z-index: 3000;">
+        <div class="modal-content" style="max-width: 500px; border-top: 5px solid #f39c12;">
+            <div class="agenda-header">
+                <h2 style="color: #e67e22;">⚠️ Posible Duplicado</h2>
+                <span class="close-modal" onclick="closeDuplicateModal()">&times;</span>
+            </div>
+            <div style="padding: 20px; line-height: 1.6;">
+                <p>Estás intentando guardar a:</p>
+                <div id="new-patient-preview" style="background: #e3f2fd; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #3498db; font-weight: 600;">
+                    <!-- Nombre del paciente actual via JS -->
+                </div>
+                <p>Pero se han encontrado pacientes similares en la base de datos:</p>
+                <div id="duplicate-list" style="background: #fff9f0; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #ffeeba; max-height: 200px; overflow-y: auto;">
+                    <!-- Lista de duplicados vía JS -->
+                </div>
+                <p style="font-weight: 600;">¿Deseas guardar los cambios de todos modos?</p>
+            </div>
+            <div class="form-actions full-width" style="display: flex; gap: 10px; justify-content: center; padding-bottom: 20px;">
+                <button type="button" id="btn-confirm-duplicate" class="btn-turquesa" style="background: #e67e22; border-color: #d35400;">Sí, Guardar</button>
+                <button type="button" class="back-link" onclick="closeDuplicateModal()" style="border: 1px solid #ccc; padding: 8px 20px; border-radius: 6px;">No, Revisar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -311,6 +336,10 @@
         }
         function closeModal() { document.getElementById('modalPaciente').style.display = 'none'; }
         
+        window.closeDuplicateModal = function() {
+            document.getElementById('modalDuplicateAlert').style.display = 'none';
+        };
+
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
@@ -341,6 +370,78 @@
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
             data.por_seguro = document.getElementById('por_seguro').checked;
+
+            // --- CONTROL DE DUPLICADOS (NUEVO Y EDICIÓN) ---
+            const nombreNorm = (data.nombre || '').trim().toLowerCase();
+            const apellidosNorm = (data.apellidos || '').trim().toLowerCase();
+            const a1Norm = apellidosNorm.split(/\s+/)[0];
+
+            const matches = patients.filter(p => {
+                if (editingId && p.id === editingId) return false; // No compararse consigo mismo en edición
+
+                const pn = (p.nombre || '').trim().toLowerCase();
+                const pa = (p.apellidos || '').trim().toLowerCase();
+                const pa1 = pa.split(/\s+/)[0];
+                
+                // CRITERIOS DE COINCIDENCIA:
+                // 1. Apellidos exactos (independientemente del nombre)
+                const matchApellidosExactos = (pa === apellidosNorm);
+                
+                // 2. Mismo nombre y coincidencia parcial/primer apellido
+                const matchNombre = (pn === nombreNorm);
+                const matchPrimerApellido = (a1Norm && pa1 && a1Norm === pa1);
+                const matchContenido = (pa.includes(apellidosNorm) || apellidosNorm.includes(pa));
+                
+                return matchApellidosExactos || (matchNombre && (matchPrimerApellido || matchContenido));
+            });
+
+            if (matches.length > 0) {
+                // Mostrar el nombre que se está intentando guardar
+                document.getElementById('new-patient-preview').innerHTML = `${data.nombre} ${data.apellidos}`;
+
+                const listDiv = document.getElementById('duplicate-list');
+                listDiv.innerHTML = matches.map(m => `
+                    <div style="margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #ddd;">
+                        <strong>${m.nombre} ${m.apellidos}</strong><br>
+                        <small style="color:#666;">Ref: ${m.referencia || 'S/R'} | Tel: ${m.telefono || 'N/A'}</small>
+                    </div>
+                `).join('');
+                
+                document.getElementById('modalDuplicateAlert').style.display = 'flex';
+                
+                // Promesa para esperar la decisión del usuario
+                const userConfirmed = await new Promise((resolve) => {
+                    // Seleccionar botones
+                    const btnConfirm = document.getElementById('btn-confirm-duplicate');
+                    const btnCancel = document.querySelector('#modalDuplicateAlert .back-link');
+                    const btnCloseX = document.querySelector('#modalDuplicateAlert .close-modal');
+
+                    // Definir manejadores
+                    const onConfirm = () => {
+                        finish(true);
+                    };
+                    const onCancel = () => {
+                        finish(false);
+                    };
+
+                    const finish = (result) => {
+                        btnConfirm.removeEventListener('click', onConfirm);
+                        btnCancel.removeEventListener('click', onCancel);
+                        btnCloseX.removeEventListener('click', onCancel);
+                        document.getElementById('modalDuplicateAlert').style.display = 'none';
+                        resolve(result);
+                    };
+
+                    // Asignar eventos (usamos addEventListener para no pisar onclick del HTML si lo hubiera, 
+                    // aunque lo ideal es que el JS controle el flujo aquí)
+                    btnConfirm.addEventListener('click', onConfirm);
+                    btnCancel.addEventListener('click', onCancel);
+                    btnCloseX.addEventListener('click', onCancel);
+                });
+
+                if (!userConfirmed) return;
+            }
+            // -----------------------------------------------
 
             if (editingId) {
                 await updateDoc(uDoc("pacientes", editingId), data);
