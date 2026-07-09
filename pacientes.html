@@ -65,74 +65,76 @@
                 <h2>Nuevo Paciente</h2>
                 <span class="close-modal" onclick="closeModal()">&times;</span>
             </div>
-            <form id="form-paciente" class="form-grid">
-                <div class="form-section full-width" style="border-left-color: var(--turquesa);">
-                    <h3 class="section-title" style="color: var(--turquesa);">Datos Personales</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="referencia">Referencia (auto)</label>
-                            <input type="text" id="referencia" name="referencia" readonly style="background-color:#f0f0f0; font-weight:600; letter-spacing:1px;">
-                        </div>
-                        <div class="form-group">
-                            <label for="fechaNacimiento">Fecha de Nacimiento</label>
-                            <input type="date" id="fechaNacimiento" name="fechaNacimiento">
-                        </div>
-                        <div class="form-group">
+            <form id="form-paciente" style="display: block;">
+                <div class="form-section full-width" style="border-left-color: var(--turquesa); margin-bottom: 5px; padding: 10px;">
+                    <h3 class="section-title" style="color: var(--turquesa); margin-bottom: 8px;">Datos Personales</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: nowrap; margin-bottom: 8px;">
+                        <div class="form-group" style="flex: 2;">
                             <label for="nombre">Nombre</label>
-                            <input type="text" id="nombre" name="nombre" required>
+                            <input type="text" id="nombre" name="nombre" required style="width: 100%;">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 2;">
                             <label for="apellidos">Apellidos</label>
-                            <input type="text" id="apellidos" name="apellidos" required>
+                            <input type="text" id="apellidos" name="apellidos" required style="width: 100%;">
                         </div>
-                        <div class="form-group">
-                            <label for="telefono">Teléfono</label>
-                            <input type="tel" id="telefono" name="telefono" required>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="referencia">Referencia</label>
+                            <input type="text" id="referencia" name="referencia" readonly style="background-color:#eee; font-weight:600; color: #666; width: 100%;">
                         </div>
-                        <div class="form-group">
-                            <label for="importe_sesion">Importe sesión (€)</label>
-                            <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="Ej: 60">
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: nowrap; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1.2;">
+                            <label for="fechaNacimiento">Fecha nac.</label>
+                            <input type="date" id="fechaNacimiento" name="fechaNacimiento" style="width: 100%;">
                         </div>
-                        <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 5px;">
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; background: #e0f2f1; padding: 10px; border-radius: 6px; border: 1px solid var(--turquesa); width: 100%;">
-                                <input type="checkbox" id="por_seguro" name="por_seguro" style="width: 20px; height: 20px; cursor: pointer;">
-                                ¿ES POR SEGURO?
+                        <div class="form-group" style="flex: 1.2;">
+                            <label for="telefono">Telef.</label>
+                            <input type="tel" id="telefono" name="telefono" required style="width: 100%;">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="importe_sesion">Sesión (€)</label>
+                            <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="60" style="width: 100%;">
+                        </div>
+                        <div class="form-group" style="flex: 0.8;">
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.7rem; background: #e0f2f1; padding: 5px; border-radius: 4px; border: 1px solid var(--turquesa); margin: 0; white-space: nowrap; height: 30px; width: 100%; justify-content: center;">
+                                <input type="checkbox" id="por_seguro" name="por_seguro" style="width: 13px; height: 13px; cursor: pointer;">
+                                SEGURO
                             </label>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-section full-width">
-                    <h3 class="section-title">Asignación y Gestión</h3>
-                    <div class="form-grid-3">
-                        <div class="form-group">
+                <div class="form-section full-width" style="margin-top: 5px; padding: 10px;">
+                    <h3 class="section-title" style="margin-bottom: 8px;">Asignación y Notas</h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <div class="form-group" style="flex: 1;">
                             <label for="centro">Centro</label>
-                            <select id="centro" name="centro" required>
+                            <select id="centro" name="centro" required style="width: 100%;">
                                 <option value="">Seleccione...</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1;">
                             <label for="sociedad">Sociedad</label>
-                            <select id="sociedad" name="sociedad" required>
+                            <select id="sociedad" name="sociedad" required style="width: 100%;">
                                 <option value="">Seleccione...</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1;">
                             <label for="clinica">Clínica</label>
-                            <select id="clinica" name="clinica" required>
+                            <select id="clinica" name="clinica" required style="width: 100%;">
                                 <option value="">Seleccione...</option>
                             </select>
                         </div>
                     </div>
+                    <div class="form-group" style="width: 100%;">
+                        <label for="notas">Notas / Observaciones</label>
+                        <textarea id="notas" name="notas" rows="1" placeholder="Detalles relevantes..." style="width: 100%; min-height: 28px;"></textarea>
+                    </div>
                 </div>
 
-                <div class="form-group full-width">
-                    <label for="notas">Notas / Observaciones</label>
-                    <textarea id="notas" name="notas" rows="3" placeholder="Añade aquí cualquier detalle relevante..."></textarea>
-                </div>
-                <div class="form-actions full-width">
-                    <button type="submit" class="btn-turquesa" style="padding: 12px 30px; font-size: 1rem;">Guardar Paciente</button>
-                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeModal()">Cancelar</button>
+                <div class="form-actions full-width" style="justify-content: center; margin-top: 8px; gap: 20px;">
+                    <button type="submit" class="btn-turquesa" style="padding: 5px 25px; font-size: 0.85rem;">Guardar Paciente</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer; font-size: 0.85rem;" onclick="closeModal()">Cancelar</button>
                 </div>
             </form>
         </div>
