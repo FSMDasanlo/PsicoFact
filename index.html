@@ -355,7 +355,7 @@
                     <p style="font-size: 1.2rem; margin: 0;">Citas pendientes: <strong id="billing-count">0</strong></p>
                     <p style="font-size: 1.5rem; color: var(--turquesa); font-weight: 600; margin: 10px 0;">Total a abonar: <span id="billing-amount">0.00</span>€</p>
                 </div>
-                <p style="font-size: 0.9rem; color: #666;">Tu cuota de PsicoFact es de 0,30€ por cita realizada.</p>
+                <p style="font-size: 0.9rem; color: #666;">Tu cuota de PsicoFact es de <span id="billing-tarifa">0,30</span>€ por cita realizada.</p>
                 <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: left;">
                     <p><strong>📱 Bizum:</strong> 626534484</p>
                     <p><strong>🏦 Transferencia:</strong> <br><small>1111 1111 1111 1111 1111 1111</small></p>
@@ -440,12 +440,24 @@
 
         // ── Cobro por Uso ──
         async function checkBilling(uid) {
-            const isFriday = new Date().getDay() === 5;
+            const BILLING_KEY = `lastBillingCheck_${uid}`;
             const isTest = new URLSearchParams(window.location.search).has('testBilling');
 
-            if (!isFriday && !isTest) return;
+            if (!isTest) {
+                const lastCheck = localStorage.getItem(BILLING_KEY);
+                if (lastCheck) {
+                    const daysSinceLast = (Date.now() - parseInt(lastCheck, 10)) / (1000 * 60 * 60 * 24);
+                    if (daysSinceLast < 7) return; // Aún no han pasado 7 días desde el último aviso
+                }
+            }
 
             try {
+                // Leer tarifa de uso personalizada del facultativo
+                const perfilSnap = await getDoc(doc(db, 'usuarios', uid, 'facultativo', 'perfil'));
+                const tarifaUso = (perfilSnap.exists() && perfilSnap.data().tarifaUso != null)
+                    ? perfilSnap.data().tarifaUso
+                    : 0.30;
+
                 // Obtener todas las citas finalizadas
                 const q = query(collection(db, "usuarios", uid, "citas"), where("estado", "==", "completed"));
                 const snap = await getDocs(q);
@@ -454,8 +466,12 @@
                 const pendingCitas = snap.docs.filter(d => d.data().billingStatus !== 'paid');
 
                 if (pendingCitas.length > 0) {
+                    // Registrar el momento en que se muestra el aviso
+                    localStorage.setItem(BILLING_KEY, Date.now().toString());
+
                     document.getElementById('billing-count').textContent = pendingCitas.length;
-                    document.getElementById('billing-amount').textContent = (pendingCitas.length * 0.30).toFixed(2);
+                    document.getElementById('billing-amount').textContent = (pendingCitas.length * tarifaUso).toFixed(2);
+                    document.getElementById('billing-tarifa').textContent = tarifaUso.toFixed(2).replace('.', ',');
                     document.getElementById('modalBilling').style.display = 'flex';
 
                     document.getElementById('btn-mark-paid').onclick = async () => {
@@ -475,7 +491,7 @@
                             await addDoc(collection(db, "usuarios", uid, "pagos_app"), {
                                 fecha: new Date().toISOString(),
                                 citas: pendingCitas.length,
-                                importe: (pendingCitas.length * 0.30).toFixed(2),
+                                importe: (pendingCitas.length * tarifaUso).toFixed(2),
                                 metodo: 'Pendiente verificación'
                             });
 

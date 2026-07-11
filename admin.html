@@ -194,6 +194,22 @@
 
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
+        window.saveTarifaUso = async (uid) => {
+            const input = document.getElementById(`tarifa-${uid}`);
+            const tarifa = parseFloat(input.value);
+            if (isNaN(tarifa) || tarifa < 0) {
+                alert('Introduce un valor válido (número positivo).');
+                return;
+            }
+            try {
+                await setDoc(doc(db, 'usuarios', uid, 'facultativo', 'perfil'), { tarifaUso: tarifa }, { merge: true });
+                alert(`Tarifa de uso actualizada a ${tarifa.toFixed(2)} €/cita`);
+            } catch (err) {
+                console.error('Error al guardar tarifa:', err);
+                alert('Error al guardar: ' + err.message);
+            }
+        };
+
         window.listUsers = async () => {
             const container = document.getElementById('users-list-container');
             document.getElementById('modalList').style.display = 'flex';
@@ -215,6 +231,7 @@
                             uid,
                             nombre: `${data.nombre || ''} ${data.apellidos || ''}`.trim() || 'Sin nombre',
                             email: data.email || 'N/A',
+                            tarifaUso: data.tarifaUso != null ? data.tarifaUso : 0.30,
                             isMe: currentUser && uid === currentUser.uid,
                             sinPerfil: false
                         });
@@ -262,6 +279,7 @@
                             <tr style="background:#f8f9fa; border-bottom:1px solid #eee;">
                                 <th style="padding:10px; text-align:left;">Nombre / Email</th>
                                 <th style="padding:10px; text-align:left;">UID (para clonar/borrar)</th>
+                                <th style="padding:10px; text-align:center;">Tarifa/uso</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -273,6 +291,16 @@
                         : `<button class="btn-link" onclick="deleteUserComplete('${u.uid}', '${u.email}')" style="padding:2px 5px; font-size:0.7rem; color:#e74c3c; border-color:#e74c3c;">Eliminar Todo</button>`;
 
                     const rowStyle = u.sinPerfil ? 'border-bottom:1px solid #eee; background:#fffbf0;' : 'border-bottom:1px solid #eee;';
+
+                    const tarifaCell = u.sinPerfil
+                        ? `<td style="padding:10px; text-align:center;"><span style="color:#bbb; font-size:0.75rem;">N/A</span></td>`
+                        : `<td style="padding:10px; text-align:center;">
+                                <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+                                    <input type="number" id="tarifa-${u.uid}" value="${u.tarifaUso.toFixed(2)}" step="0.01" min="0" style="width:68px; padding:4px 6px; border:1px solid #ccc; border-radius:4px; font-size:0.82rem; text-align:right;">
+                                    <span style="font-size:0.8rem; color:#555;">€</span>
+                                </div>
+                                <button class="btn-link" onclick="saveTarifaUso('${u.uid}')" style="padding:2px 5px; font-size:0.7rem; color:#27ae60; margin-top:3px;">💾 Guardar</button>
+                           </td>`;
 
                     html += `
                         <tr style="${rowStyle}">
@@ -287,6 +315,7 @@
                                     ${deleteBtn}
                                 </div>
                             </td>
+                            ${tarifaCell}
                         </tr>
                     `;
                 });
@@ -532,8 +561,9 @@
                     const pendingCitas = allCompletedCitas.filter(d => d.data().billingStatus !== 'paid');
                     const paidCitas = allCompletedCitas.filter(d => d.data().billingStatus === 'paid');
 
-                    const deudaUsuario = pendingCitas.length * 0.30;
-                    const pagadoUsuario = paidCitas.length * 0.30;
+                    const tarifaUso = profile.tarifaUso != null ? profile.tarifaUso : 0.30;
+                    const deudaUsuario = pendingCitas.length * tarifaUso;
+                    const pagadoUsuario = paidCitas.length * tarifaUso;
 
                     totalDeudaGlobal += deudaUsuario;
                     totalPagadoGlobal += pagadoUsuario;
@@ -550,6 +580,7 @@
                         uid,
                         nombre: `${profile.nombre || ''} ${profile.apellidos || ''}`.trim() || 'Sin nombre',
                         email: profile.email || 'N/A',
+                        tarifaUso: tarifaUso.toFixed(2),
                         pendingCount: pendingCitas.length,
                         pendingAmount: deudaUsuario.toFixed(2),
                         paidAmount: pagadoUsuario.toFixed(2),
