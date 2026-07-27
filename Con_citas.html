@@ -39,30 +39,36 @@
                 <button class="btn-turquesa" onclick="filterByMonth(1)">Próximo mes</button>
             </div>
 
-            <form id="form-filtros-citas" class="form-grid">
-                <div class="form-group">
+            <form id="form-filtros-citas" style="display: flex; flex-wrap: nowrap; gap: 10px; align-items: flex-end; width: 100%;">
+                <div class="form-group" style="width: 125px; flex-shrink: 0;">
                     <label for="fecha-desde">Desde</label>
-                    <input type="date" id="fecha-desde">
+                    <input type="date" id="fecha-desde" style="width: 100%;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="width: 125px; flex-shrink: 0;">
                     <label for="fecha-hasta">Hasta</label>
-                    <input type="date" id="fecha-hasta">
+                    <input type="date" id="fecha-hasta" style="width: 100%;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="flex: 1.5; min-width: 150px;">
+                    <label for="filtro-paciente">Paciente</label>
+                    <select id="filtro-paciente" style="width: 100%;">
+                        <option value="">Cualquier paciente</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 120px;">
                     <label for="filtro-clinica">Clínica</label>
-                    <select id="filtro-clinica">
+                    <select id="filtro-clinica" style="width: 100%;">
                         <option value="">Todas las clínicas</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="flex: 1; min-width: 120px;">
                     <label for="filtro-sociedad">Sociedad</label>
-                    <select id="filtro-sociedad">
+                    <select id="filtro-sociedad" style="width: 100%;">
                         <option value="">Todas las sociedades</option>
                     </select>
                 </div>
-                <div class="form-actions full-width" style="align-items: flex-end;">
-                    <button type="button" class="btn-turquesa" style="flex: 1; cursor: pointer;" onclick="handleSearch()">Buscar</button>
-                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="clearFilters()">Limpiar</button>
+                <div style="display: flex; gap: 8px; margin-bottom: 2px;">
+                    <button type="button" class="btn-turquesa" style="cursor: pointer; padding: 7px 15px;" onclick="handleSearch()">Buscar</button>
+                    <button type="button" class="back-link" style="border:none; background:none; cursor:pointer; font-size: 0.85rem;" onclick="clearFilters()">Limpiar</button>
                 </div>
             </form>
         </section>
@@ -104,7 +110,7 @@
             <table class="agenda-table">
                 <thead>
                     <tr>
-                        <th onclick="window.sortTable('fecha')" style="cursor:pointer;">Fecha ↕️</th>
+                        <th onclick="window.sortTable('fecha')" style="cursor:pointer; width: 100px;">Fecha ↕️</th>
                         <th onclick="window.sortTable('paciente')" style="cursor:pointer;">Referencia / Paciente ↕️</th>
                         <th onclick="window.sortTable('clinica')" style="cursor:pointer;">Clínica ↕️</th>
                         <th onclick="window.sortTable('sociedad')" style="cursor:pointer;">Sociedad ↕️</th>
@@ -214,15 +220,32 @@
         async function loadFilters() {
             const snapshotClinicas = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
             const snapshotSociedades = await getDocs(query(uCol("sociedades"), orderBy("nombre")));
+            const snapshotPacientes = await getDocs(query(uCol("pacientes"), orderBy("nombre")));
             
             const selectClinica = document.getElementById('filtro-clinica');
             const selectSociedad = document.getElementById('filtro-sociedad');
+            const selectPaciente = document.getElementById('filtro-paciente');
 
             snapshotClinicas.forEach(c => {
-                selectClinica.innerHTML += `<option value="${c.data().nombre}">${c.data().nombre}</option>`;
+                const opt = document.createElement('option');
+                opt.value = c.data().nombre;
+                opt.textContent = c.data().nombre;
+                selectClinica.appendChild(opt);
             });
             snapshotSociedades.forEach(s => {
-                selectSociedad.innerHTML += `<option value="${s.data().nombre}">${s.data().nombre}</option>`;
+                const opt = document.createElement('option');
+                opt.value = s.data().nombre;
+                opt.textContent = s.data().nombre;
+                selectSociedad.appendChild(opt);
+            });
+            snapshotPacientes.forEach(p => {
+                const data = p.data();
+                const fullName = [data.nombre, data.apellidos].filter(Boolean).join(' ');
+                const ref = data.referencia || fullName; 
+                const opt = document.createElement('option');
+                opt.value = ref;
+                opt.textContent = `${ref} - ${fullName}`;
+                selectPaciente.appendChild(opt);
             });
         }
 
@@ -246,16 +269,7 @@
         }
 
         window.handleSearch = () => {
-            const clinica = document.getElementById('filtro-clinica').value;
-            const sociedad = document.getElementById('filtro-sociedad').value;
-
-            const filtered = appointments.filter(a => {
-                const matchClinica = !clinica || a.clinica === clinica;
-                const matchSociedad = !sociedad || a.sociedad === sociedad;
-                return matchClinica && matchSociedad;
-            });
-
-            renderData(filtered);
+            handleSearch();
         };
 
         function renderData(data) {
@@ -345,6 +359,7 @@
         function handleSearch() {
             const desde = document.getElementById('fecha-desde').value;
             const hasta = document.getElementById('fecha-hasta').value;
+            const pacienteFiltro = document.getElementById('filtro-paciente').value;
             const clinicaFiltro = document.getElementById('filtro-clinica').value;
             const sociedadFiltro = document.getElementById('filtro-sociedad').value;
             
@@ -361,10 +376,11 @@
                     cumpleFecha = d >= dDesde && d <= dHasta;
                 }
 
+                const cumplePaciente = pacienteFiltro === "" || (app.referenciaPaciente || app.paciente) === pacienteFiltro;
                 const cumpleClinica = clinicaFiltro === "" || app.clinica === clinicaFiltro;
                 const cumpleSociedad = sociedadFiltro === "" || app.sociedad === sociedadFiltro;
                 
-                return cumpleFecha && cumpleClinica && cumpleSociedad;
+                return cumpleFecha && cumplePaciente && cumpleClinica && cumpleSociedad;
             });
             renderData(filtered);
         }

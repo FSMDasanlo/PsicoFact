@@ -11,12 +11,12 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 44px;
-            height: 44px;
+            width: 38px;
+            height: 38px;
             background: white;
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid #dee2e6;
-            margin: 0 4px;
+            margin: 0 2px;
             transition: all 0.2s ease;
             text-decoration: none;
             cursor: pointer;
@@ -28,12 +28,12 @@
             border-color: var(--turquesa);
         }
         .action-button img {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             object-fit: contain;
         }
         .action-button.emoji {
-            font-size: 1.6rem;
+            font-size: 1.3rem;
             line-height: 1;
         }
         /* Colores específicos para ayudar visualmente si se desea */
@@ -41,6 +41,7 @@
         .btn-evaluacion:hover { background-color: #f0f7ff; }
         .btn-psilogia { border-color: #3498db; background: #f0f7ff; }
         .btn-lineavida { border-color: #fbc02d; background: #fffde7; }
+        .btn-agenda { border-color: #4db6ac; background: #e0f2f1; }
     </style>
 </head>
 <body>
@@ -128,7 +129,7 @@
                         <th class="sortable" onclick="handleSort('nombre_completo')">Nombre Paciente ↕️</th>
                         <th class="sortable" onclick="handleSort('sociedad')">Sociedad ↕️</th>
                         <th class="sortable" onclick="handleSort('clinica')">Clínica ↕️</th>
-                        <th style="text-align: center; width: 280px;">Acciones</th>
+                        <th style="text-align: center; width: 310px; white-space: nowrap;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-busqueda">
@@ -318,12 +319,14 @@
                         <td>${p.nombre} ${p.apellidos}</td>
                         <td>${p.sociedad || '-'}</td>
                         <td>${p.clinica || '-'}</td>
-                        <td style="text-align: center;">
+                        <td style="text-align: center; white-space: nowrap;">
                             <a href="Expediente_paciente.html?id=${p.id}" class="action-button emoji btn-expediente" title="Ver Expediente">📂</a>
                             
                             <a href="evaluacion.html?id=${p.id}" class="action-button btn-evaluacion" title="Evaluación">
                                 <img src="img/evaluación.png" alt="Eval">
                             </a>
+
+                            <a href="agenda.html?paciente=${encodeURIComponent(p.nombre + ' ' + p.apellidos)}" class="action-button emoji btn-agenda" title="Ver Agenda/Citas">📅</a>
                             
                             <a href="psilogia.html?id=${p.id}" class="action-button btn-psilogia" title="IA PsicoFact">
                                 <img src="img/Psia.png" alt="IA">

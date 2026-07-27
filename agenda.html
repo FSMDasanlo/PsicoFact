@@ -343,6 +343,17 @@
             populatePatientDropdown();
             populateStatesDropdowns();
             populateCentrosDropdown();
+
+            // Verificar si hay un paciente en la URL para filtrar automáticamente
+            const urlParams = new URLSearchParams(window.location.search);
+            const pacienteUrl = urlParams.get('paciente');
+            if (pacienteUrl) {
+                const filterSelect = document.getElementById('filtro-paciente');
+                if (filterSelect) {
+                    filterSelect.value = pacienteUrl;
+                }
+            }
+
             loadFilteredAppointments();
         }
 
