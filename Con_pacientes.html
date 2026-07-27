@@ -6,6 +6,42 @@
     <title>Consultas de pacientes</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+            margin: 0 4px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-color: var(--turquesa);
+        }
+        .action-button img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+        .action-button.emoji {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+        /* Colores específicos para ayudar visualmente si se desea */
+        .btn-expediente:hover { background-color: #f8f9fa; }
+        .btn-evaluacion:hover { background-color: #f0f7ff; }
+        .btn-psilogia { border-color: #3498db; background: #f0f7ff; }
+        .btn-lineavida { border-color: #fbc02d; background: #fffde7; }
+    </style>
 </head>
 <body>
 
@@ -283,14 +319,17 @@
                         <td>${p.sociedad || '-'}</td>
                         <td>${p.clinica || '-'}</td>
                         <td style="text-align: center;">
-                            <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente" style="font-size: 1.4rem;">📂</a>
-                            <a href="evaluacion.html?id=${p.id}" class="action-icon" title="Evaluación" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: white; border-radius: 10px; border: 1px solid #ddd; margin-left: 10px; transition: all 0.3s ease;">
-                                <img src="img/evaluación.png" alt="Eval" style="width: 26px; height: auto;">
+                            <a href="Expediente_paciente.html?id=${p.id}" class="action-button emoji btn-expediente" title="Ver Expediente">📂</a>
+                            
+                            <a href="evaluacion.html?id=${p.id}" class="action-button btn-evaluacion" title="Evaluación">
+                                <img src="img/evaluación.png" alt="Eval">
                             </a>
-                            <a href="psilogia.html?id=${p.id}" class="action-icon-ia" title="IA PsicoFact" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #f0f7ff; border-radius: 10px; border: 1px solid #3498db; margin-left: 10px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);">
-                                <img src="img/Psia.png" alt="IA" style="width: 28px; height: auto;">
+                            
+                            <a href="psilogia.html?id=${p.id}" class="action-button btn-psilogia" title="IA PsicoFact">
+                                <img src="img/Psia.png" alt="IA">
                             </a>
-                            <a href="LineaVida.html?id=${p.id}" class="action-icon" title="Linea de vida" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #fffde7; border-radius: 10px; border: 1px solid #fbc02d; margin-left: 10px; transition: all 0.3s ease; font-size: 1.4rem; text-decoration: none;">🧬</a>
+                            
+                            <a href="LineaVida.html?id=${p.id}" class="action-button emoji btn-lineavida" title="Línea de Vida">🧬</a>
                         </td>
                     </tr>`;
             });

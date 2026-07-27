@@ -104,9 +104,15 @@
             background: var(--blanco);
             border: 3px solid var(--azul-oscuro);
             flex-shrink: 0;
+            cursor: grab;
         }
+        .tl-dot:active { cursor: grabbing; }
         .timeline-item.agradable .tl-dot { border-color: #27ae60; }
         .timeline-item.desagradable .tl-dot { border-color: #c0392b; }
+        .timeline-item.drag-over .tl-dot {
+            transform: scale(1.4);
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.35);
+        }
         .tl-age-label {
             font-size: 0.75rem;
             font-weight: 700;
@@ -118,6 +124,21 @@
             color: #95a5a6;
             text-align: center;
             padding: 40px 0;
+        }
+        .drag-age-indicator {
+            position: fixed;
+            display: none;
+            pointer-events: none;
+            background: var(--azul-oscuro);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            z-index: 3000;
+            transform: translate(-50%, -140%);
         }
     </style>
 </head>
@@ -188,6 +209,8 @@
             <div class="lifeline-label bottom">😞 Desagradables</div>
         </section>
     </main>
+
+    <div id="drag-age-indicator" class="drag-age-indicator"></div>
 
     <footer>
         <p>&copy; 2026 PsicoFact - Gestión de Psicología</p>
@@ -301,13 +324,119 @@
             const bottomContent = e.tipo === 'desagradable' ? `<div class="tl-connector"></div>${boxHtml}` : '';
 
             return `
-                <div class="timeline-item ${e.tipo}">
+                <div class="timeline-item ${e.tipo}" data-id="${e.id}"
+                     ondragover="onTimelineDragOver(event)" ondragleave="onTimelineDragLeave(event)" ondrop="onTimelineDrop(event, '${e.id}')">
                     <div class="tl-top">${topContent}</div>
-                    <div class="tl-dot" title="${formatEdad(e.edad_anios, e.edad_meses)}"></div>
+                    <div class="tl-dot" draggable="true" ondragstart="onDotDragStart(event, '${e.id}')" ondragend="onDotDragEnd(event)" title="${formatEdad(e.edad_anios, e.edad_meses)} (arrastra para mover)"></div>
                     <div class="tl-age-label">${formatEdad(e.edad_anios, e.edad_meses)}</div>
                     <div class="tl-bottom">${bottomContent}</div>
                 </div>`;
         }
+
+        let draggedEventId = null;
+        const dragIndicator = document.getElementById('drag-age-indicator');
+
+        const toMonths = (ev) => (parseInt(ev.edad_anios) || 0) * 12 + (parseInt(ev.edad_meses) || 0);
+
+        // Calcula la edad prospectiva (años/meses) que tendría el acontecimiento arrastrado
+        // si se soltase junto a targetId (antes o después según isAfter). Devuelve null si no hay cambio posible.
+        function calcProspectiveAge(draggedId, targetId, isAfter) {
+            const orderedIds = eventos.map(ev => ev.id).filter(id => id !== draggedId);
+            let insertAt = orderedIds.indexOf(targetId);
+            if (insertAt === -1) return null;
+            if (isAfter) insertAt += 1;
+            orderedIds.splice(insertAt, 0, draggedId);
+
+            const newIndex = orderedIds.indexOf(draggedId);
+            const prevEv = newIndex > 0 ? eventos.find(ev => ev.id === orderedIds[newIndex - 1]) : null;
+            const nextEv = newIndex < orderedIds.length - 1 ? eventos.find(ev => ev.id === orderedIds[newIndex + 1]) : null;
+
+            let newTotalMonths;
+            if (prevEv && nextEv) {
+                newTotalMonths = (toMonths(prevEv) + toMonths(nextEv)) / 2;
+            } else if (prevEv && !nextEv) {
+                newTotalMonths = toMonths(prevEv) + 1;
+            } else if (!prevEv && nextEv) {
+                newTotalMonths = Math.max(0, toMonths(nextEv) - 1);
+            } else {
+                return null; // Único evento, nada que reordenar
+            }
+
+            newTotalMonths = Math.max(0, Math.round(newTotalMonths));
+            return { anios: Math.floor(newTotalMonths / 12), meses: newTotalMonths % 12 };
+        }
+
+        function moveDragIndicator(e, edad) {
+            if (!dragIndicator || !edad) return;
+            dragIndicator.textContent = formatEdad(edad.anios, edad.meses);
+            dragIndicator.style.left = `${e.clientX}px`;
+            dragIndicator.style.top = `${e.clientY}px`;
+            dragIndicator.style.display = 'block';
+        }
+
+        window.onDotDragStart = function(e, id) {
+            draggedEventId = id;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id);
+            const ev = eventos.find(ev => ev.id === id);
+            if (dragIndicator && ev) {
+                dragIndicator.textContent = formatEdad(ev.edad_anios, ev.edad_meses);
+                dragIndicator.style.left = `${e.clientX}px`;
+                dragIndicator.style.top = `${e.clientY}px`;
+                dragIndicator.style.display = 'block';
+            }
+        };
+
+        window.onDotDragEnd = function() {
+            draggedEventId = null;
+            document.querySelectorAll('.timeline-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (dragIndicator) dragIndicator.style.display = 'none';
+        };
+
+        window.onTimelineDragOver = function(e) {
+            if (!draggedEventId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+
+            const targetId = e.currentTarget.dataset.id;
+            if (targetId && targetId !== draggedEventId) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const isAfter = (e.clientX - rect.left) > (rect.width / 2);
+                const edad = calcProspectiveAge(draggedEventId, targetId, isAfter);
+                moveDragIndicator(e, edad);
+            }
+        };
+
+        window.onTimelineDragLeave = function(e) {
+            e.currentTarget.classList.remove('drag-over');
+        };
+
+        window.onTimelineDrop = async function(e, targetId) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (dragIndicator) dragIndicator.style.display = 'none';
+            if (!draggedEventId || draggedEventId === targetId) return;
+
+            const draggedEv = eventos.find(ev => ev.id === draggedEventId);
+            if (!draggedEv) return;
+
+            // Decidir si se suelta antes o después del elemento objetivo según la posición X del cursor
+            const rect = e.currentTarget.getBoundingClientRect();
+            const isAfter = (e.clientX - rect.left) > (rect.width / 2);
+
+            const edad = calcProspectiveAge(draggedEventId, targetId, isAfter);
+            if (!edad) return; // Único evento, nada que reordenar
+
+            try {
+                await updateDoc(uDoc('lineavida', draggedEventId), { edad_anios: edad.anios, edad_meses: edad.meses });
+                showToast('Acontecimiento movido en la línea de vida.', 'success');
+                await loadEventos();
+            } catch (error) {
+                console.error('Error al mover el acontecimiento:', error);
+                showToast('Error al mover el acontecimiento.', 'error');
+            }
+        };
 
         window.editEvento = function(id) {
             const e = eventos.find(ev => ev.id === id);
