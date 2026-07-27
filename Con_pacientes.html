@@ -92,13 +92,12 @@
                         <th class="sortable" onclick="handleSort('nombre_completo')">Nombre Paciente ↕️</th>
                         <th class="sortable" onclick="handleSort('sociedad')">Sociedad ↕️</th>
                         <th class="sortable" onclick="handleSort('clinica')">Clínica ↕️</th>
-                        <th class="sortable" onclick="handleSort('importe_sesion')" style="text-align: right; width: 100px;">Importe ↕️</th>
-                        <th style="text-align: center;">Acciones</th>
+                        <th style="text-align: center; width: 280px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-busqueda">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
+                        <td colspan="4" style="text-align: center; color: #95a5a6;">Use los filtros para buscar pacientes</td>
                     </tr>
                 </tbody>
             </table>
@@ -272,19 +271,17 @@
         function renderResults(lista) {
             const tbody = document.getElementById('resultados-busqueda');
             if (lista.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #95a5a6;">No se encontraron pacientes</td></tr>';
                 return;
             }
 
             tbody.innerHTML = '';
             lista.forEach(p => {
-                const importe = parseFloat(p.importe_sesion || 0);
                 tbody.innerHTML += `
                     <tr>
                         <td>${p.nombre} ${p.apellidos}</td>
                         <td>${p.sociedad || '-'}</td>
                         <td>${p.clinica || '-'}</td>
-                        <td style="font-weight: 600; text-align: right;">${importe > 0 ? importe.toFixed(2) + ' €' : '-'}</td>
                         <td style="text-align: center;">
                             <a href="Expediente_paciente.html?id=${p.id}" class="action-icon" title="Ver Expediente" style="font-size: 1.4rem;">📂</a>
                             <a href="evaluacion.html?id=${p.id}" class="action-icon" title="Evaluación" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: white; border-radius: 10px; border: 1px solid #ddd; margin-left: 10px; transition: all 0.3s ease;">
@@ -293,6 +290,7 @@
                             <a href="psilogia.html?id=${p.id}" class="action-icon-ia" title="IA PsicoFact" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #f0f7ff; border-radius: 10px; border: 1px solid #3498db; margin-left: 10px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);">
                                 <img src="img/Psia.png" alt="IA" style="width: 28px; height: auto;">
                             </a>
+                            <a href="LineaVida.html?id=${p.id}" class="action-icon" title="Linea de vida" style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #fffde7; border-radius: 10px; border: 1px solid #fbc02d; margin-left: 10px; transition: all 0.3s ease; font-size: 1.4rem; text-decoration: none;">🧬</a>
                         </td>
                     </tr>`;
             });
