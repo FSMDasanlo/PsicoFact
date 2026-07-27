@@ -227,7 +227,6 @@
                 <input type="hidden" id="ref-cita" name="referenciaPaciente">
                 <div class="form-actions full-width">
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
-                    <button type="button" class="btn-turquesa" style="background: var(--turquesa);" onclick="addToGoogleCalendar()">Añadir a Google Calendar</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeAppointmentModal()">Cancelar</button>
                 </div>
             </form>
@@ -252,6 +251,23 @@
             </div>
             <div class="form-actions" style="margin-top: 20px; justify-content: flex-end;">
                 <button type="button" class="btn-turquesa" onclick="closeTramosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal confirmación Google Calendar -->
+    <div id="modalGCal" class="modal" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 420px; text-align: center; padding: 2.5rem 2rem;">
+            <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">📅</div>
+            <h3 style="margin: 0 0 0.5rem; color: var(--azul-oscuro); font-size: 1.3rem;">¿Añadir a Google Calendar?</h3>
+            <p style="color: #666; font-size: 0.95rem; margin: 0 0 1.8rem;">La cita se guardará en tu Google Calendar para que no se te olvide.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="gcal-si" class="btn-turquesa" style="padding: 10px 28px; font-size: 1rem;">
+                    Sí, añadir
+                </button>
+                <button id="gcal-no" class="back-link" style="border: none; background: none; cursor: pointer; font-size: 1rem; padding: 10px 20px;">
+                    No, gracias
+                </button>
             </div>
         </div>
     </div>
@@ -726,7 +742,14 @@
                 }
             }
 
-            loadFilteredAppointments(); 
+            loadFilteredAppointments();
+
+            // Preguntar si quiere añadir a Google Calendar (antes de cerrar el modal)
+            const quiereGCal = await showGCalendarConfirm();
+            if (quiereGCal) {
+                addToGoogleCalendar();
+            }
+
             closeAppointmentModal();
 
             // Ajuste 3: Volver al calendario si estaba abierto y actualizarlo
@@ -735,6 +758,22 @@
                 wasCalendarOpen = false;
             }
         };
+
+        function showGCalendarConfirm() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modalGCal');
+                modal.style.display = 'flex';
+                const onSi = () => { cleanup(); resolve(true); };
+                const onNo = () => { cleanup(); resolve(false); };
+                function cleanup() {
+                    modal.style.display = 'none';
+                    document.getElementById('gcal-si').removeEventListener('click', onSi);
+                    document.getElementById('gcal-no').removeEventListener('click', onNo);
+                }
+                document.getElementById('gcal-si').addEventListener('click', onSi);
+                document.getElementById('gcal-no').addEventListener('click', onNo);
+            });
+        }
 
         function addToGoogleCalendar() {
             const fecha = document.getElementById('fecha').value;
