@@ -216,6 +216,14 @@ footer {
     text-decoration: line-through;
 }
 
+/* Agrupación visual por día en tablas ordenadas por fecha */
+.date-group-0 td:first-child { border-left: 5px solid #3498db; }
+.date-group-1 td:first-child { border-left: 5px solid #1abc9c; }
+.date-group-2 td:first-child { border-left: 5px solid #9b59b6; }
+.date-group-3 td:first-child { border-left: 5px solid #e67e22; }
+.date-group-4 td:first-child { border-left: 5px solid #e74c3c; }
+.date-group-5 td:first-child { border-left: 5px solid #2ecc71; }
+
 .agenda-actions {
     display: flex;
     align-items: center;

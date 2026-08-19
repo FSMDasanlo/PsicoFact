@@ -301,6 +301,10 @@
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #95a5a6;">No hay citas para este periodo</td></tr>`;
             } else {
+                let prevFecha = null;
+                let groupIndex = -1;
+                const groupColors = 6; // número de clases date-group-N disponibles
+
                 data.forEach(app => {
                     const isDone = app.estado === 'completed';
                     const isCancelled = app.estado === 'cancelled';
@@ -317,8 +321,18 @@
 
                     const statusLabel = app.estado === 'completed' ? 'Realizada' : (app.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
 
+                    // Agrupar por color solo cuando la tabla está ordenada por fecha
+                    let groupClass = '';
+                    if (currentSortField === 'fecha') {
+                        if (app.fecha !== prevFecha) {
+                            groupIndex = (groupIndex + 1) % groupColors;
+                            prevFecha = app.fecha;
+                        }
+                        groupClass = `date-group-${groupIndex}`;
+                    }
+
                     tbody.innerHTML += `
-                        <tr class="${isCancelled ? 'row-cancelled' : ''}">
+                        <tr class="${groupClass} ${isCancelled ? 'row-cancelled' : ''}">
                             <td>${formatDate(app.fecha)}</td>
                             <td><strong>${app.referenciaPaciente || app.paciente}</strong></td>
                             <td>${app.clinica}</td>
