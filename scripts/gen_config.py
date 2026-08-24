@@ -30,6 +30,7 @@ cfg = {
         "measurementId":     os.environ["FIREBASE_MEASUREMENT_ID"],
     },
     "groqApiKey": os.environ["GROQ_API_KEY"],
+    "aiModel": os.environ.get("AI_MODEL", "openai/gpt-oss-120b"),
 }
 
 output = "window.APP_CONFIG = " + json.dumps(cfg, indent=4) + ";\n"
@@ -39,3 +40,7 @@ with open("js/config.js", "w", encoding="utf-8") as f:
 
 print("config.js generado correctamente.")
 print(f"  Firebase project: {cfg['firebase']['projectId']}")
+
+
+
+

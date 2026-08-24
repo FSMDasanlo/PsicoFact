@@ -140,6 +140,7 @@
 
     <!-- Firebase SDK -->
     <script src="js/config.js"></script>
+    <script src="js/ai.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -476,43 +477,17 @@
             respDiv.innerHTML = '<em>Pensando...</em>';
 
             try {
-                const groqKey = window.APP_CONFIG.groqApiKey;
                 const context = JSON.stringify(lastBillingData);
                 const filterMonth = document.getElementById('billing-filter-month').value || "todos los registros";
 
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${groqKey}`
+                const result = await callGroqAI([
+                    {
+                        role: 'system',
+                        content: `Eres un asistente experto en análisis de facturación para una clínica de psicología. Te proporciono los datos de los facultativos y sus deudas/pagos del periodo: ${filterMonth}. Responde de forma muy concisa, clara y profesional en español. Si te piden cálculos, hazlos con precisión basándote en el JSON proporcionado.`
                     },
-                    body: JSON.stringify({
-                        model: 'llama-3.3-70b-versatile',
-                        messages: [
-                            { 
-                                role: 'system', 
-                                content: `Eres un asistente experto en análisis de facturación para una clínica de psicología. 
-                                Te proporciono los datos de los facultativos y sus deudas/pagos del periodo: ${filterMonth}.
-                                Responde de forma muy concisa, clara y profesional en español. Si te piden cálculos, hazlos con precisión basándote en el JSON proporcionado.`
-                            },
-                            { role: 'user', content: `Datos: ${context}\n\nPregunta: ${question}` }
-                        ],
-                        temperature: 0.1
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error.message || "Error en la API de Groq");
-                }
-
-                if (!data.choices || !data.choices[0]) {
-                    console.error("Respuesta inesperada de Groq:", data);
-                    throw new Error("La IA no devolvió una respuesta válida.");
-                }
-
-                respDiv.innerHTML = data.choices[0].message.content.replace(/\n/g, '<br>');
+                    { role: 'user', content: `Datos: ${context}\n\nPregunta: ${question}` }
+                ], { temperature: 0.1 });
+                respDiv.innerHTML = result.replace(/\n/g, '<br>');
             } catch (err) {
                 console.error("Error IA:", err);
                 respDiv.innerHTML = "Error al consultar a la IA: " + err.message;
@@ -654,3 +629,10 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+

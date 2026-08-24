@@ -12,5 +12,10 @@ window.APP_CONFIG = {
         measurementId: "TU_MEASUREMENT_ID"
     },
     groqApiKey: "TU_GROQ_API_KEY",
+    aiModel: "openai/gpt-oss-120b",
     geminiApiKey: "TU_GEMINI_API_KEY"
 };
+
+
+
+

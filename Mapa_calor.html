@@ -145,6 +145,7 @@
     </footer>
 
     <script src="js/config.js"></script>
+    <script src="js/ai.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -307,21 +308,10 @@
             const topActual = Object.entries(actualC).sort((a,b) => b[1].count - a[1].count).slice(0, 8)
                 .map(([w, { count, cat }]) => w + '(' + cat + 'x' + count + ')').join(', ');
 
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-                body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
-                    messages: [
-                        { role: 'system', content: 'Eres un psicólogo clínico experto. Respondes en español con 3-4 frases concisas.' },
-                        { role: 'user', content: 'Analiza la evolución del léxico terapéutico de un paciente:\n\nINICIO: ' + topInicio + '\n\nAHORA: ' + topActual + '\n\nDa una interpretación clínica breve (3-4 frases) sobre los cambios detectados y su significado para el tratamiento.' }
-                    ],
-                    temperature: 0.4,
-                    max_tokens: 300
-                })
-            });
-            const data = await res.json();
-            return data.choices?.[0]?.message?.content || null;
+            return await callGroqAI([
+                { role: 'system', content: 'Eres un psicólogo clínico experto. Respondes en español con 3-4 frases concisas.' },
+                { role: 'user', content: 'Analiza la evolución del léxico terapéutico de un paciente:\n\nINICIO: ' + topInicio + '\n\nAHORA: ' + topActual + '\n\nDa una interpretación clínica breve (3-4 frases) sobre los cambios detectados y su significado para el tratamiento.' }
+            ], { temperature: 0.4, maxTokens: 300 });
         }
 
         // ─── MAIN ──────────────────────────────────────────────────────────────
@@ -469,6 +459,7 @@
     </footer>
 
     <script src="js/config.js"></script>
+    <script src="js/ai.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -507,3 +498,9 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+

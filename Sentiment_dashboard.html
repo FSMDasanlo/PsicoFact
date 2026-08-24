@@ -136,6 +136,7 @@
     </footer>
 
     <script src="js/config.js"></script>
+    <script src="js/ai.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -178,26 +179,10 @@ ${sessionsSummary}
 
 REGLAS: Responde SOLO con el JSON. Sin texto extra. Sin bloques markdown. Sin explicaciones.`;
 
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GROQ_KEY}`
-                },
-                body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
-                    messages: [
-                        { role: 'system', content: 'Respondes siempre con JSON válido y nada más.' },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.15,
-                    max_tokens: 2500
-                })
-            });
-
-            const data = await res.json();
-            if (!data.choices?.[0]) throw new Error(data.error?.message || 'Error de API');
-            const raw = data.choices[0].message.content.trim()
+            const raw = (await callGroqAI([
+                { role: 'system', content: 'Respondes siempre con JSON válido y nada más.' },
+                { role: 'user', content: prompt }
+            ], { temperature: 0.15, maxTokens: 2500 }))
                 .replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/```$/, '').trim();
             return JSON.parse(raw);
         }
@@ -419,3 +404,9 @@ REGLAS: Responde SOLO con el JSON. Sin texto extra. Sin bloques markdown. Sin ex
     </script>
 </body>
 </html>
+
+
+
+
+
+
