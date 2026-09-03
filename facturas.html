@@ -546,6 +546,38 @@
                 if (fp.length >= 2) mesFactura = monthNames[parseInt(fp[1], 10) - 1] + ' ' + fp[0];
             }
 
+            const firstDateParts = firstFecha.split('-');
+            const invoiceMonthYear = firstDateParts.length >= 2
+                ? `${firstDateParts[1].padStart(2, '0')}-${firstDateParts[0]}`
+                : '';
+            const invoiceSequence = String(nFactura).match(/(\d+)$/)?.[1] || String(nFactura);
+            const suggestedFileName = `Factura_${clinic.nombre || first.clinica}_${invoiceMonthYear}_${invoiceSequence}`
+                .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const suggestedFileNameWithExtension = `${suggestedFileName}.pdf`;
+
+            const copyWithLegacyClipboard = () => {
+                const clipboardInput = document.createElement('textarea');
+                clipboardInput.value = suggestedFileNameWithExtension;
+                clipboardInput.style.position = 'fixed';
+                clipboardInput.style.opacity = '0';
+                document.body.appendChild(clipboardInput);
+                clipboardInput.select();
+                try { document.execCommand('copy'); } catch (error) {}
+                clipboardInput.remove();
+            };
+
+            const copyFileNameToClipboard = () => {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(suggestedFileNameWithExtension).catch(copyWithLegacyClipboard);
+                    return;
+                }
+                copyWithLegacyClipboard();
+            };
+            copyFileNameToClipboard();
+            alert(`Nombre copiado al portapapeles:\n${suggestedFileNameWithExtension}\n\nPéguelo en el campo del nombre con Ctrl+V.`);
+
             // Totales (ICA = 0 %)
             let totalBase = 0;
             printableInvoices.forEach(item => { 
@@ -576,7 +608,7 @@
             const printWindow = window.open('', '', 'height=900,width=950');
             printWindow.document.write(`<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8">
-<title>Factura ${nFactura}<\/title>
+<title>${suggestedFileName}<\/title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Segoe UI",Arial,sans-serif;font-size:13px;color:#222;background:#fff}
@@ -660,9 +692,53 @@
   <\/div>
 
 <\/div>
-<\/body><\/html>`);
+<\/body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+<\/html>`);
             printWindow.document.close();
-            setTimeout(() => { printWindow.print(); }, 600);
+            printWindow.document.title = suggestedFileName;
+            setTimeout(async () => {
+                if (typeof printWindow.html2pdf !== 'function') {
+                    printWindow.print();
+                    return;
+                }
+
+                try {
+                    const pdfBlob = await printWindow.html2pdf()
+                        .set({
+                            margin: [10, 12, 10, 12],
+                            filename: suggestedFileNameWithExtension,
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        })
+                        .from(printWindow.document.querySelector('.page'))
+                        .outputPdf('blob');
+
+                    if (typeof window.showSaveFilePicker === 'function') {
+                        const fileHandle = await window.showSaveFilePicker({
+                            suggestedName: suggestedFileNameWithExtension,
+                            types: [{
+                                description: 'Documento PDF',
+                                accept: { 'application/pdf': ['.pdf'] }
+                            }]
+                        });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(pdfBlob);
+                        await writable.close();
+                    } else {
+                        const downloadUrl = URL.createObjectURL(pdfBlob);
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = downloadUrl;
+                        downloadLink.download = suggestedFileNameWithExtension;
+                        downloadLink.click();
+                        URL.revokeObjectURL(downloadUrl);
+                    }
+                    printWindow.close();
+                } catch (error) {
+                    if (error.name !== 'AbortError') printWindow.print();
+                }
+            }, 1000);
         }
 
         // Exponer la función al objeto window para que sea accesible desde el onchange del HTML
