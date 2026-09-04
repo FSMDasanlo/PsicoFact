@@ -235,7 +235,7 @@
 
     <!-- Modal para Agenda en tramos de 15 min -->
     <div id="modalAgendaTramos" class="modal">
-        <div class="modal-content" style="max-width: 95%; width: 1000px; height: 85vh; padding: 20px; display: flex; flex-direction: column;">
+        <div class="modal-content" style="max-width: 99vw; width: 99vw; height: 97vh; padding: 12px 16px; display: flex; flex-direction: column;">
             <div class="agenda-header" style="margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 20px;">
                     <h2 style="margin: 0;">Agenda Detallada</h2>
@@ -338,6 +338,7 @@
         let currentCalendarDate = new Date();
         let editingAppointmentId = null;
         let wasCalendarOpen = false; // Flag para saber si venimos del calendario
+        let wasTramosOpen = false; // Flag para saber si venimos de la agenda detallada (tramos)
         let currentSortField = 'fecha';
         let currentSortOrder = 'asc';
         let currentTramosDate = null; // Guardar la fecha base de la vista detallada
@@ -728,7 +729,11 @@
 
         function closeAppointmentModal() { 
             document.getElementById('modalCita').style.display = 'none'; 
-            if (wasCalendarOpen) {
+            if (wasTramosOpen) {
+                openTramosModal(currentTramosStartDate || currentTramosDate, true);
+                wasTramosOpen = false;
+                wasCalendarOpen = false; // evita reabrir el calendario tras volver de tramos
+            } else if (wasCalendarOpen) {
                 showCalendarView();
                 wasCalendarOpen = false;
             }
@@ -879,12 +884,6 @@
             }
 
             closeAppointmentModal();
-
-            // Ajuste 3: Volver al calendario si estaba abierto y actualizarlo
-            if (wasCalendarOpen) {
-                showCalendarView();
-                wasCalendarOpen = false;
-            }
         };
 
         function showGCalendarConfirm() {
@@ -1143,10 +1142,10 @@
                 }
             });
 
-            let html = `<table class="tramos-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white;">
+            let html = `<table class="tramos-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem; background: white;">
                 <thead>
                     <tr>
-                        <th style="border: 1px solid #dee2e6; padding: 12px 8px; background: #f8f9fa; position: sticky; left: 0; top: 0; z-index: 4;">Hora</th>`;
+                        <th style="border: 1px solid #dee2e6; padding: 5px 8px; background: #f8f9fa; position: sticky; left: 0; top: 0; z-index: 4;">Hora</th>`;
             
             dates.forEach((d, idx) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -1154,9 +1153,9 @@
                 const isSelected = d === selectedDateStr;
                 const bgColor = isSelected ? '#546e7a' : '#f8f9fa'; // Un gris azulado oscuro más suave que el negro/azul original
                 const textColor = isSelected ? 'white' : 'var(--azul-oscuro)';
-                html += `<th style="border: 1px solid #dee2e6; padding: 12px 8px; background: ${bgColor}; color: ${textColor}; min-width: 140px; text-align: center; position: sticky; top: 0; z-index: 3;">
+                html += `<th style="border: 1px solid #dee2e6; padding: 5px 8px; background: ${bgColor}; color: ${textColor}; min-width: 110px; text-align: center; position: sticky; top: 0; z-index: 3;">
                             <div style="font-weight: 600;">${dayName}</div>
-                            <div style="font-size: 0.75rem;">${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}</div>
+                            <div style="font-size: 0.7rem;">${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}</div>
                          </th>`;
             });
 
@@ -1194,7 +1193,7 @@
 
             slotList.forEach(timeStr => {
                 html += `<tr>
-                    <td style="border: 1px solid #dee2e6; padding: 10px 5px; text-align: center; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 1;">${timeStr}</td>`;
+                    <td style="border: 1px solid #dee2e6; padding: 2px 5px; text-align: center; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 1;">${timeStr}</td>`;
 
                 dates.forEach(d => {
                     const info = dayMaps[d][timeStr];
@@ -1213,22 +1212,22 @@
                         }
                         const bgColor = `${baseColor}33`; // ~20% opacidad
                         const durMin = parseInt(cita.duracion) || 60;
-                        html += `<td rowspan="${rowspan}" style="border: 2px solid ${baseColor}; padding: 6px; background: ${bgColor}; cursor: pointer; text-align: center; vertical-align: top;"
+                        html += `<td rowspan="${rowspan}" style="border: 2px solid ${baseColor}; padding: 3px; background: ${bgColor}; cursor: pointer; text-align: center; vertical-align: top;"
                                     ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">
                                     <div style="font-weight: 600; color: #333; height: 100%;"
                                         draggable="true" ondragstart="window.handleDragStart(event, '${cita.id}')" ondragend="window.handleDragEnd(event)"
-                                        onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
-                                        <div style="font-size: 0.75rem; color: #555;">${cita.hora} <span style="opacity:0.8;">(${durMin}min)</span></div>
-                                        <div style="font-weight: 700; margin-top: 2px;">${cita.paciente}</div>
-                                        <div style="font-size: 0.7rem; color: #666; font-weight: 400; margin-top: 2px;">${cita.clinica}${cita.centro ? ' / ' + cita.centro : ''}</div>
+                                        onclick="window.markTramosReturn(); window.closeTramosModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
+                                        <div style="font-size: 0.7rem; color: #555;">${cita.hora} <span style="opacity:0.8;">(${durMin}min)</span></div>
+                                        <div style="font-weight: 700; margin-top: 1px;">${cita.paciente}</div>
+                                        <div style="font-size: 0.65rem; color: #666; font-weight: 400; margin-top: 1px;">${cita.clinica}${cita.centro ? ' / ' + cita.centro : ''}</div>
                                     </div>
                                  </td>`;
                     } else {
-                        html += `<td style="border: 1px solid #dee2e6; padding: 6px; cursor: pointer; color: #dee2e6; text-align: center; transition: background 0.2s;"
+                        html += `<td style="border: 1px solid #dee2e6; padding: 3px; cursor: pointer; color: #dee2e6; text-align: center; transition: background 0.2s;"
                                     ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')"
                                     onmouseover="this.style.background='#f1f3f5'; this.textContent='+'" 
                                     onmouseout="this.style.background='transparent'; this.textContent=''"
-                                    onclick="wasCalendarOpen=true; window.closeTramosModal(); window.closeCalendarModal(); setTimeout(() => window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}'), 50)"></td>`;
+                                    onclick="window.markTramosReturn(); window.closeTramosModal(); setTimeout(() => window.openAppointmentModal('Nueva Cita', '${d}', '${timeStr}'), 50)"></td>`;
                     }
                 });
                 html += `</tr>`;
@@ -1256,6 +1255,7 @@
         window.closeCalendarModal = closeCalendarModal;
         window.openTramosModal = openTramosModal;
         window.closeTramosModal = closeTramosModal;
+        window.markTramosReturn = function() { wasTramosOpen = true; }; // usado desde onclick inline (scope global)
 
         setupTramosControls();
 
