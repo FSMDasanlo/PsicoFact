@@ -243,6 +243,9 @@
                         <button class="btn-turquesa" id="prev-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana anterior">&larr;</button>
                         <button class="btn-turquesa" id="next-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana siguiente">&rarr;</button>
                     </div>
+                    <a href="javascript:void(0)" onclick="window.openNuevoPacienteWindow()" title="Añadir nuevo paciente" style="text-decoration:none; display: flex; align-items: center;">
+                        <img src="img/nuevo_paciente.png" alt="Nuevo paciente" style="height: 30px; width: auto;">
+                    </a>
                 </div>
                 <span class="close-modal" onclick="closeTramosModal()">&times;</span>
             </div>
@@ -497,8 +500,11 @@
         function populatePatientDropdown() {
             const select = document.getElementById('paciente-select');
             const filterSelect = document.getElementById('filtro-paciente');
+            const sortedPatients = [...patientsMaster].sort((a, b) =>
+                `${a.nombre} ${a.apellidos}`.localeCompare(`${b.nombre} ${b.apellidos}`, 'es', { sensitivity: 'base' })
+            );
             let optionsHtml = '';
-            patientsMaster.forEach(p => {
+            sortedPatients.forEach(p => {
                 optionsHtml += `<option value="${p.nombre} ${p.apellidos}">${p.nombre} ${p.apellidos}</option>`;
             });
             select.innerHTML = '<option value="">Seleccione un paciente...</option>' + optionsHtml;
@@ -1238,6 +1244,29 @@
         }
 
         function closeTramosModal() { document.getElementById('modalAgendaTramos').style.display = 'none'; }
+
+        // Abre el alta de paciente en una ventana emergente y refresca el desplegable al cerrarla,
+        // sin abandonar la Agenda Detallada
+        window.openNuevoPacienteWindow = function() {
+            const popup = window.open('pacientes.html?nuevo=1', 'nuevoPacientePopup', 'width=900,height=800');
+            if (!popup) {
+                showToast('El navegador ha bloqueado la ventana emergente. Permítela para continuar.', 'error');
+                return;
+            }
+            const checkClosed = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkClosed);
+                    refreshPatientsList();
+                }
+            }, 500);
+        };
+
+        async function refreshPatientsList() {
+            const snapP = await getDocs(uCol("pacientes"));
+            patientsMaster = snapP.docs.map(d => d.data());
+            populatePatientDropdown();
+            showToast('Lista de pacientes actualizada.', 'success');
+        }
 
         // Exponer funciones al objeto window para acceso desde el HTML
         window.openAppointmentModal = openAppointmentModal;

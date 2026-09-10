@@ -205,6 +205,12 @@
 
             loadData();
             setupRefListeners();
+
+            // Si venimos de otra pantalla (ej. Agenda) pidiendo alta rápida de paciente
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('nuevo') === '1') {
+                openModal();
+            }
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
@@ -370,6 +376,7 @@
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
             data.por_seguro = document.getElementById('por_seguro').checked;
+            const wasEditing = !!editingId;
 
             // --- CONTROL DE DUPLICADOS (NUEVO Y EDICIÓN) ---
             const nombreNorm = (data.nombre || '').trim().toLowerCase();
@@ -455,6 +462,12 @@
                 showToast("Paciente registrado");
             }
             loadData(); closeModal();
+
+            // Si esta ventana se abrió desde la Agenda para un alta rápida, la cerramos tras registrar
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!wasEditing && urlParams.get('nuevo') === '1' && window.opener) {
+                setTimeout(() => window.close(), 800);
+            }
         };
 
         window.onclick = (e) => { if (e.target == document.getElementById('modalPaciente')) closeModal(); }

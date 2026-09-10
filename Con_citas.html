@@ -228,8 +228,11 @@
                 opt.textContent = s.data().nombre;
                 selectSociedad.appendChild(opt);
             });
-            snapshotPacientes.forEach(p => {
-                const data = p.data();
+            const pacientesData = snapshotPacientes.docs.map(p => p.data());
+            pacientesData.sort((a, b) =>
+                `${a.nombre} ${a.apellidos}`.localeCompare(`${b.nombre} ${b.apellidos}`, 'es', { sensitivity: 'base' })
+            );
+            pacientesData.forEach(data => {
                 const fullName = [data.nombre, data.apellidos].filter(Boolean).join(' ');
                 const ref = data.referencia || fullName; 
                 const opt = document.createElement('option');
