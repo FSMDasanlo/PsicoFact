@@ -46,6 +46,11 @@
                 <h2>Control de Pagos</h2>
                 <p>Estado de citas y cobros por facultativo</p>
             </a>
+            <a href="javascript:void(0)" class="menu-card" onclick="openStatusControl()" style="border-bottom-color: #8e44ad;">
+                <div class="icon">📊</div>
+                <h2>Estado</h2>
+                <p>Citas pendientes y realizadas por facultativo</p>
+            </a>
         </nav>
     </main>
 
@@ -129,6 +134,61 @@
             </div>
 
             <div id="billing-table-container">
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Estado de Citas -->
+    <div id="modalStatusControl" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; padding:2rem; border-radius:12px; max-width:900px; width:100%; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3>Estado de Citas por Facultativo</h3>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div id="ia-status-trigger" onclick="toggleIAStatusChat()" style="cursor:pointer; background:#f0f7ff; padding:8px; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border:1px solid #8e44ad; transition:all 0.3s; color:#8e44ad;" title="Preguntar a la IA">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path>
+                            <path d="M12 8v4l3 3"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19 9l-2 2m-8-2l2 2m1-8v2m0 14v2M5 9l2 2m8-2l-2 2"></path>
+                        </svg>
+                    </div>
+                    <button class="btn-turquesa" onclick="closeModal('modalStatusControl')">Cerrar</button>
+                </div>
+            </div>
+
+            <!-- Chat IA (Oculto inicialmente) -->
+            <div id="ia-status-chat" style="display:none; margin-bottom:1.5rem; background:#f0f7ff; border:1px solid #8e44ad; border-radius:8px; padding:15px; position:relative;">
+                <div style="font-size:0.8rem; font-weight:600; color:#8e44ad; margin-bottom:8px; display:flex; align-items:center; gap:5px;">
+                    <img src="img/solo_psia_peque.PNG" alt="IA" style="width:16px;"> Asistente IA de Citas
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="ia-status-input" placeholder="Ej: ¿Quién tiene más citas pendientes? o ¿Cuál es el total de citas realizadas?" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:0.9rem;">
+                    <button onclick="askIAStatus()" id="ia-status-btn" class="btn-turquesa" style="padding:10px 20px;">Preguntar</button>
+                </div>
+                <div id="ia-status-response" style="margin-top:10px; font-size:0.9rem; line-height:1.4; color:#2c3e50; border-top:1px solid #d6eaf8; padding-top:10px; display:none;"></div>
+            </div>
+
+            <p style="font-size:0.85rem; color:#666; margin-bottom:1rem;">Aquí puedes consultar el número de citas pendientes y realizadas de cada facultativo, filtrando por fechas.</p>
+
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size: 0.8rem; font-weight: 600;">Desde</label>
+                    <input type="date" id="status-filter-from" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size: 0.8rem; font-weight: 600;">Hasta</label>
+                    <input type="date" id="status-filter-to" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <button class="btn-turquesa" onclick="openStatusControl()" style="padding: 8px 15px; font-size: 0.8rem;">Filtrar</button>
+                <button class="btn-turquesa" onclick="document.getElementById('status-filter-from').value=''; document.getElementById('status-filter-to').value=''; openStatusControl()" style="padding: 8px 15px; font-size: 0.8rem;">Ver Todo</button>
+
+                <div id="status-totals-summary" style="margin-left: auto; display: flex; gap: 20px;">
+                    <!-- Sumatorios aparecerán aquí -->
+                </div>
+            </div>
+
+            <div id="status-table-container">
                 <p>Cargando datos...</p>
             </div>
         </div>
@@ -621,6 +681,162 @@
 
             } catch (err) {
                 console.error("Error al cargar control de pagos:", err);
+                container.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:8px; color:#856404; font-size:0.9rem;">
+                    <strong>Error de acceso:</strong> ${err.message}
+                </div>`;
+            }
+        };
+
+        let lastStatusData = []; // Para que la IA tenga contexto
+
+        window.toggleIAStatusChat = () => {
+            const chat = document.getElementById('ia-status-chat');
+            chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
+            if (chat.style.display === 'block') document.getElementById('ia-status-input').focus();
+        };
+
+        window.askIAStatus = async () => {
+            const input = document.getElementById('ia-status-input');
+            const respDiv = document.getElementById('ia-status-response');
+            const btn = document.getElementById('ia-status-btn');
+            const question = input.value.trim();
+
+            if (!question || lastStatusData.length === 0) return;
+
+            btn.disabled = true;
+            respDiv.style.display = 'block';
+            respDiv.innerHTML = '<em>Pensando...</em>';
+
+            try {
+                const context = JSON.stringify(lastStatusData);
+                const from = document.getElementById('status-filter-from').value || 'sin límite inicial';
+                const to = document.getElementById('status-filter-to').value || 'sin límite final';
+
+                const result = await callGroqAI([
+                    {
+                        role: 'system',
+                        content: `Eres un asistente experto en análisis de agenda para una clínica de psicología. Te proporciono los datos de citas pendientes y realizadas por facultativo en el rango de fechas: ${from} a ${to}. Responde de forma muy concisa, clara y profesional en español. Si te piden cálculos, hazlos con precisión basándote en el JSON proporcionado.`
+                    },
+                    { role: 'user', content: `Datos: ${context}\n\nPregunta: ${question}` }
+                ], { temperature: 0.1 });
+                respDiv.innerHTML = result.replace(/\n/g, '<br>');
+            } catch (err) {
+                console.error("Error IA:", err);
+                respDiv.innerHTML = "Error al consultar a la IA: " + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        window.openStatusControl = async () => {
+            document.getElementById('modalStatusControl').style.display = 'flex';
+            const container = document.getElementById('status-table-container');
+            const summaryContainer = document.getElementById('status-totals-summary');
+            const fromDate = document.getElementById('status-filter-from').value; // YYYY-MM-DD
+            const toDate = document.getElementById('status-filter-to').value; // YYYY-MM-DD
+
+            container.innerHTML = '<p>Analizando facultativos y citas... esto puede tardar unos segundos.</p>';
+
+            try {
+                const profilesSnap = await getDocs(collectionGroup(db, 'facultativo'));
+                const usersData = [];
+                let totalPendingGlobal = 0;
+                let totalCompletedGlobal = 0;
+
+                for (const facultativoDoc of profilesSnap.docs) {
+                    if (facultativoDoc.id !== 'perfil') continue;
+
+                    const profile = facultativoDoc.data();
+                    const pathParts = facultativoDoc.ref.path.split('/');
+                    const uid = pathParts[1];
+
+                    if (!uid) continue;
+
+                    const citasSnap = await getDocs(collection(db, "usuarios", uid, "citas"));
+                    let allCitas = citasSnap.docs;
+
+                    // Filtrado manual por rango de fechas (formato esperado: YYYY-MM-DD)
+                    if (fromDate || toDate) {
+                        allCitas = allCitas.filter(docSnap => {
+                            const fecha = docSnap.data().fecha;
+                            if (!fecha) return false;
+                            if (fromDate && fecha < fromDate) return false;
+                            if (toDate && fecha > toDate) return false;
+                            return true;
+                        });
+                    }
+
+                    const pendingCitas = allCitas.filter(d => d.data().estado === 'pending');
+                    const completedCitas = allCitas.filter(d => d.data().estado === 'completed');
+                    const cancelledCitas = allCitas.filter(d => d.data().estado === 'cancelled');
+
+                    totalPendingGlobal += pendingCitas.length;
+                    totalCompletedGlobal += completedCitas.length;
+
+                    usersData.push({
+                        uid,
+                        nombre: `${profile.nombre || ''} ${profile.apellidos || ''}`.trim() || 'Sin nombre',
+                        email: profile.email || 'N/A',
+                        totalCitas: allCitas.length,
+                        pendingCount: pendingCitas.length,
+                        completedCount: completedCitas.length,
+                        cancelledCount: cancelledCitas.length
+                    });
+                }
+
+                lastStatusData = usersData; // Guardamos para la IA
+
+                // Render Summary
+                summaryContainer.innerHTML = `
+                    <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+                        <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Pendientes</div>
+                        <div style="font-size:1.1rem; font-weight:700; color:#e67e22;">${totalPendingGlobal}</div>
+                    </div>
+                    <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+                        <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Realizadas</div>
+                        <div style="font-size:1.1rem; font-weight:700; color:#27ae60;">${totalCompletedGlobal}</div>
+                    </div>
+                `;
+
+                if (usersData.length === 0) {
+                    container.innerHTML = '<p>No se han encontrado facultativos con perfiles configurados.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.9rem;">
+                        <thead>
+                            <tr style="background:#f8f9fa; border-bottom:2px solid #dee2e6;">
+                                <th style="padding:12px; text-align:left;">Facultativo</th>
+                                <th style="padding:12px; text-align:center;">Citas Pend.</th>
+                                <th style="padding:12px; text-align:center;">Citas Realizadas</th>
+                                <th style="padding:12px; text-align:center;">Canceladas</th>
+                                <th style="padding:12px; text-align:center;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                usersData.forEach(u => {
+                    html += `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:12px;">
+                                <div>${u.nombre}</div>
+                                <div style="font-size:0.75rem; color:#888;">${u.email}</div>
+                            </td>
+                            <td style="padding:12px; text-align:center; color:#e67e22; font-weight:600;">${u.pendingCount}</td>
+                            <td style="padding:12px; text-align:center; color:#27ae60; font-weight:600;">${u.completedCount}</td>
+                            <td style="padding:12px; text-align:center; color:#999;">${u.cancelledCount}</td>
+                            <td style="padding:12px; text-align:center; font-weight:600;">${u.totalCitas}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error("Error al cargar estado de citas:", err);
                 container.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:8px; color:#856404; font-size:0.9rem;">
                     <strong>Error de acceso:</strong> ${err.message}
                 </div>`;
