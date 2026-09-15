@@ -226,6 +226,7 @@
 
                 <input type="hidden" id="ref-cita" name="referenciaPaciente">
                 <div class="form-actions full-width">
+                    <button type="button" id="delete-cita-btn" hidden style="border: none; background: #d63031; color: white; cursor: pointer; padding: 10px 15px; border-radius: 5px;" onclick="deleteEditingAppointment()">Eliminar cita</button>
                     <button type="submit" class="btn-turquesa">Guardar Cita</button>
                     <button type="button" class="back-link" style="border:none; background:none; cursor:pointer;" onclick="closeAppointmentModal()">Cancelar</button>
                 </div>
@@ -703,6 +704,7 @@
         function openAppointmentModal(title = "Nueva Cita", preselectedDate = null, preselectedTime = null) {
             const modal = document.getElementById('modalCita');
             modal.querySelector('h2').textContent = title;
+            document.getElementById('delete-cita-btn').hidden = title !== "Editar Cita";
             
             // Ajuste 3: Si el calendario está visible (en fondo), marcamos que volvemos a él
             if (document.getElementById('modalCalendario').style.display === 'flex') {
@@ -757,6 +759,15 @@
                 await deleteDoc(uDoc("citas", id));
                 loadFilteredAppointments();
             }
+        }
+        async function deleteEditingAppointment() {
+            if (!editingAppointmentId) return;
+            if (!confirm('¿Está seguro de que desea eliminar esta cita?')) return;
+
+            await deleteDoc(uDoc("citas", editingAppointmentId));
+            editingAppointmentId = null;
+            closeAppointmentModal();
+            loadFilteredAppointments();
         }
         function editAppointment(id) {
             const app = appointments.find(a => a.id === id);
@@ -1275,6 +1286,7 @@
         window.completeAppointment = completeAppointment;
         window.editAppointment = editAppointment;
         window.deleteAppointment = deleteAppointment;
+        window.deleteEditingAppointment = deleteEditingAppointment;
         window.getStatusLabel = getStatusLabel;
         window.populatePatientDropdown = populatePatientDropdown;
         window.renderAgenda = renderAgenda;
