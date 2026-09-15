@@ -6,6 +6,7 @@
     <title>Consultas de Citas</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -37,6 +38,12 @@
                 <button class="btn-turquesa" onclick="filterByMonth(-1)">Mes anterior</button>
                 <button class="btn-turquesa" onclick="filterByMonth(0)">Mes Actual</button>
                 <button class="btn-turquesa" onclick="filterByMonth(1)">Próximo mes</button>
+                <button class="btn-turquesa" onclick="toggleEvolucionChart()" style="margin-left:auto;">📊 Ver evolución por mes</button>
+            </div>
+
+            <div id="evolucion-chart-container" style="display:none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Evolución del número de citas por mes</h3>
+                <canvas id="chartEvolucionCitas" height="90"></canvas>
             </div>
 
             <form id="form-filtros-citas" style="display: flex; flex-wrap: nowrap; gap: 10px; align-items: flex-end; width: 100%;">
@@ -398,6 +405,52 @@
             renderData([]);
         }
         window.clearFilters = clearFilters;
+
+        let evolucionChart = null;
+
+        window.toggleEvolucionChart = () => {
+            const container = document.getElementById('evolucion-chart-container');
+            const isHidden = container.style.display === 'none';
+            container.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) renderEvolucionChart();
+        };
+
+        function renderEvolucionChart() {
+            // Agrupa el total de citas por mes (AAAA-MM) a partir de todas las citas cargadas
+            const counts = {};
+            appointments.forEach(app => {
+                if (!app.fecha) return;
+                const key = String(app.fecha).slice(0, 7); // "AAAA-MM"
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            const labels = Object.keys(counts).sort();
+            const data = labels.map(k => counts[k]);
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const labelsFormateados = labels.map(k => {
+                const [year, month] = k.split('-');
+                return `${meses[parseInt(month, 10) - 1]} ${year}`;
+            });
+
+            const ctx = document.getElementById('chartEvolucionCitas');
+            if (evolucionChart) evolucionChart.destroy();
+            evolucionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelsFormateados,
+                    datasets: [{
+                        label: 'Número de citas',
+                        data,
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
