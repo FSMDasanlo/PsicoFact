@@ -130,7 +130,8 @@
         document.getElementById('btn-nuevo-tutor').addEventListener('click', () => openTutorModal());
         document.getElementById('cerrar-modal-tutor').addEventListener('click', closeTutorModal);
         document.getElementById('cancelar-modal-tutor').addEventListener('click', closeTutorModal);
-        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+        const logoutButton = document.getElementById('logout-btn');
+        if (logoutButton) logoutButton.addEventListener('click', () => signOut(auth));
         modal.addEventListener('click', (event) => { if (event.target === modal) closeTutorModal(); });
         form.addEventListener('submit', saveTutor);
 
@@ -200,6 +201,10 @@
 
         async function saveTutor(event) {
             event.preventDefault();
+            if (!patientId || !patientName) {
+                alert('No se ha podido cargar el nombre del paciente. Vuelve a abrir la ficha e inténtalo de nuevo.');
+                return;
+            }
             const data = Object.fromEntries(new FormData(form));
             data.pacienteId = patientId;
             data.paciente = patientName;
