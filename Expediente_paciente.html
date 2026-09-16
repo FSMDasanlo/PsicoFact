@@ -60,6 +60,11 @@
                     <strong id="ultima-cita-fecha">-</strong>
                     <span id="ultima-cita-transcurrido" class="sesion-elapsed">Sin citas</span>
                 </div>
+                <div class="sesion-highlight">
+                    <span class="sesion-label">Total de sesiones</span>
+                    <strong id="sesiones-total">0</strong>
+                    <span class="sesion-elapsed">Registradas</span>
+                </div>
                 <div class="sesiones-counts" aria-label="Número de sesiones por estado">
                     <span class="sesion-label">Número de sesiones</span>
                     <div class="sesion-count-list">
@@ -287,7 +292,7 @@
             const normalized = String(status || 'pending').toLowerCase().trim().replace(/[ _-]/g, '');
             if (normalized === 'completed' || normalized === 'realizada' || normalized === 'realizado') return 'completed';
             if (normalized === 'cancelled' || normalized === 'cancelada' || normalized === 'cancelado') return 'cancelled';
-            if (normalized === 'noshow' || normalized === 'nopresentado' || normalized === 'nopresentada') return 'no-show';
+            if (normalized === 'np' || normalized === 'noshow' || normalized === 'nopresentado' || normalized === 'nopresentada') return 'no-show';
             return 'pending';
         }
 
@@ -313,6 +318,7 @@
             document.getElementById('sesiones-pendientes').textContent = counts.pending;
             document.getElementById('sesiones-canceladas').textContent = counts.cancelled;
             document.getElementById('sesiones-no-presentado').textContent = counts.noShow;
+            document.getElementById('sesiones-total').textContent = patientAppsData.length;
 
             if (firstAppointment) {
                 document.getElementById('primera-cita-fecha').textContent = formatDate(firstAppointment.fecha);

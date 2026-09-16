@@ -192,6 +192,16 @@ footer {
     background-color: rgba(255, 255, 255, 0.8);
 }
 
+.sesion-highlight {
+    width: auto;
+}
+
+.sesiones-counts {
+    grid-column: 1 / -1;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .sesion-label {
     display: block;
     color: #607d8b;
@@ -216,7 +226,7 @@ footer {
 
 .sesion-count-list {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.55rem;
 }
 
