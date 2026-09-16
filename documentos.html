@@ -14,23 +14,267 @@
                 <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
             </a>
         </div>
+        <div class="user-info-container">
+            <button class="btn-logout" id="logout-btn">Cerrar sesión</button>
+            <span id="user-name"></span>
+        </div>
     </header>
 
     <main class="container">
         <div class="agenda-header" style="text-align: left;">
-            <h2>Documentos</h2>
-            <a id="volver-expediente" href="Con_pacientes.html" class="back-link">&larr; Volver al expediente</a>
+            <h2 id="documentos-titulo">Documentos</h2>
+            <div class="agenda-actions">
+                <button id="seleccionar-fichero" class="btn-turquesa" type="button">Subir fichero</button>
+                <button id="enviar-documentos" class="btn-turquesa" type="button">✉️ Redactar email en Gmail</button>
+                <a id="volver-expediente" href="Con_pacientes.html" class="back-link">&larr; Volver al expediente</a>
+            </div>
         </div>
         <section class="agenda-container">
-            <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Documentos del paciente</h3>
-            <p style="color: #7f8c8d;">Esta sección estará disponible próximamente.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+                <div>
+                    <span class="sesiones-card-kicker">Archivo clínico</span>
+                    <h3 style="color: var(--azul-oscuro); margin:0;">Documentos del paciente</h3>
+                </div>
+                <span id="documentos-contador" class="tutores-counter">0 archivos</span>
+            </div>
+            <input id="fichero-input" type="file" accept="application/pdf,image/jpeg,image/png" hidden>
+            <p id="documentos-mensaje" style="color: #7f8c8d;">Cargando documentos...</p>
+            <div class="table-responsive">
+                <table class="agenda-table" id="documentos-tabla" hidden>
+                    <thead>
+                        <tr>
+                            <th>Archivo</th>
+                            <th>Tipo</th>
+                            <th>Tamaño</th>
+                            <th>Fecha</th>
+                            <th style="text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentos-body"></tbody>
+                </table>
+            </div>
         </section>
     </main>
 
-    <script>
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const auth = getAuth(app);
         const patientId = new URLSearchParams(window.location.search).get('id');
-        if (patientId) {
+        const maxFileSize = 10 * 1024 * 1024;
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        let currentUid = null;
+        let patientName = '';
+        let patientEmail = '';
+        let facultativoName = '';
+
+        const uCol = (name) => collection(db, 'usuarios', currentUid, name);
+        const uDoc = (name, id) => doc(db, 'usuarios', currentUid, name, id);
+        const fileInput = document.getElementById('fichero-input');
+        const message = document.getElementById('documentos-mensaje');
+        const table = document.getElementById('documentos-tabla');
+        const tbody = document.getElementById('documentos-body');
+        document.getElementById('seleccionar-fichero').addEventListener('click', () => fileInput.click());
+        const sendEmailButton = document.getElementById('enviar-documentos');
+        sendEmailButton.addEventListener('click', () => {
+            if (!patientEmail) {
+                showMessage('El paciente no tiene un email informado en su ficha.', true);
+                return;
+            }
+            openGmailCompose();
+        });
+        fileInput.addEventListener('change', handleFileSelected);
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUid = user.uid;
+            try {
+                const profileSnap = await getDoc(uDoc('facultativo', 'perfil'));
+                if (profileSnap.exists()) {
+                    const profile = profileSnap.data();
+                    facultativoName = [profile.nombre, profile.apellidos].filter(Boolean).join(' ').trim();
+                }
+            } catch (error) {
+                console.error('Error cargando perfil del facultativo:', error);
+            }
+            facultativoName = facultativoName || user.email || '';
+            document.getElementById('user-name').textContent = facultativoName;
+
+            if (!patientId) {
+                alert('No se ha especificado un paciente.');
+                window.location.href = 'Con_pacientes.html';
+                return;
+            }
+
             document.getElementById('volver-expediente').href = `Expediente_paciente.html?id=${encodeURIComponent(patientId)}`;
+            await loadPatientAndDocuments();
+        });
+
+        async function loadPatientAndDocuments() {
+            try {
+                const patientSnap = await getDoc(uDoc('pacientes', patientId));
+                if (!patientSnap.exists()) {
+                    alert('Paciente no encontrado.');
+                    window.location.href = 'Con_pacientes.html';
+                    return;
+                }
+
+                const patient = patientSnap.data();
+                patientName = `${patient.nombre || ''} ${patient.apellidos || ''}`.trim();
+                patientEmail = String(patient.email || patient.correo || '').trim();
+                document.getElementById('documentos-titulo').textContent = `Documentos: ${patientName}`;
+                await loadDocuments();
+            } catch (error) {
+                console.error('Error cargando documentos:', error);
+                showMessage('No se han podido cargar los documentos.', true);
+            }
+        }
+
+        async function loadDocuments() {
+            const snapshot = await getDocs(query(uCol('documentos'), where('pacienteId', '==', patientId)));
+            const documents = snapshot.docs
+                .map(documentSnapshot => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
+                .sort((a, b) => String(b.fechaSubida || '').localeCompare(String(a.fechaSubida || '')));
+
+            document.getElementById('documentos-contador').textContent = `${documents.length} ${documents.length === 1 ? 'archivo' : 'archivos'}`;
+            tbody.innerHTML = '';
+            table.hidden = documents.length === 0;
+
+            if (documents.length === 0) {
+                showMessage('Todavía no hay ficheros subidos.');
+                return;
+            }
+
+            message.hidden = true;
+            documents.forEach(documentData => renderDocumentRow(documentData));
+        }
+
+        function renderDocumentRow(documentData) {
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            const link = document.createElement('a');
+            link.href = documentData.url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = documentData.nombre || 'Archivo sin nombre';
+            nameCell.appendChild(link);
+
+            const typeCell = document.createElement('td');
+            typeCell.textContent = documentData.tipo || 'Desconocido';
+            const sizeCell = document.createElement('td');
+            sizeCell.textContent = formatFileSize(documentData.tamano);
+            const dateCell = document.createElement('td');
+            dateCell.textContent = formatDate(documentData.fechaSubida);
+            const actionsCell = document.createElement('td');
+            actionsCell.style.textAlign = 'center';
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'action-icon';
+            deleteButton.title = 'Eliminar archivo';
+            deleteButton.textContent = '🗑️';
+            deleteButton.addEventListener('click', () => removeDocument(documentData));
+            actionsCell.appendChild(deleteButton);
+
+            row.append(nameCell, typeCell, sizeCell, dateCell, actionsCell);
+            tbody.appendChild(row);
+        }
+
+        function openGmailCompose() {
+            const subject = 'FIRMA DE DOCUMENTOS';
+            const body = `Hola ${patientName},\n\nLe envío los documentos para su firma. Por favor, revíselos, fírmelos y devuélvamelo(s) por este mismo medio.\n\nUn saludo,\n${facultativoName}`;
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(patientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            const gmailWindow = window.open(gmailUrl, '_blank');
+            if (gmailWindow) {
+                showMessage('Gmail se ha abierto con el destinatario, asunto y texto preparados.', false);
+            } else {
+                showMessage('El navegador ha bloqueado Gmail. Permite las ventanas emergentes para esta página y vuelve a pulsar el botón.', true);
+            }
+        }
+
+        async function handleFileSelected() {
+            const file = fileInput.files[0];
+            fileInput.value = '';
+            if (!file) return;
+            if (!allowedTypes.includes(file.type)) {
+                showMessage('Solo se permiten archivos PDF, JPG o PNG.', true);
+                return;
+            }
+            if (file.size > maxFileSize) {
+                showMessage('El archivo no puede superar los 10 MB.', true);
+                return;
+            }
+
+            const uploadButton = document.getElementById('seleccionar-fichero');
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Subiendo...';
+            try {
+                const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const storagePath = `usuarios/${currentUid}/pacientes/${patientId}/documentos/${Date.now()}_${safeName}`;
+                const storageRef = ref(storage, storagePath);
+                await uploadBytes(storageRef, file, { contentType: file.type });
+                const url = await getDownloadURL(storageRef);
+
+                await addDoc(uCol('documentos'), {
+                    pacienteId: patientId,
+                    paciente: patientName,
+                    nombre: file.name,
+                    tipo: file.type,
+                    tamano: file.size,
+                    rutaStorage: storagePath,
+                    url,
+                    fechaSubida: new Date().toISOString()
+                });
+                await loadDocuments();
+                showMessage('Archivo subido correctamente.');
+            } catch (error) {
+                console.error('Error subiendo archivo:', error);
+                showMessage('No se ha podido subir el archivo.', true);
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Subir fichero';
+            }
+        }
+
+        async function removeDocument(documentData) {
+            if (!confirm(`¿Eliminar el archivo "${documentData.nombre || 'sin nombre'}"?`)) return;
+            try {
+                await deleteObject(ref(storage, documentData.rutaStorage));
+                await deleteDoc(uDoc('documentos', documentData.id));
+                await loadDocuments();
+                showMessage('Archivo eliminado.');
+            } catch (error) {
+                console.error('Error eliminando archivo:', error);
+                showMessage('No se ha podido eliminar el archivo.', true);
+            }
+        }
+
+        function showMessage(text, isError = false) {
+            message.hidden = false;
+            message.textContent = text;
+            message.style.color = isError ? '#d63031' : '#7f8c8d';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '-';
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            return new Date(value).toLocaleDateString('es-ES');
         }
     </script>
 </body>
