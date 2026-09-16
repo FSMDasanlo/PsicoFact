@@ -579,8 +579,8 @@
                     
                     if (!uid) continue;
 
-                    // 1. Citas realizadas (filtradas por mes si aplica)
-                    let constraints = [where("estado", "==", "completed")];
+                    // 1. Citas cobrables: realizadas y no presentadas
+                    let constraints = [where("estado", "in", ["completed", "no_presentado", "no-presentado", "noshow", "no_show"])];
                     
                     const citasSnap = await getDocs(query(collection(db, "usuarios", uid, "citas"), ...constraints));
                     let allCompletedCitas = citasSnap.docs;
@@ -767,7 +767,10 @@
                     }
 
                     const pendingCitas = allCitas.filter(d => d.data().estado === 'pending');
-                    const completedCitas = allCitas.filter(d => d.data().estado === 'completed');
+                    const completedCitas = allCitas.filter(d => {
+                        const status = String(d.data().estado || '').toLowerCase().replace(/[ _-]/g, '');
+                        return status === 'completed' || status === 'noshow' || status === 'nopresentado';
+                    });
                     const cancelledCitas = allCitas.filter(d => d.data().estado === 'cancelled');
 
                     totalPendingGlobal += pendingCitas.length;

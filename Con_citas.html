@@ -276,6 +276,12 @@
             const tbody = document.getElementById('resultados-citas');
             const resumen = document.getElementById('resumen-citas');
             tbody.innerHTML = '';
+
+            const isBillableAppointment = (appointment) => {
+                const status = String(appointment.estado || '').toLowerCase().replace(/[ _-]/g, '');
+                return status === 'completed' || status === 'realizada' || status === 'realizado' ||
+                    status === 'noshow' || status === 'nopresentado';
+            };
             
             // Ordenar datos
             data.sort((a, b) => {
@@ -306,7 +312,7 @@
                 const groupColors = 6; // número de clases date-group-N disponibles
 
                 data.forEach(app => {
-                    const isDone = app.estado === 'completed';
+                    const isDone = isBillableAppointment(app);
                     const isCancelled = app.estado === 'cancelled';
                     // Usamos el campo importe_facultativo para el cálculo financiero real
                     const importePS = isCancelled ? 0 : (parseFloat(app.importe_facultativo) || 0);
@@ -319,7 +325,7 @@
                         importePendiente += importePS;
                     }
 
-                    const statusLabel = app.estado === 'completed' ? 'Realizada' : (app.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
+                    const statusLabel = isDone ? (app.estado === 'completed' ? 'Realizada' : 'No presentado') : (app.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
 
                     // Agrupar por color solo cuando la tabla está ordenada por fecha
                     let groupClass = '';
@@ -345,7 +351,7 @@
             }
 
             resumen.innerHTML = `
-                <div><small>Sesiones Realizadas</small><br><strong>${realizadas}</strong></div>
+                <div><small>Sesiones Cobrables</small><br><strong>${realizadas}</strong></div>
                 <div><small>Mis Honorarios (Cobrado)</small><br><strong>${importePagado.toFixed(2)} €</strong></div>
                 <div><small>Sesiones Pendientes</small><br><strong>${pendientes}</strong></div>
                 <div><small>Honorarios Pendientes</small><br><strong>${importePendiente.toFixed(2)} €</strong></div>

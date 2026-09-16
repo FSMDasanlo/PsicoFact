@@ -498,8 +498,8 @@
                     ? perfilSnap.data().tarifaUso
                     : 0.30;
 
-                // Obtener todas las citas finalizadas
-                const q = query(collection(db, "usuarios", uid, "citas"), where("estado", "==", "completed"));
+                // Obtener todas las citas cobrables: realizadas y no presentadas
+                const q = query(collection(db, "usuarios", uid, "citas"), where("estado", "in", ["completed", "no_presentado", "no-presentado", "noshow", "no_show"]));
                 const snap = await getDocs(q);
                 
                 // Filtrar las que no están pagadas

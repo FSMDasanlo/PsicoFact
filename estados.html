@@ -115,7 +115,8 @@
                 const defaults = [
                     { clave: 'pending', nombre: 'Pendiente' },
                     { clave: 'completed', nombre: 'Realizada' },
-                    { clave: 'cancelled', nombre: 'Cancelada' }
+                    { clave: 'cancelled', nombre: 'Cancelada' },
+                    { clave: 'no_presentado', nombre: 'No presentado' }
                 ];
                 for (const d of defaults) {
                     await addDoc(uCol("estados_cita"), d);

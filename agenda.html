@@ -301,6 +301,19 @@
         </div>
     </div>
 
+    <!-- Modal de advertencia por cita duplicada el mismo día -->
+    <div id="modalCitaMismoDia" class="modal" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 2.5rem 2rem; border-top: 6px solid #f39c12;">
+            <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">⚠️</div>
+            <h3 style="margin: 0 0 0.7rem; color: #8a4b08; font-size: 1.35rem;">Este paciente ya tiene una cita ese día</h3>
+            <p id="cita-mismo-dia-detalle" style="color: #666; font-size: 0.95rem; margin: 0 0 1.8rem; line-height: 1.5;"></p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button id="cita-mismo-dia-cancelar" class="back-link" style="border: none; background: none; cursor: pointer; font-size: 1rem; padding: 10px 20px;">Revisar cita</button>
+                <button id="cita-mismo-dia-continuar" class="btn-turquesa" style="padding: 10px 22px; font-size: 1rem;">Crear de todos modos</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -365,6 +378,25 @@
             d.setDate(d.getDate() + diff);
             d.setHours(0, 0, 0, 0);
             return d;
+        }
+
+        function getAppointmentEndMinutes(appointment) {
+            const [hours, minutes] = String(appointment.hora || '00:00').split(':').map(Number);
+            return (hours * 60) + minutes + Math.max(15, parseInt(appointment.duracion) || 60);
+        }
+
+        function hasAppointmentConflict(appointment, targetDate, targetTime) {
+            const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
+            const targetStartMinutes = (targetHours * 60) + targetMinutes;
+            const targetEndMinutes = targetStartMinutes + Math.max(15, parseInt(appointment.duracion) || 60);
+
+            return appointments.some(otherAppointment => {
+                if (otherAppointment.id === appointment.id || otherAppointment.fecha !== targetDate) return false;
+                const [otherHours, otherMinutes] = String(otherAppointment.hora || '00:00').split(':').map(Number);
+                const otherStartMinutes = (otherHours * 60) + otherMinutes;
+                const otherEndMinutes = getAppointmentEndMinutes(otherAppointment);
+                return targetStartMinutes < otherEndMinutes && otherStartMinutes < targetEndMinutes;
+            });
         }
 
         function formatIsoDate(dateObj) {
@@ -455,7 +487,8 @@
                     statesMasterData = [
                         { clave: 'pending', nombre: 'Pendiente' },
                         { clave: 'completed', nombre: 'Realizada' },
-                        { clave: 'cancelled', nombre: 'Cancelada' }
+                        { clave: 'cancelled', nombre: 'Cancelada' },
+                        { clave: 'no_presentado', nombre: 'No presentado' }
                     ];
                 }
             } catch (e) {
@@ -579,7 +612,11 @@
                 'confirmada': 'Confirmada',
                 'pending': 'Pendiente',
                 'completed': 'Realizada',
-                'cancelled': 'Cancelada'
+                'cancelled': 'Cancelada',
+                'no_presentado': 'No presentado',
+                'no-presentado': 'No presentado',
+                'noshow': 'No presentado',
+                'no_show': 'No presentado'
             };
             return labels[estado] || 'Pendiente';
         }
@@ -825,6 +862,14 @@
             const data = Object.fromEntries(formData);
             data.por_seguro = document.getElementById('por-seguro').checked;
 
+            if (!editingAppointmentId) {
+                const sameDayAppointments = await findSameDayAppointments(data.paciente, data.fecha);
+                if (sameDayAppointments.length > 0) {
+                    const shouldContinue = await showSameDayAppointmentWarning(data.paciente, data.fecha, sameDayAppointments);
+                    if (!shouldContinue) return;
+                }
+            }
+
             // Validación de conflicto (30 minutos)
             const nuevaFechaHora = new Date(`${data.fecha}T${data.hora}`);
             const conflicto = appointments.find(app => {
@@ -902,6 +947,44 @@
 
             closeAppointmentModal();
         };
+
+        async function findSameDayAppointments(patientName, date) {
+            const sameDayQuery = query(
+                uCol("citas"),
+                where("paciente", "==", patientName),
+                where("fecha", "==", date)
+            );
+            const snapshot = await getDocs(sameDayQuery);
+            return snapshot.docs
+                .map(citaDoc => ({ id: citaDoc.id, ...citaDoc.data() }))
+                .filter(cita => cita.estado !== 'cancelled')
+                .sort((a, b) => String(a.hora || '').localeCompare(String(b.hora || '')));
+        }
+
+        function showSameDayAppointmentWarning(patientName, date, sameDayAppointments) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modalCitaMismoDia');
+                const detail = document.getElementById('cita-mismo-dia-detalle');
+                const appointmentsText = sameDayAppointments
+                    .map(cita => `${cita.hora || 'hora no indicada'} (${getStatusLabel(cita.estado)})`)
+                    .join(', ');
+                detail.textContent = `${patientName} ya tiene cita el ${window.formatDate(date)} a las ${appointmentsText}. Comprueba que no sea un duplicado antes de continuar.`;
+                modal.style.display = 'flex';
+
+                const continueButton = document.getElementById('cita-mismo-dia-continuar');
+                const cancelButton = document.getElementById('cita-mismo-dia-cancelar');
+                const cleanup = (result) => {
+                    modal.style.display = 'none';
+                    continueButton.removeEventListener('click', onContinue);
+                    cancelButton.removeEventListener('click', onCancel);
+                    resolve(result);
+                };
+                const onContinue = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+                continueButton.addEventListener('click', onContinue);
+                cancelButton.addEventListener('click', onCancel);
+            });
+        }
 
         function showGCalendarConfirm() {
             return new Promise((resolve) => {
@@ -1229,9 +1312,12 @@
                         }
                         const bgColor = `${baseColor}33`; // ~20% opacidad
                         const durMin = parseInt(cita.duracion) || 60;
-                        html += `<td rowspan="${rowspan}" style="border: 2px solid ${baseColor}; padding: 3px; background: ${bgColor}; cursor: pointer; text-align: center; vertical-align: top;"
+                        const isCancelled = cita.estado === 'cancelled';
+                        const appointmentColor = isCancelled ? '#f8d7da' : bgColor;
+                        const appointmentTextColor = isCancelled ? '#721c24' : '#333';
+                        html += `<td rowspan="${rowspan}" style="border: 2px solid ${isCancelled ? '#d63031' : baseColor}; padding: 3px; background: ${appointmentColor}; cursor: pointer; text-align: center; vertical-align: top;"
                                     ondragover="window.handleDragOver(event)" ondragleave="window.handleDragLeave(event)" ondrop="window.handleDrop(event, '${d}', '${timeStr}')">
-                                    <div style="font-weight: 600; color: #333; height: 100%;"
+                                    <div style="font-weight: 600; color: ${appointmentTextColor}; height: 100%;"
                                         draggable="true" ondragstart="window.handleDragStart(event, '${cita.id}')" ondragend="window.handleDragEnd(event)"
                                         onclick="window.markTramosReturn(); window.closeTramosModal(); setTimeout(() => window.editAppointment('${cita.id}'), 50)">
                                         <div style="font-size: 0.7rem; color: #555;">${cita.hora} <span style="opacity:0.8;">(${durMin}min)</span></div>
@@ -1336,6 +1422,11 @@
 
             // Si es el mismo destino, no hacemos nada
             if (app.fecha === targetDate && app.hora === targetTime) return;
+
+            if (hasAppointmentConflict(app, targetDate, targetTime)) {
+                showToast(`No se puede mover la cita: se solapa con otra cita el ${window.formatDate(targetDate)} a las ${targetTime}.`, "error");
+                return;
+            }
 
             // 1.- Controlar que no esté realizada la sesión
             if (app.estado === 'completed') {

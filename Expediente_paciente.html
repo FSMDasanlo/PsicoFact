@@ -216,7 +216,7 @@
                     return;
                 }
                 const p = pSnap.data();
-                currentPatientName = `${p.nombre} ${p.apellidos}`;
+                currentPatientName = `${p.nombre || ''} ${p.apellidos || ''}`.trim();
                 document.getElementById('expediente-titulo').textContent = `Expediente: ${currentPatientName}`;
 
                 const ficha = document.getElementById('ficha-paciente');
@@ -241,8 +241,13 @@
                 patientAppsData = [];
                 cSnap.forEach(doc => {
                     const c = doc.data();
-                    // Filtramos por referencia o por nombre exacto
-                    if (c.referenciaPaciente === p.referencia || (c.paciente === currentPatientName)) {
+                    const patientName = String(c.paciente || '').trim().toLowerCase();
+                    const matchesPatient = c.pacienteId === patientId ||
+                        c.paciente === patientId ||
+                        c.referenciaPaciente === p.referencia ||
+                        patientName === currentPatientName.toLowerCase() ||
+                        patientName === `${p.nombre || ''} ${p.apellidos || ''}`.trim().toLowerCase();
+                    if (matchesPatient) {
                         patientAppsData.push({ id: doc.id, ...c });
                     }
                 });
@@ -252,9 +257,10 @@
                 renderSessionSummary();
 
                 patientAppsData.forEach(c => {
-                    const statusLabel = c.estado === 'completed' ? 'Realizada' : (c.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
+                    const status = normalizeAppointmentStatus(c.estado);
+                    const statusLabel = status === 'completed' ? 'Realizada' : (status === 'cancelled' ? 'Cancelada' : (status === 'no-show' ? 'No presentado' : 'Pendiente'));
                     tbody.innerHTML += `
-                        <tr class="${c.estado === 'cancelled' ? 'row-cancelled' : ''}">
+                        <tr class="${status === 'cancelled' ? 'row-cancelled' : ''}">
                             <td>${formatDate(c.fecha)}</td>
                             <td>${c.hora || '-'}</td>
                             <td>${c.clinica || '-'}</td>
@@ -277,18 +283,26 @@
             }
         }
 
+        function normalizeAppointmentStatus(status) {
+            const normalized = String(status || 'pending').toLowerCase().trim().replace(/[ _-]/g, '');
+            if (normalized === 'completed' || normalized === 'realizada' || normalized === 'realizado') return 'completed';
+            if (normalized === 'cancelled' || normalized === 'cancelada' || normalized === 'cancelado') return 'cancelled';
+            if (normalized === 'noshow' || normalized === 'nopresentado' || normalized === 'nopresentada') return 'no-show';
+            return 'pending';
+        }
+
         function renderSessionSummary() {
             const firstAppointment = patientAppsData[patientAppsData.length - 1];
             const lastAppointment = patientAppsData[0];
             const counts = { completed: 0, pending: 0, cancelled: 0, noShow: 0 };
 
             patientAppsData.forEach(appointment => {
-                const status = String(appointment.estado || 'pending').toLowerCase().replace(/[ _-]/g, '');
-                if (status === 'completed' || status === 'realizada' || status === 'realizado') {
+                const status = normalizeAppointmentStatus(appointment.estado);
+                if (status === 'completed') {
                     counts.completed++;
-                } else if (status === 'cancelled' || status === 'cancelada' || status === 'cancelado') {
+                } else if (status === 'cancelled') {
                     counts.cancelled++;
-                } else if (status === 'noshow' || status === 'nopresentado' || status === 'nopresentada') {
+                } else if (status === 'no-show') {
                     counts.noShow++;
                 } else {
                     counts.pending++;

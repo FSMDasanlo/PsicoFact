@@ -161,8 +161,8 @@
                 clientSelect.appendChild(opt);
             });
 
-            // Llenar selector de referencias al inicio buscando en todas las citas completadas
-            const qAll = query(uCol("citas"), where("estado", "==", "completed"));
+            // Incluir citas realizadas y no presentadas, que también son cobrables
+            const qAll = query(uCol("citas"), where("estado", "in", ["completed", "no_presentado", "no-presentado", "noshow", "no_show"]));
             const snapAll = await getDocs(qAll);
             const refSelect = document.getElementById('filtro-referencia');
             const seen = new Set();
@@ -342,8 +342,8 @@
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Seleccione una clínica para ver sesiones</td></tr>';
                 btnEmitir.style.display = 'none';
 
-                // Cargar todas las referencias globales si no hay clínica seleccionada
-                const qGlobal = query(uCol("citas"), where("estado", "==", "completed"));
+                // Cargar todas las referencias globales de citas cobrables
+                const qGlobal = query(uCol("citas"), where("estado", "in", ["completed", "no_presentado", "no-presentado", "noshow", "no_show"]));
                 const snapGlobal = await getDocs(qGlobal);
                 
                 const globalData = snapGlobal.docs.map(d => d.data());
@@ -386,8 +386,8 @@
             btnDeshacer.style.display = 'none';
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Buscando facturas...</td></tr>';
 
-            let q = query(uCol("citas"), 
-                where("estado", "==", "completed"), 
+            let q = query(uCol("citas"),
+                where("estado", "in", ["completed", "no_presentado", "no-presentado", "noshow", "no_show"]),
                 where("clinica", "==", selectedClinic)
             );
             
