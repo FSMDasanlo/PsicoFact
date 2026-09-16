@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutores del Paciente</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-container">
+            <a href="index.html" style="text-decoration: none; display: flex; align-items: center;">
+                <img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img">
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header" style="text-align: left;">
+            <h2 id="tutores-titulo">Tutores</h2>
+            <div class="agenda-actions">
+                <button id="btn-nuevo-tutor" class="btn-turquesa" type="button">＋ Nuevo tutor</button>
+                <a id="volver-expediente" href="Con_pacientes.html" class="back-link">&larr; Volver al expediente</a>
+            </div>
+        </div>
+        <section class="agenda-container">
+            <div class="tutores-section-heading">
+                <div>
+                    <span class="sesiones-card-kicker">Personas relacionadas</span>
+                    <h3 style="color: var(--azul-oscuro);">Tutores del paciente</h3>
+                </div>
+                <span id="tutores-contador" class="tutores-counter">0 tutores</span>
+            </div>
+            <div class="table-responsive">
+                <table class="agenda-table tutores-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellidos</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Relación</th>
+                            <th>DNI</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tutores-body">
+                        <tr><td colspan="7" class="table-empty">Cargando tutores...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modalTutor" class="modal">
+        <div class="modal-content tutor-modal-content">
+            <div class="agenda-header">
+                <h2 id="modal-tutor-title">Nuevo tutor</h2>
+                <button id="cerrar-modal-tutor" class="close-modal-button" type="button" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="form-tutor" class="form-grid">
+                <div class="form-group">
+                    <label for="tutor-nombre">Nombre</label>
+                    <input id="tutor-nombre" name="nombre" type="text" required>
+                </div>
+                <div class="form-group">
+                    <label for="tutor-apellidos">Apellidos</label>
+                    <input id="tutor-apellidos" name="apellidos" type="text" required>
+                </div>
+                <div class="form-group">
+                    <label for="tutor-telefono">Teléfono</label>
+                    <input id="tutor-telefono" name="telefono" type="tel">
+                </div>
+                <div class="form-group">
+                    <label for="tutor-email">Email</label>
+                    <input id="tutor-email" name="email" type="email">
+                </div>
+                <div class="form-group">
+                    <label for="tutor-relacion">Relación</label>
+                    <input id="tutor-relacion" name="relacion" type="text" placeholder="Madre, padre, tutor legal..." required>
+                </div>
+                <div class="form-group">
+                    <label for="tutor-dni">DNI</label>
+                    <input id="tutor-dni" name="dni" type="text">
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa">Guardar</button>
+                    <button id="cancelar-modal-tutor" type="button" class="back-link modal-cancel-button">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = window.APP_CONFIG.firebase;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const patientId = new URLSearchParams(window.location.search).get('id');
+        let currentUid = null;
+        let patientName = '';
+        let tutors = [];
+        let editingTutorId = null;
+
+        const uCol = (name) => collection(db, 'usuarios', currentUid, name);
+        const uDoc = (name, id) => doc(db, 'usuarios', currentUid, name, id);
+        const form = document.getElementById('form-tutor');
+        const modal = document.getElementById('modalTutor');
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            if (!patientId) {
+                alert('No se ha especificado un paciente.');
+                window.location.href = 'Con_pacientes.html';
+                return;
+            }
+
+            document.getElementById('volver-expediente').href = `Expediente_paciente.html?id=${encodeURIComponent(patientId)}`;
+            await loadPatient();
+            await loadTutors();
+        });
+
+        document.getElementById('btn-nuevo-tutor').addEventListener('click', () => openTutorModal());
+        document.getElementById('cerrar-modal-tutor').addEventListener('click', closeTutorModal);
+        document.getElementById('cancelar-modal-tutor').addEventListener('click', closeTutorModal);
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+        modal.addEventListener('click', (event) => { if (event.target === modal) closeTutorModal(); });
+        form.addEventListener('submit', saveTutor);
+
+        async function loadPatient() {
+            const patientSnap = await getDoc(uDoc('pacientes', patientId));
+            if (!patientSnap.exists()) {
+                alert('Paciente no encontrado.');
+                window.location.href = 'Con_pacientes.html';
+                return;
+            }
+            const patient = patientSnap.data();
+            patientName = `${patient.nombre || ''} ${patient.apellidos || ''}`.trim();
+            document.getElementById('tutores-titulo').textContent = `Tutores: ${patientName}`;
+        }
+
+        async function loadTutors() {
+            const snapshot = await getDocs(uCol('tutores'));
+            tutors = snapshot.docs
+                .map(tutorDoc => ({ id: tutorDoc.id, ...tutorDoc.data() }))
+                .filter(tutor => tutor.pacienteId === patientId);
+            renderTutors();
+        }
+
+        function renderTutors() {
+            const tbody = document.getElementById('tutores-body');
+            const count = tutors.length;
+            document.getElementById('tutores-contador').textContent = `${count} ${count === 1 ? 'tutor' : 'tutores'}`;
+            if (!count) {
+                tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No hay tutores registrados. Pulsa “＋ Nuevo tutor” para añadir uno.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            tutors.forEach(tutor => {
+                const row = document.createElement('tr');
+                [tutor.nombre, tutor.apellidos, tutor.telefono, tutor.email, tutor.relacion, tutor.dni].forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = value || '-';
+                    row.appendChild(cell);
+                });
+                const actions = document.createElement('td');
+                actions.className = 'tutor-actions';
+                actions.innerHTML = `<button class="action-icon" type="button" title="Editar">✏️</button><button class="action-icon" type="button" title="Eliminar">🗑️</button>`;
+                actions.children[0].addEventListener('click', () => openTutorModal(tutor));
+                actions.children[1].addEventListener('click', () => removeTutor(tutor));
+                row.appendChild(actions);
+                tbody.appendChild(row);
+            });
+        }
+
+        function openTutorModal(tutor = null) {
+            editingTutorId = tutor ? tutor.id : null;
+            document.getElementById('modal-tutor-title').textContent = tutor ? 'Editar tutor' : 'Nuevo tutor';
+            form.reset();
+            if (tutor) {
+                ['nombre', 'apellidos', 'telefono', 'email', 'relacion', 'dni'].forEach(field => {
+                    form.elements[field].value = tutor[field] || '';
+                });
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeTutorModal() {
+            modal.style.display = 'none';
+            editingTutorId = null;
+        }
+
+        async function saveTutor(event) {
+            event.preventDefault();
+            const data = Object.fromEntries(new FormData(form));
+            data.pacienteId = patientId;
+            data.paciente = patientName;
+            try {
+                if (editingTutorId) {
+                    await updateDoc(uDoc('tutores', editingTutorId), data);
+                } else {
+                    await addDoc(uCol('tutores'), data);
+                }
+                closeTutorModal();
+                await loadTutors();
+            } catch (error) {
+                console.error('Error guardando tutor:', error);
+                alert('No se ha podido guardar el tutor.');
+            }
+        }
+
+        async function removeTutor(tutor) {
+            if (!confirm(`¿Eliminar a ${tutor.nombre || ''} ${tutor.apellidos || ''}?`)) return;
+            try {
+                await deleteDoc(uDoc('tutores', tutor.id));
+                await loadTutors();
+            } catch (error) {
+                console.error('Error eliminando tutor:', error);
+                alert('No se ha podido eliminar el tutor.');
+            }
+        }
+    </script>
+</body>
+</html>

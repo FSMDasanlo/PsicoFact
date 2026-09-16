@@ -25,6 +25,8 @@
         <div class="agenda-header" style="text-align: left;">
             <h2 id="expediente-titulo">Expediente: Cargando...</h2>
             <div class="agenda-actions">
+                <a id="btn-tutores" href="tutores.html" class="expediente-action btn-tutores">👥 Tutores</a>
+                <a id="btn-documentos" href="documentos.html" class="expediente-action btn-documentos">📄 Documentos</a>
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="Con_pacientes.html" class="back-link">&larr; Volver</a>
             </div>
@@ -35,6 +37,38 @@
             <h3 style="color: var(--azul-oscuro); margin-bottom: 1rem;">Datos Personales</h3>
             <div id="ficha-paciente" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <!-- Se rellena con JS -->
+            </div>
+        </section>
+
+        <!-- Resumen de sesiones -->
+        <section class="agenda-container sesiones-card" aria-labelledby="sesiones-titulo">
+            <div class="sesiones-card-header">
+                <div>
+                    <span class="sesiones-card-kicker">Seguimiento clínico</span>
+                    <h3 id="sesiones-titulo">Datos de sesiones</h3>
+                </div>
+                <span class="sesiones-card-icon" aria-hidden="true">📊</span>
+            </div>
+            <div class="sesiones-summary-grid">
+                <div class="sesion-highlight">
+                    <span class="sesion-label">Primera cita</span>
+                    <strong id="primera-cita-fecha">-</strong>
+                    <span id="primera-cita-transcurrido" class="sesion-elapsed">Sin citas</span>
+                </div>
+                <div class="sesion-highlight">
+                    <span class="sesion-label">Última cita</span>
+                    <strong id="ultima-cita-fecha">-</strong>
+                    <span id="ultima-cita-transcurrido" class="sesion-elapsed">Sin citas</span>
+                </div>
+                <div class="sesiones-counts" aria-label="Número de sesiones por estado">
+                    <span class="sesion-label">Número de sesiones</span>
+                    <div class="sesion-count-list">
+                        <span class="sesion-count completed"><b id="sesiones-realizadas">0</b> Realizadas</span>
+                        <span class="sesion-count pending"><b id="sesiones-pendientes">0</b> Pendientes</span>
+                        <span class="sesion-count cancelled"><b id="sesiones-canceladas">0</b> Canceladas</span>
+                        <span class="sesion-count no-show"><b id="sesiones-no-presentado">0</b> No presentado</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -170,6 +204,9 @@
                 return;
             }
 
+            document.getElementById('btn-tutores').href = `tutores.html?id=${encodeURIComponent(patientId)}`;
+            document.getElementById('btn-documentos').href = `documentos.html?id=${encodeURIComponent(patientId)}`;
+
             try {
                 // 1. Cargar datos del paciente
                 const pSnap = await getDoc(uDoc('pacientes', patientId));
@@ -212,6 +249,7 @@
 
                 // Ordenar por fecha descendente manualmente
                 patientAppsData.sort((a, b) => b.fecha.localeCompare(a.fecha));
+                renderSessionSummary();
 
                 patientAppsData.forEach(c => {
                     const statusLabel = c.estado === 'completed' ? 'Realizada' : (c.estado === 'cancelled' ? 'Cancelada' : 'Pendiente');
@@ -237,6 +275,59 @@
                 console.error("Error cargando expediente:", error);
                 alert("Error al cargar los datos del expediente.");
             }
+        }
+
+        function renderSessionSummary() {
+            const firstAppointment = patientAppsData[patientAppsData.length - 1];
+            const lastAppointment = patientAppsData[0];
+            const counts = { completed: 0, pending: 0, cancelled: 0, noShow: 0 };
+
+            patientAppsData.forEach(appointment => {
+                const status = String(appointment.estado || 'pending').toLowerCase().replace(/[ _-]/g, '');
+                if (status === 'completed' || status === 'realizada' || status === 'realizado') {
+                    counts.completed++;
+                } else if (status === 'cancelled' || status === 'cancelada' || status === 'cancelado') {
+                    counts.cancelled++;
+                } else if (status === 'noshow' || status === 'nopresentado' || status === 'nopresentada') {
+                    counts.noShow++;
+                } else {
+                    counts.pending++;
+                }
+            });
+
+            document.getElementById('sesiones-realizadas').textContent = counts.completed;
+            document.getElementById('sesiones-pendientes').textContent = counts.pending;
+            document.getElementById('sesiones-canceladas').textContent = counts.cancelled;
+            document.getElementById('sesiones-no-presentado').textContent = counts.noShow;
+
+            if (firstAppointment) {
+                document.getElementById('primera-cita-fecha').textContent = formatDate(firstAppointment.fecha);
+                document.getElementById('primera-cita-transcurrido').textContent = getElapsedTime(firstAppointment.fecha);
+                document.getElementById('ultima-cita-fecha').textContent = formatDate(lastAppointment.fecha);
+                document.getElementById('ultima-cita-transcurrido').textContent = getElapsedTime(lastAppointment.fecha);
+            }
+        }
+
+        function getElapsedTime(dateStr) {
+            const appointmentDate = new Date(`${dateStr}T00:00:00`);
+            const today = new Date();
+            const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const dayDifference = Math.round((todayDate - appointmentDate) / 86400000);
+
+            if (dayDifference < 0) return `En ${formatDuration(Math.abs(dayDifference))}`;
+            if (dayDifference === 0) return 'Hoy';
+            return `Hace ${formatDuration(dayDifference)}`;
+        }
+
+        function formatDuration(totalDays) {
+            const years = Math.floor(totalDays / 365);
+            const months = Math.floor((totalDays % 365) / 30);
+            const days = totalDays % 30;
+            const parts = [];
+            if (years) parts.push(`${years} ${years === 1 ? 'año' : 'años'}`);
+            if (months) parts.push(`${months} ${months === 1 ? 'mes' : 'meses'}`);
+            if ((!years && !months) || (!years && !months && days)) parts.push(`${days} ${days === 1 ? 'día' : 'días'}`);
+            return parts.slice(0, 2).join(' y ');
         }
 
         // --- Lógica de Calendario Anual ---

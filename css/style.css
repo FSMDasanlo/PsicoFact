@@ -136,6 +136,117 @@ footer {
     overflow-x: auto; /* Asegura que nada se desborde fuera del contenedor */
 }
 
+.sesiones-card {
+    margin-bottom: 2rem;
+    border-top: 5px solid var(--turquesa);
+    background: linear-gradient(135deg, #ffffff 0%, #f1fffc 100%);
+    overflow: hidden;
+}
+
+.sesiones-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.sesiones-card-header h3 {
+    color: var(--azul-oscuro);
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.sesiones-card-kicker {
+    display: block;
+    color: #138d75;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+}
+
+.sesiones-card-icon {
+    display: grid;
+    place-items: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 50%;
+    background-color: #d5f5ed;
+    font-size: 1.35rem;
+}
+
+.sesiones-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.sesion-highlight,
+.sesiones-counts {
+    min-width: 0;
+    padding: 1.15rem;
+    border: 1px solid #d8eee9;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.sesion-label {
+    display: block;
+    color: #607d8b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.45rem;
+}
+
+.sesion-highlight strong {
+    display: block;
+    color: var(--azul-oscuro);
+    font-size: 1.35rem;
+    line-height: 1.25;
+}
+
+.sesion-elapsed {
+    display: block;
+    color: #138d75;
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+}
+
+.sesion-count-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.sesion-count {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #52636b;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.sesion-count b {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    font-size: 0.85rem;
+}
+
+.sesion-count.completed b { background-color: #d4edda; color: #155724; }
+.sesion-count.pending b { background-color: #fff3cd; color: #856404; }
+.sesion-count.cancelled b { background-color: #f8d7da; color: #721c24; }
+.sesion-count.no-show b { background-color: #e2e3e5; color: #383d41; }
+
+@media (max-width: 700px) {
+    .sesiones-summary-grid { grid-template-columns: 1fr; }
+}
+
 .agenda-header {
     display: flex;
     justify-content: space-between;
@@ -145,6 +256,79 @@ footer {
     padding-bottom: 1rem;
     gap: 10px;
     flex-wrap: wrap; /* Permite que los botones bajen si no caben */
+}
+
+.agenda-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.expediente-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    color: var(--blanco);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.expediente-action:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.btn-tutores { background-color: var(--turquesa); }
+.btn-documentos { background-color: var(--azul-primario); }
+
+.tutores-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.tutores-section-heading h3 { margin: 0; }
+.tutores-counter {
+    color: #138d75;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.table-responsive { overflow-x: auto; }
+.tutores-table { min-width: 850px; }
+.tutores-table th:last-child,
+.tutores-table td:last-child { text-align: center; }
+.table-empty { text-align: center; color: #95a5a6; padding: 2rem !important; }
+.tutor-actions { white-space: nowrap; }
+.tutor-actions .action-icon {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.tutor-modal-content { max-width: 760px; }
+.close-modal-button {
+    border: 0;
+    background: transparent;
+    color: #7f8c8d;
+    cursor: pointer;
+    font-size: 1.8rem;
+    line-height: 1;
+}
+.modal-cancel-button {
+    border: 1px solid #ccc;
+    background: transparent;
+    cursor: pointer;
+    padding: 8px 20px;
 }
 
 .agenda-table {
