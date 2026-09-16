@@ -385,16 +385,12 @@
             
             const filtered = appointments.filter(app => {
                 if (!app.fecha) return false;
-                // Usamos split para evitar desfases de horas/zonas horarias en la comparación
-                const parts = String(app.fecha).split('-');
-                const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                // Las fechas ISO se comparan como texto para evitar desfases de zona horaria.
+                const fechaCita = String(app.fecha).slice(0, 10);
 
                 let cumpleFecha = true;
-                if (desde && hasta) {
-                    const dDesde = new Date(desde);
-                    const dHasta = new Date(hasta);
-                    cumpleFecha = d >= dDesde && d <= dHasta;
-                }
+                if (desde) cumpleFecha = fechaCita >= desde;
+                if (hasta) cumpleFecha = cumpleFecha && fechaCita <= hasta;
 
                 const cumplePaciente = pacienteFiltro === "" || (app.referenciaPaciente || app.paciente) === pacienteFiltro;
                 const cumpleClinica = clinicaFiltro === "" || app.clinica === clinicaFiltro;
