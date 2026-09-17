@@ -101,6 +101,14 @@
                     <input type="number" id="porcentaje_facultativo" name="porcentaje_facultativo" step="0.1" min="0" max="100" placeholder="Ej: 70">
                 </div>
                 <div class="form-group full-width">
+                    <label for="guardar_google_calendar">¿Guardar en Google Calendar?</label>
+                    <select id="guardar_google_calendar" name="guardar_google_calendar">
+                        <option value="si">Sí, guardar automáticamente</option>
+                        <option value="preguntar" selected>Preguntar antes de guardar</option>
+                        <option value="no">No guardar</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
                     <label>Color Identificativo (para Agenda)</label>
                     <div class="color-palette" id="color-palette">
                         <div class="color-option" style="background-color: #3498db;" data-color="#3498db"></div>
@@ -239,9 +247,9 @@
         window.editClinic = function(id) {
             const c = clinics.find(c => c.id === id);
             editingId = id;
-            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe', 'porcentaje_facultativo', 'color'].forEach(f => {
+            ['nombre', 'cif', 'contacto', 'direccion', 'telefono', 'email', 'importe', 'porcentaje_facultativo', 'guardar_google_calendar', 'color'].forEach(f => {
                 const el = document.getElementById(f);
-                if (el) el.value = c[f] || (f === 'color' ? '#3498db' : '');
+                if (el) el.value = c[f] || (f === 'color' ? '#3498db' : (f === 'guardar_google_calendar' ? 'preguntar' : ''));
             });
             selectColor(c.color || '#3498db');
             openModal("Editar Clínica");

@@ -939,10 +939,16 @@
 
             loadFilteredAppointments();
 
-            // Preguntar si quiere añadir a Google Calendar (antes de cerrar el modal)
-            const quiereGCal = await showGCalendarConfirm();
-            if (quiereGCal) {
+            // Aplicar la preferencia de Google Calendar de la clínica elegida
+            const clinicData = clinicsMasterData.find(c => c.nombre === data.clinica);
+            const calendarPolicy = clinicData?.guardar_google_calendar || 'preguntar';
+            if (calendarPolicy === 'si') {
                 addToGoogleCalendar();
+            } else if (calendarPolicy === 'preguntar') {
+                const quiereGCal = await showGCalendarConfirm();
+                if (quiereGCal) {
+                    addToGoogleCalendar();
+                }
             }
 
             closeAppointmentModal();
