@@ -294,8 +294,13 @@ footer {
     opacity: 0.9;
 }
 
+.expediente-action[hidden] {
+    display: none;
+}
+
 .btn-tutores { background-color: var(--turquesa); }
 .btn-documentos { background-color: var(--azul-primario); }
+.btn-whatsapp { background-color: #25D366; }
 
 .tutores-section-heading {
     display: flex;
