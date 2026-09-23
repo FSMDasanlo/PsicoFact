@@ -192,12 +192,16 @@
                         <label for="importe-facultativo" style="white-space: nowrap; font-size: 0.95rem; font-weight: 700;">Facultativo (€)</label>
                         <input type="number" id="importe-facultativo" name="importe_facultativo" step="0.01" readonly style="background-color: #f0f0f0; width: 100%; padding: 12px; text-align: right; font-size: 1rem; border: 2px solid #ccc;">
                     </div>
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #ccc; justify-content: center;">
+                        <input type="number" id="porcentaje-facultativo-cita" name="porcentaje_facultativo" min="0" max="100" step="0.01" oninput="markFacultativoPercentageManual()" aria-label="Porcentaje del facultativo" style="width: 64px; padding: 8px; text-align: right; border: 1px solid #aaa;">
+                        <span aria-hidden="true">%</span>
+                    </div>
                     <div style="flex: 1.5; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; background: #e0f2f1; padding: 10px; border-radius: 6px; border: 1px solid var(--turquesa); justify-content: center;">
                         <input type="checkbox" id="por-seguro" name="por_seguro" onchange="calculateFacultativoAmount()" style="width: 20px; height: 20px; cursor: pointer; margin: 0;">
                         <label for="por-seguro" style="margin: 0; cursor: pointer; font-size: 0.9rem; font-weight: 800; white-space: nowrap; color: var(--azul-oscuro);">POR SEGURO</label>
                     </div>
                 </div>
-                <input type="hidden" id="porcentaje-facultativo-cita" name="porcentaje_facultativo">
+                <input type="hidden" id="porcentaje-clinica-cita">
                 <div class="form-group full-width">
                     <label for="obs-cita">Observaciones</label>
                     <textarea id="obs-cita" name="observaciones" rows="3"></textarea>
@@ -551,14 +555,32 @@
             return `${day}-${month}-${year}`;
         };
 
+        let porcentajeFacultativoManual = false;
+
+        window.markFacultativoPercentageManual = function() {
+            const porcentajeEscrito = document.getElementById('porcentaje-facultativo-cita').value.trim() !== '';
+            porcentajeFacultativoManual = porcentajeEscrito;
+            if (porcentajeEscrito) {
+                document.getElementById('por-seguro').checked = false;
+            }
+            window.calculateFacultativoAmount();
+        };
+
         window.calculateFacultativoAmount = function() {
             const total = parseFloat(document.getElementById('importe-cita').value) || 0;
             const isSeguro = document.getElementById('por-seguro').checked;
+            const porcentajeInput = document.getElementById('porcentaje-facultativo-cita');
+            const porcentajeEscrito = parseFloat(porcentajeInput.value);
             let pct;
-            if (isSeguro) {
+            if (porcentajeFacultativoManual && porcentajeInput.value.trim() !== '' && Number.isFinite(porcentajeEscrito)) {
+                pct = porcentajeEscrito;
+            } else if (isSeguro) {
                 pct = 50;
             } else {
-                pct = parseFloat(document.getElementById('porcentaje-facultativo-cita').value) || 0;
+                pct = parseFloat(document.getElementById('porcentaje-clinica-cita').value) || 0;
+            }
+            if (!porcentajeFacultativoManual) {
+                porcentajeInput.value = pct;
             }
             const facAmount = (total * pct) / 100;
             document.getElementById('importe-facultativo').value = facAmount.toFixed(2);
@@ -585,7 +607,8 @@
                 const importeTotal = (!isNaN(importePaciente)) ? importePaciente : (clinicData ? parseFloat(clinicData.importe) : 0);
                 
                 document.getElementById('importe-cita').value = importeTotal > 0 ? importeTotal : '';
-                document.getElementById('porcentaje-facultativo-cita').value = pct;
+                document.getElementById('porcentaje-clinica-cita').value = pct;
+                porcentajeFacultativoManual = false;
                 document.getElementById('ref-cita').value = patient.referencia || '';
                 
                 // Aplicar el check de seguro desde el paciente
@@ -597,7 +620,9 @@
                 document.getElementById('clinica-cita').value = '';
                 if (document.getElementById('centro-cita')) document.getElementById('centro-cita').value = '';
                 document.getElementById('importe-cita').value = '';
-                document.getElementById('porcentaje-facultativo-cita').value = '0';
+                document.getElementById('porcentaje-clinica-cita').value = '0';
+                document.getElementById('porcentaje-facultativo-cita').value = '';
+                porcentajeFacultativoManual = false;
                 document.getElementById('importe-facultativo').value = '';
                 document.getElementById('ref-cita').value = '';
                 document.getElementById('por-seguro').checked = false;
@@ -696,7 +721,7 @@
                 
                 const timeInfo = isFiltering ? `${window.formatDate(app.fecha)}<br><strong>${app.hora}</strong>` : app.hora;
 
-                const displayPct = app.por_seguro ? 50 : (app.porcentaje_facultativo || 0);
+                const displayPct = app.porcentaje_facultativo_manual ? (app.porcentaje_facultativo || 0) : (app.por_seguro ? 50 : (app.porcentaje_facultativo || 0));
                 
                 // Buscar color del centro si existe, si no el de la clínica
                 let mainColor = clinicColor;
@@ -755,6 +780,7 @@
 
             if (title === "Nueva Cita") {
                 document.getElementById('form-cita').reset();
+                porcentajeFacultativoManual = false;
                 document.getElementById('fecha').value = preselectedDate || new Date().toISOString().split('T')[0];
                 if (preselectedTime) document.getElementById('hora').value = preselectedTime;
                 
@@ -822,7 +848,7 @@
                 estadoCita.style.border = '';
             }
 
-            ['fecha', 'hora', 'sociedad', 'clinica', 'centro', 'importe', 'importe_facultativo', 'porcentaje_facultativo', 'observaciones', 'estado'].forEach(f => {
+            ['fecha', 'hora', 'sociedad', 'clinica', 'centro', 'importe', 'importe_facultativo', 'observaciones', 'estado'].forEach(f => {
                 const el = document.getElementById(f === 'observaciones' ? 'obs-cita' : (f === 'sociedad' ? 'sociedad-cita' : (f === 'clinica' ? 'clinica-cita' : (f === 'centro' ? 'centro-cita' : (f === 'importe' ? 'importe-cita' : (f === 'importe_facultativo' ? 'importe-facultativo' : (f === 'porcentaje_facultativo' ? 'porcentaje-facultativo-cita' : (f === 'estado' ? 'estado-cita' : f))))))));
                 if(el) {
                     el.value = app[f] || (f === 'estado' ? 'pending' : '');
@@ -845,22 +871,20 @@
             document.getElementById('paciente-select').value = app.paciente;
             document.getElementById('ref-cita').value = app.referenciaPaciente || '';
             document.getElementById('por-seguro').checked = !!app.por_seguro;
+            const clinicData = clinicsMasterData.find(c => c.nombre === app.clinica);
+            document.getElementById('porcentaje-clinica-cita').value = clinicData ? (clinicData.porcentaje_facultativo || 0) : 0;
+            porcentajeFacultativoManual = app.porcentaje_facultativo_manual === true;
+            document.getElementById('porcentaje-facultativo-cita').value = app.porcentaje_facultativo ?? '';
             document.getElementById('duracion').value = app.duracion || 60;
             
-            // Si es una cita antigua y no tiene porcentaje grabado, buscamos el de su clínica actual
-            if (!app.porcentaje_facultativo) {
-                const clinicData = clinicsMasterData.find(c => c.nombre === app.clinica);
-                if (clinicData) {
-                    document.getElementById('porcentaje-facultativo-cita').value = clinicData.porcentaje_facultativo || 0;
-                    window.calculateFacultativoAmount();
-                }
-            }
+            window.calculateFacultativoAmount();
         }
         document.getElementById('form-cita').onsubmit = async function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
             data.por_seguro = document.getElementById('por-seguro').checked;
+            data.porcentaje_facultativo_manual = porcentajeFacultativoManual;
 
             if (!editingAppointmentId) {
                 const sameDayAppointments = await findSameDayAppointments(data.paciente, data.fecha);

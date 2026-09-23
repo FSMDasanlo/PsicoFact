@@ -742,6 +742,7 @@
                 const usersData = [];
                 let totalPendingGlobal = 0;
                 let totalCompletedGlobal = 0;
+                let totalChargedGlobal = 0;
 
                 for (const facultativoDoc of profilesSnap.docs) {
                     if (facultativoDoc.id !== 'perfil') continue;
@@ -772,9 +773,13 @@
                         return status === 'completed' || status === 'noshow' || status === 'nopresentado';
                     });
                     const cancelledCitas = allCitas.filter(d => d.data().estado === 'cancelled');
+                    const totalCharged = completedCitas.reduce((total, cita) => {
+                        return total + (parseFloat(cita.data().importe_facultativo) || 0);
+                    }, 0);
 
                     totalPendingGlobal += pendingCitas.length;
                     totalCompletedGlobal += completedCitas.length;
+                    totalChargedGlobal += totalCharged;
 
                     usersData.push({
                         uid,
@@ -783,7 +788,8 @@
                         totalCitas: allCitas.length,
                         pendingCount: pendingCitas.length,
                         completedCount: completedCitas.length,
-                        cancelledCount: cancelledCitas.length
+                        cancelledCount: cancelledCitas.length,
+                        totalCharged
                     });
                 }
 
@@ -798,6 +804,10 @@
                     <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
                         <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Realizadas</div>
                         <div style="font-size:1.1rem; font-weight:700; color:#27ae60;">${totalCompletedGlobal}</div>
+                    </div>
+                    <div style="text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+                        <div style="font-size:0.7rem; color:#666; text-transform:uppercase;">Total Cobrado</div>
+                        <div style="font-size:1.1rem; font-weight:700; color:#2980b9;">${totalChargedGlobal.toFixed(2)} €</div>
                     </div>
                 `;
 
@@ -814,6 +824,7 @@
                                 <th style="padding:12px; text-align:center;">Citas Pend.</th>
                                 <th style="padding:12px; text-align:center;">Citas Realizadas</th>
                                 <th style="padding:12px; text-align:center;">Canceladas</th>
+                                <th style="padding:12px; text-align:center;">Total cobrado (€)</th>
                                 <th style="padding:12px; text-align:center;">Total</th>
                             </tr>
                         </thead>
@@ -830,6 +841,7 @@
                             <td style="padding:12px; text-align:center; color:#e67e22; font-weight:600;">${u.pendingCount}</td>
                             <td style="padding:12px; text-align:center; color:#27ae60; font-weight:600;">${u.completedCount}</td>
                             <td style="padding:12px; text-align:center; color:#999;">${u.cancelledCount}</td>
+                            <td style="padding:12px; text-align:center; color:#2980b9; font-weight:600;">${u.totalCharged.toFixed(2)} €</td>
                             <td style="padding:12px; text-align:center; font-weight:600;">${u.totalCitas}</td>
                         </tr>
                     `;
