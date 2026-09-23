@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan de Bienestar - PsicoFact</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .plan-hero { background: linear-gradient(135deg, #e9faf5, #edf6fc); border-left: 5px solid var(--turquesa); }
+        .plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .plan-section { border: 1px solid #dfeae7; border-radius: 8px; padding: 18px; background: #fff; }
+        .plan-section.full { grid-column: 1 / -1; }
+        .plan-section h3 { color: var(--azul-oscuro); font-size: 1rem; margin-bottom: 4px; }
+        .plan-section p { color: #6c7a7a; font-size: .84rem; margin-bottom: 12px; }
+        .plan-section textarea { width: 100%; min-height: 125px; resize: vertical; font: inherit; line-height: 1.5; padding: 10px; border: 1px solid #cfd9d6; border-radius: 6px; }
+        .plan-section textarea:focus, #plan-paciente:focus { outline: 2px solid #a8e6d5; border-color: var(--turquesa); }
+        .plan-section.warning { border-color: #f1d18a; background: #fffcf4; }
+        .plan-section.warning h3 { color: #8a5a00; }
+        .plan-status { font-size: .85rem; color: #61716f; align-self: center; }
+        .plan-date-range { color: #7b8b89; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+        .plan-meta { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+        .plan-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        @media (max-width: 700px) { .plan-grid { grid-template-columns: 1fr; } .plan-section.full { grid-column: auto; } }
+        @media print { .navbar, .agenda-header, footer, .plan-actions, .plan-status, .plan-hero p { display: none !important; } body { background: white; } .container { max-width: none; margin: 0; } .agenda-container { box-shadow: none; padding: 0; } .plan-section { break-inside: avoid; border: 1px solid #ddd; } }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-container"><a href="index.html" style="text-decoration:none; display:flex; align-items:center;"><img src="img/solo_psia_peque.PNG" alt="Logo" class="logo-img"></a></div>
+        <div class="user-info-container"><button class="btn-logout" id="logout-btn">Cerrar sesión</button><span id="user-name"></span></div>
+    </header>
+
+    <main class="container">
+        <div class="agenda-header">
+            <div><h2 style="margin:0;">Plan de Bienestar</h2><p style="margin:3px 0 0; color:#758080; font-size:.9rem;">Prevención de recaídas y mantenimiento de avances</p></div>
+            <div class="agenda-actions"><a href="index.html" class="home-icon" title="Inicio">🏠</a><a id="back-link" href="Con_pacientes.html" class="back-link">&larr; Pacientes</a></div>
+        </div>
+
+        <section class="agenda-container plan-hero" style="margin-bottom:18px;">
+            <div class="plan-meta">
+                <div style="flex:1; min-width:240px;"><label for="plan-paciente" style="font-weight:700; color:var(--azul-oscuro);">Paciente</label><select id="plan-paciente" style="width:100%; margin-top:6px;"><option value="">Selecciona un paciente...</option></select></div>
+                <div class="plan-actions"><button id="save-plan" class="btn-turquesa" type="button">Guardar plan</button><button id="print-plan" class="back-link" type="button" style="border:none; background:#fff; cursor:pointer; padding:10px 14px;">Imprimir</button></div>
+            </div>
+            <p style="margin:0; color:#4e6662;">Un plan acordado para reconocer cambios tempranos y responder con pasos concretos. Completarlo de forma colaborativa y revisarlo cuando cambien las circunstancias.</p>
+        </section>
+
+        <section id="plan-form" class="agenda-container" hidden>
+            <div class="plan-meta"><div><h2 id="plan-title" style="margin:0; font-size:1.25rem; color:var(--azul-oscuro);">Plan personal</h2><p style="margin:3px 0 0; color:#758080; font-size:.85rem;">Última actualización: <span id="last-updated">Sin guardar</span></p></div><span id="plan-status" class="plan-status"></span></div>
+            <div class="plan-grid">
+                <article class="plan-section"><h3>1. Lo que me ayuda a estar bien</h3><p>Rutinas, personas, actividades y hábitos que conviene mantener.</p><textarea id="fortalezas" placeholder="Ej.: Pasear tres días por semana, hablar con mi hermana, mantener horarios de sueño..."></textarea></article>
+                <article class="plan-section"><h3>2. Señales tempranas</h3><p>Cambios que suelen aparecer antes de que el malestar aumente.</p><textarea id="senales" placeholder="Ej.: Duermo peor, dejo de responder mensajes, cancelo planes, me cuesta concentrarme..."></textarea></article>
+                <article class="plan-section"><h3>3. Situaciones que pueden desestabilizarme</h3><p>Fechas, contextos, conflictos o cargas que requieren más atención.</p><textarea id="desencadenantes" placeholder="Ej.: Exceso de trabajo, discusiones, aniversarios, cambios de rutina..."></textarea></article>
+                <article class="plan-section"><h3>4. Primeros pasos que puedo dar</h3><p>Acciones pequeñas, realistas y concretas para recuperar estabilidad.</p><textarea id="estrategias" placeholder="Ej.: Retomar una rutina básica, pedir una cita, limitar compromisos, usar una técnica practicada..."></textarea></article>
+                <article class="plan-section"><h3>5. Personas y recursos de apoyo</h3><p>A quién acudir y qué tipo de apoyo puede ofrecer cada recurso.</p><textarea id="apoyos" placeholder="Ej.: Nombre y teléfono de una persona de confianza, profesional de referencia, recursos comunitarios..."></textarea></article>
+                <article class="plan-section warning"><h3>6. Si la situación empeora</h3><p>Pasos acordados para pedir ayuda. No sustituye una valoración profesional ni los recursos de urgencia.</p><textarea id="crisis" placeholder="Ej.: Contactar con..., solicitar cita prioritaria, acudir al recurso de urgencias acordado..."></textarea></article>
+                <article class="plan-section full"><h3>7. Compromiso para las próximas semanas</h3><p>Una o dos acciones alcanzables y la fecha aproximada para revisar este plan.</p><textarea id="compromiso" placeholder="Ej.: Esta semana priorizaré... Revisaremos el plan el..."></textarea></article>
+            </div>
+        </section>
+    </main>
+    <footer><p>&copy; 2026 PsicoFact - Gestión de Psicología</p></footer>
+
+    <script src="js/config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const app = initializeApp(window.APP_CONFIG.firebase);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUid = null;
+        let patients = [];
+        const fieldIds = ['fortalezas', 'senales', 'desencadenantes', 'estrategias', 'apoyos', 'crisis', 'compromiso'];
+        const planRef = (patientId) => doc(db, 'usuarios', currentUid, 'planes_bienestar', patientId);
+
+        function formatTimestamp(value) {
+            if (!value) return 'Sin guardar';
+            const date = value.toDate ? value.toDate() : new Date(value);
+            return Number.isNaN(date.getTime()) ? 'Sin guardar' : date.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const [year, month, day] = value.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        async function loadAppointmentDates(patient) {
+            const appointmentsSnapshot = await getDocs(query(
+                collection(db, 'usuarios', currentUid, 'citas'),
+                where('referenciaPaciente', '==', patient.referencia || '__sin_referencia__')
+            ));
+            const appointments = appointmentsSnapshot.docs.map(item => item.data()).filter(item => item.fecha);
+            if (appointments.length === 0) {
+                return null;
+            }
+            const dates = appointments.map(item => item.fecha).sort();
+            return `${formatDate(dates[0])} - ${formatDate(dates[dates.length - 1])}`;
+        }
+
+        async function loadPlan(patientId) {
+            const patient = patients.find(item => item.id === patientId);
+            const form = document.getElementById('plan-form');
+            if (!patient) { form.hidden = true; return; }
+            document.getElementById('back-link').href = `Expediente_paciente.html?id=${encodeURIComponent(patientId)}`;
+            const appointmentDates = await loadAppointmentDates(patient);
+            const title = document.getElementById('plan-title');
+            title.textContent = `Plan personal de ${patient.nombre} ${patient.apellidos}`;
+            if (appointmentDates) {
+                const dateRange = document.createElement('span');
+                dateRange.className = 'plan-date-range';
+                dateRange.textContent = ` [${appointmentDates}]`;
+                title.appendChild(dateRange);
+            }
+            const snapshot = await getDoc(planRef(patientId));
+            const data = snapshot.exists() ? snapshot.data() : {};
+            fieldIds.forEach(id => { document.getElementById(id).value = data[id] || ''; });
+            document.getElementById('last-updated').textContent = formatTimestamp(data.actualizadoEn);
+            document.getElementById('plan-status').textContent = snapshot.exists() ? 'Plan cargado' : 'Plan nuevo sin guardar';
+            form.hidden = false;
+        }
+
+        async function savePlan() {
+            const patientId = document.getElementById('plan-paciente').value;
+            const patient = patients.find(item => item.id === patientId);
+            if (!patient) return;
+            const button = document.getElementById('save-plan');
+            button.disabled = true;
+            try {
+                const data = { pacienteId: patientId, paciente: `${patient.nombre} ${patient.apellidos}`, actualizadoEn: new Date().toISOString() };
+                fieldIds.forEach(id => { data[id] = document.getElementById(id).value.trim(); });
+                await setDoc(planRef(patientId), data, { merge: true });
+                document.getElementById('last-updated').textContent = formatTimestamp(data.actualizadoEn);
+                document.getElementById('plan-status').textContent = 'Plan guardado correctamente';
+            } catch (error) {
+                console.error('Error guardando plan:', error);
+                document.getElementById('plan-status').textContent = 'No se ha podido guardar el plan';
+            } finally { button.disabled = false; }
+        }
+
+        onAuthStateChanged(auth, async user => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            currentUid = user.uid;
+            const profile = await getDoc(doc(db, 'usuarios', user.uid, 'facultativo', 'perfil'));
+            const profileData = profile.exists() ? profile.data() : {};
+            document.getElementById('user-name').textContent = [profileData.nombre, profileData.apellidos].filter(Boolean).join(' ') || user.email;
+            const snapshot = await getDocs(collection(db, 'usuarios', currentUid, 'pacientes'));
+            patients = snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a, b) => `${a.nombre} ${a.apellidos}`.localeCompare(`${b.nombre} ${b.apellidos}`, 'es'));
+            const select = document.getElementById('plan-paciente');
+            patients.forEach(patient => { const option = document.createElement('option'); option.value = patient.id; option.textContent = `${patient.nombre} ${patient.apellidos}`; select.appendChild(option); });
+            const patientId = new URLSearchParams(window.location.search).get('id');
+            if (patientId && patients.some(patient => patient.id === patientId)) { select.value = patientId; await loadPlan(patientId); }
+            select.addEventListener('change', event => loadPlan(event.target.value));
+        });
+
+        document.getElementById('save-plan').addEventListener('click', savePlan);
+        document.getElementById('print-plan').addEventListener('click', () => { if (!document.getElementById('plan-form').hidden) window.print(); });
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>

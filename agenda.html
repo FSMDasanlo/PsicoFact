@@ -403,6 +403,26 @@
             });
         }
 
+        async function findAppointmentConflict(appointment) {
+            const appointmentsForDay = await getDocs(query(
+                uCol("citas"),
+                where("fecha", "==", appointment.fecha)
+            ));
+            const [startHours, startMinutes] = String(appointment.hora || '00:00').split(':').map(Number);
+            const appointmentStartMinutes = (startHours * 60) + startMinutes;
+            const appointmentEndMinutes = getAppointmentEndMinutes(appointment);
+
+            return appointmentsForDay.docs
+                .map(appointmentDoc => ({ id: appointmentDoc.id, ...appointmentDoc.data() }))
+                .find(otherAppointment => {
+                    if (otherAppointment.id === appointment.id) return false;
+                    const [otherStartHours, otherStartMinutes] = String(otherAppointment.hora || '00:00').split(':').map(Number);
+                    const otherStart = (otherStartHours * 60) + otherStartMinutes;
+                    const otherEnd = getAppointmentEndMinutes(otherAppointment);
+                    return appointmentStartMinutes < otherEnd && otherStart < appointmentEndMinutes;
+                });
+        }
+
         function formatIsoDate(dateObj) {
             return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
         }
@@ -897,18 +917,15 @@
                 }
             }
 
-            // Validación de conflicto (30 minutos)
-            const nuevaFechaHora = new Date(`${data.fecha}T${data.hora}`);
-            const conflicto = appointments.find(app => {
-                if (app.id === editingAppointmentId) return false;
-                if (app.fecha !== data.fecha) return false;
-                const appFechaHora = new Date(`${app.fecha}T${app.hora}`);
-                const diferenciaMs = Math.abs(nuevaFechaHora - appFechaHora);
-                return diferenciaMs < (10 * 60 * 1000); // Reducido a 10 min para permitir mayor flexibilidad en agenda
+            const conflicto = await findAppointmentConflict({
+                id: editingAppointmentId,
+                fecha: data.fecha,
+                hora: data.hora,
+                duracion: data.duracion
             });
 
             if (conflicto) {
-                showToast(`Conflicto: Cita existente a las ${conflicto.hora} con ${conflicto.paciente}.`, 'error');
+                showToast(`Conflicto: la cita de ${conflicto.paciente} a las ${conflicto.hora} se solapa por duración.`, 'error');
                 return;
             }
 
