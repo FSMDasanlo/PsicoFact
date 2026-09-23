@@ -99,6 +99,10 @@
                             <label for="importe_sesion">Sesión (€)</label>
                             <input type="number" id="importe_sesion" name="importe_sesion" step="0.01" placeholder="60" style="width: 100%;">
                         </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="porcentaje_facultativo">Facultativo (%)</label>
+                            <input type="number" id="porcentaje_facultativo" name="porcentaje_facultativo" min="0" max="100" step="0.01" placeholder="Ej.: 70" style="width: 100%;">
+                        </div>
                         <div class="form-group" style="flex: 0.8;">
                             <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.7rem; background: #e0f2f1; padding: 5px; border-radius: 4px; border: 1px solid var(--turquesa); margin: 0; white-space: nowrap; height: 30px; width: 100%; justify-content: center;">
                                 <input type="checkbox" id="por_seguro" name="por_seguro" style="width: 13px; height: 13px; cursor: pointer;">
@@ -353,7 +357,7 @@
         function editPatient(id) {
             const p = patients.find(p => p.id === id);
             editingId = id;
-            ['referencia', 'nombre', 'apellidos', 'telefono', 'email', 'fechaNacimiento', 'centro', 'sociedad', 'clinica', 'notas', 'importe_sesion', 'por_seguro'].forEach(f => {
+            ['referencia', 'nombre', 'apellidos', 'telefono', 'email', 'fechaNacimiento', 'centro', 'sociedad', 'clinica', 'notas', 'importe_sesion', 'porcentaje_facultativo', 'por_seguro'].forEach(f => {
                 const el = document.getElementById(f);
                 if (el) {
                     if (el.type === 'checkbox') {

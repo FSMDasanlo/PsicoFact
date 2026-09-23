@@ -600,7 +600,9 @@
                 }
                 
                 const clinicData = clinicsMasterData.find(c => c.nombre === patient.clinica);
-                const pct = clinicData ? (parseFloat(clinicData.porcentaje_facultativo) || 0) : 0;
+                const patientPct = parseFloat(patient.porcentaje_facultativo);
+                const clinicPct = clinicData ? (parseFloat(clinicData.porcentaje_facultativo) || 0) : 0;
+                const pct = Number.isFinite(patientPct) ? patientPct : clinicPct;
                 
                 // Prioridad: Importe definido en el paciente, si no, el de la clínica
                 const importePaciente = parseFloat(patient.importe_sesion);
@@ -608,7 +610,8 @@
                 
                 document.getElementById('importe-cita').value = importeTotal > 0 ? importeTotal : '';
                 document.getElementById('porcentaje-clinica-cita').value = pct;
-                porcentajeFacultativoManual = false;
+                porcentajeFacultativoManual = Number.isFinite(patientPct);
+                document.getElementById('porcentaje-facultativo-cita').value = Number.isFinite(patientPct) ? patientPct : '';
                 document.getElementById('ref-cita').value = patient.referencia || '';
                 
                 // Aplicar el check de seguro desde el paciente
