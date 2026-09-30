@@ -47,8 +47,10 @@
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-start; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: flex-start; gap: 10px; margin-bottom: 10px;">
                 <button class="btn-turquesa" onclick="exportToCSV()" style="border:none; cursor:pointer;">Exportar CSV</button>
+                <button class="btn-turquesa" onclick="openManualInvoiceModal()" style="border:none; cursor:pointer;">Factura Manual</button>
+                <button class="btn-turquesa" onclick="openGroupedTableModal()" style="border:none; cursor:pointer;">Mostrar tabla agrupada</button>
             </div>
 
             <table class="agenda-table">
@@ -73,6 +75,124 @@
             </table>
         </div>
     </main>
+
+    <!-- Modal para la tabla agrupada por paciente -->
+    <div id="modalTablaAgrupada" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="agenda-header">
+                <h2>Tabla Agrupada por Paciente</h2>
+                <span class="close-modal" onclick="closeGroupedTableModal()">&times;</span>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+                <button class="btn-turquesa" onclick="printGroupedSummaryTable()" style="border:none; cursor:pointer;">Imprimir / Exportar PDF</button>
+            </div>
+            <table class="agenda-table" id="grouped-table">
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Fechas Sesiones</th>
+                        <th>Importe Clín.</th>
+                        <th>% Fac.</th>
+                        <th>Cobro Fac.</th>
+                    </tr>
+                </thead>
+                <tbody id="grouped-table-body"></tbody>
+                <tfoot>
+                    <tr style="font-weight:bold; background-color:#f8f9fa;">
+                        <td colspan="2" style="text-align:right;">TOTAL</td>
+                        <td id="grouped-total-clinica">0.00 €</td>
+                        <td></td>
+                        <td id="grouped-total-facultativo">0.00 €</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal para Factura Manual -->
+    <div id="modalFacturaManual" class="modal">
+        <div class="modal-content">
+            <div class="agenda-header">
+                <h2>Factura Manual</h2>
+                <span class="close-modal" onclick="closeManualInvoiceModal()">&times;</span>
+            </div>
+            <form id="form-factura-manual" class="form-grid" onsubmit="event.preventDefault(); generateManualInvoice();">
+                <div class="form-group">
+                    <label for="mf-n-factura">Nº Factura</label>
+                    <input type="text" id="mf-n-factura" required>
+                </div>
+                <div class="form-group">
+                    <label for="mf-fecha">Fecha</label>
+                    <input type="date" id="mf-fecha" required>
+                </div>
+                <div class="form-group">
+                    <label for="mf-clinica">Clínica</label>
+                    <select id="mf-clinica" onchange="fillManualInvoiceClinicData()">
+                        <option value="">Seleccione o escriba manualmente...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mf-clin-nif">NIF/CIF Clínica</label>
+                    <input type="text" id="mf-clin-nif">
+                </div>
+                <div class="form-group full-width">
+                    <label for="mf-clin-nombre">Nombre Clínica</label>
+                    <input type="text" id="mf-clin-nombre">
+                </div>
+                <div class="form-group full-width">
+                    <label for="mf-clin-dir">Dirección Clínica</label>
+                    <input type="text" id="mf-clin-dir">
+                </div>
+                <div class="form-group">
+                    <label for="mf-clin-telf">Teléfono Clínica</label>
+                    <input type="text" id="mf-clin-telf">
+                </div>
+                <div class="form-group">
+                    <label for="mf-concepto">Mes / Concepto</label>
+                    <input type="text" id="mf-concepto">
+                </div>
+                <div class="form-group">
+                    <label for="mf-base">Base Imponible (€)</label>
+                    <input type="number" id="mf-base" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="mf-irpf">Retención IRPF (%)</label>
+                    <input type="number" id="mf-irpf" step="0.1" value="7">
+                </div>
+                <div class="form-group full-width">
+                    <label for="mf-fac-nombre">Nombre Facultativo</label>
+                    <input type="text" id="mf-fac-nombre">
+                </div>
+                <div class="form-group">
+                    <label for="mf-fac-nif">NIF Facultativo</label>
+                    <input type="text" id="mf-fac-nif">
+                </div>
+                <div class="form-group">
+                    <label for="mf-fac-telf">Teléfono Facultativo</label>
+                    <input type="text" id="mf-fac-telf">
+                </div>
+                <div class="form-group full-width">
+                    <label for="mf-fac-dir">Dirección Facultativo</label>
+                    <input type="text" id="mf-fac-dir">
+                </div>
+                <div class="form-group">
+                    <label for="mf-colegiado">Nº Colegiado</label>
+                    <input type="text" id="mf-colegiado">
+                </div>
+                <div class="form-group">
+                    <label for="mf-iban">Cuenta Bancaria (IBAN)</label>
+                    <input type="text" id="mf-iban">
+                </div>
+                <div class="form-group full-width">
+                    <label for="mf-exencion">Texto de exención (pie de factura)</label>
+                    <textarea id="mf-exencion" rows="2"></textarea>
+                </div>
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn-turquesa" style="border:none; cursor:pointer;">Generar Factura</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Input oculto para disparar el explorador de archivos -->
     <input type="file" id="file-explorer-input" style="display: none;" accept=".pdf">
@@ -144,6 +264,8 @@
 
             // Llenar selector de años 2026 - 2060
             const yearSelect = document.getElementById('filtro-ano');
+            // Evita duplicados si init() se llama más de una vez
+            yearSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
             for (let y = 2026; y <= 2060; y++) {
                 const opt = document.createElement('option');
                 opt.value = y; opt.textContent = y;
@@ -154,6 +276,8 @@
             const snapClinics = await getDocs(query(uCol("clinicas"), orderBy("nombre")));
             clinicsMasterData = snapClinics.docs.map(d => d.data());
             const clientSelect = document.getElementById('filtro-cliente');
+            // Evita duplicados si init() se llama más de una vez
+            clientSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
             clinicsMasterData.forEach(clinic => {
                 const opt = document.createElement('option');
                 opt.value = clinic.nombre; 
@@ -494,6 +618,135 @@
 
             document.getElementById('total-base-sum').textContent = sumBase.toFixed(2) + ' €';
             document.getElementById('total-fac-sum').textContent = sumFacultativo.toFixed(2) + ' €';
+
+            // La tabla agrupada depende de las mismas filas visibles, así que se refresca si está abierta
+            if (document.getElementById('modalTablaAgrupada').style.display === 'flex') {
+                renderGroupedTable();
+            }
+        }
+
+        window.openGroupedTableModal = function() {
+            renderGroupedTable();
+            document.getElementById('modalTablaAgrupada').style.display = 'flex';
+        }
+
+        window.closeGroupedTableModal = function() {
+            document.getElementById('modalTablaAgrupada').style.display = 'none';
+        }
+
+        // Agrupa las filas ya visibles en la tabla principal por paciente,
+        // uniendo los días de sesión y totalizando importe clínica/facultativo.
+        function buildGroupedSummary() {
+            const items = currentInvoices.filter(i => !excludedIds.includes(i.id));
+
+            const groups = new Map();
+            items.forEach(item => {
+                const nombre = item.referenciaPaciente || item.paciente || '(Sin nombre)';
+                if (!groups.has(nombre)) {
+                    groups.set(nombre, { nombre, dias: [], importeClinica: 0, importeFacultativo: 0, pct: null, tarifasClinica: new Set(), tarifasFacultativo: new Set() });
+                }
+                const g = groups.get(nombre);
+
+                const dia = (item.fecha || '').split('-')[2];
+                if (dia) g.dias.push(parseInt(dia, 10));
+
+                const importeClinica = parseFloat(item.importe) || 0;
+                const importeFacultativo = item.importe_facultativo !== undefined ? parseFloat(item.importe_facultativo) : importeClinica;
+                const displayPct = item.por_seguro ? 50 : (item.porcentaje_facultativo || 0);
+
+                g.importeClinica += importeClinica;
+                g.importeFacultativo += importeFacultativo;
+                g.tarifasClinica.add(importeClinica.toFixed(2).replace(/\.00$/, ''));
+                g.tarifasFacultativo.add(importeFacultativo.toFixed(2).replace(/\.00$/, ''));
+                if (g.pct === null) g.pct = displayPct;
+            });
+
+            // Muestra la tarifa por sesión entre paréntesis seguida del total acumulado
+            const formatConTarifa = (tarifas, total) => `(${Array.from(tarifas).join('+')}) ${total.toFixed(2)} €`;
+
+            return Array.from(groups.values()).map(g => ({
+                nombre: g.nombre,
+                fechas: g.dias.sort((a, b) => a - b).join(',') + (g.dias.length ? '.' : ''),
+                importeClinicaTexto: formatConTarifa(g.tarifasClinica, g.importeClinica),
+                pct: g.pct || 0,
+                importeFacultativoTexto: formatConTarifa(g.tarifasFacultativo, g.importeFacultativo),
+                importeClinica: g.importeClinica,
+                importeFacultativo: g.importeFacultativo
+            }));
+        }
+
+        function renderGroupedTable() {
+            const rows = buildGroupedSummary();
+            const tbody = document.getElementById('grouped-table-body');
+            tbody.innerHTML = '';
+            let totalClinica = 0, totalFacultativo = 0;
+
+            rows.forEach(r => {
+                totalClinica += r.importeClinica;
+                totalFacultativo += r.importeFacultativo;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${r.nombre}</td>
+                        <td>${r.fechas}</td>
+                        <td>${r.importeClinicaTexto}</td>
+                        <td>${r.pct}%</td>
+                        <td>${r.importeFacultativoTexto}</td>
+                    </tr>`;
+            });
+
+            document.getElementById('grouped-total-clinica').textContent = totalClinica.toFixed(2) + ' €';
+            document.getElementById('grouped-total-facultativo').textContent = totalFacultativo.toFixed(2) + ' €';
+        }
+
+        window.printGroupedSummaryTable = function() {
+            const rows = buildGroupedSummary();
+            if (rows.length === 0) {
+                alert('No hay sesiones válidas para mostrar.');
+                return;
+            }
+            let totalClinica = 0, totalFacultativo = 0;
+            const bodyRows = rows.map(r => {
+                totalClinica += r.importeClinica;
+                totalFacultativo += r.importeFacultativo;
+                return `<tr>
+                    <td>${r.nombre}<\/td>
+                    <td>${r.fechas}<\/td>
+                    <td>${r.importeClinicaTexto}<\/td>
+                    <td>${r.pct}%<\/td>
+                    <td>${r.importeFacultativoTexto}<\/td>
+                </tr>`;
+            }).join('');
+
+            const printWindow = window.open('', '', 'height=900,width=1000');
+            printWindow.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Tabla Agrupada por Paciente<\/title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#222;background:#fff;padding:30px}
+  h2{text-align:center;margin-bottom:20px;color:#2c3e50}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+  th{background:#f0f4f8}
+  td:nth-child(3),td:nth-child(4),td:nth-child(5){text-align:right}
+  tfoot td{font-weight:bold;background:#f8f9fa}
+  @page{margin:1cm}
+<\/style><\/head><body>
+<h2>Tabla Agrupada por Paciente<\/h2>
+<table>
+  <thead><tr>
+    <th>Paciente<\/th><th>Fechas Sesiones<\/th><th>Importe Clín.<\/th><th>% Fac.<\/th><th>Cobro Fac.<\/th>
+  <\/tr><\/thead>
+  <tbody>${bodyRows}<\/tbody>
+  <tfoot><tr>
+    <td colspan="2" style="text-align:right;">TOTAL<\/td>
+    <td style="text-align:right;">${totalClinica.toFixed(2)} €<\/td>
+    <td><\/td>
+    <td style="text-align:right;">${totalFacultativo.toFixed(2)} €<\/td>
+  <\/tr><\/tfoot>
+<\/table>
+<\/body><\/html>`);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 300);
         }
 
         function exportToCSV() {
@@ -525,6 +778,234 @@
 
         window.triggerFilePicker = function() {
             document.getElementById('file-explorer-input').click();
+        }
+
+        window.openManualInvoiceModal = function() {
+            const clinSelect = document.getElementById('mf-clinica');
+            clinSelect.innerHTML = '<option value="">Seleccione o escriba manualmente...</option>';
+            clinicsMasterData.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.textContent = c.nombre;
+                clinSelect.appendChild(opt);
+            });
+
+            document.getElementById('form-factura-manual').reset();
+            const today = new Date();
+            document.getElementById('mf-fecha').value = today.toISOString().split('T')[0];
+            document.getElementById('mf-irpf').value = 7;
+
+            // Precargar datos ya conocidos del facultativo
+            const fac = facultativoData || {};
+            document.getElementById('mf-fac-nombre').value = [fac.nombre, fac.apellidos].filter(Boolean).join(' ') || '';
+            document.getElementById('mf-fac-nif').value = fac.nif || '';
+            document.getElementById('mf-fac-dir').value = fac.direccion || '';
+            document.getElementById('mf-fac-telf').value = fac.telefono || '';
+            document.getElementById('mf-colegiado').value = fac.num_colegiado || '';
+            document.getElementById('mf-iban').value = fac.cuenta_bancaria || '';
+            document.getElementById('mf-exencion').value = fac.texto_exencion || '';
+
+            // Precargar el texto habitual de factura + mes/año actual, como en las facturas automáticas
+            const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const mesActual = `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+            document.getElementById('mf-concepto').value = fac.texto_factura ? `${fac.texto_factura} ${mesActual}` : mesActual;
+
+            generateNextInvoiceRef(today.getFullYear()).then(ref => {
+                document.getElementById('mf-n-factura').value = ref;
+            });
+
+            document.getElementById('modalFacturaManual').style.display = 'flex';
+        }
+
+        window.closeManualInvoiceModal = function() {
+            document.getElementById('modalFacturaManual').style.display = 'none';
+        }
+
+        window.fillManualInvoiceClinicData = function() {
+            const nombre = document.getElementById('mf-clinica').value;
+            const clinic = clinicsMasterData.find(c => c.nombre === nombre);
+            if (!clinic) return;
+            document.getElementById('mf-clin-nombre').value = clinic.nombre || '';
+            document.getElementById('mf-clin-nif').value = clinic.cif || '';
+            document.getElementById('mf-clin-dir').value = clinic.direccion || '';
+            document.getElementById('mf-clin-telf').value = clinic.telefono || '';
+        }
+
+        window.generateManualInvoice = function() {
+            const val = (id) => document.getElementById(id).value.trim();
+            const nFactura   = val('mf-n-factura');
+            const fecha      = val('mf-fecha');
+            const mesFactura = val('mf-concepto');
+            const totalBase  = parseFloat(val('mf-base')) || 0;
+            const irpfPct    = parseFloat(val('mf-irpf')) || 0;
+            const irpf       = totalBase * (irpfPct / 100);
+            const liquido    = totalBase - irpf;
+
+            const clinNombre = val('mf-clin-nombre') || document.getElementById('mf-clinica').value;
+            const clinNif    = val('mf-clin-nif');
+            const clinDir    = val('mf-clin-dir');
+            const clinTelf   = val('mf-clin-telf');
+
+            const facNombre    = val('mf-fac-nombre');
+            const facNif       = val('mf-fac-nif');
+            const facDir       = val('mf-fac-dir');
+            const facTelf      = val('mf-fac-telf');
+            const numColegiado = val('mf-colegiado');
+            const cuentaIBAN   = val('mf-iban');
+            const textoExen    = val('mf-exencion');
+            const today = new Date().toLocaleDateString('es-ES');
+
+            const suggestedFileName = `Factura_${clinNombre || 'Manual'}_${fecha}_${nFactura}`
+                .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const suggestedFileNameWithExtension = `${suggestedFileName}.pdf`;
+
+            closeManualInvoiceModal();
+
+            const printWindow = window.open('', '', 'height=900,width=950');
+            printWindow.document.write(`<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8">
+<title>${suggestedFileName}<\/title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;font-size:13px;color:#222;background:#fff}
+  .page{max-width:800px;margin:40px auto;padding:40px}
+  .page[contenteditable="true"]{outline:2px dashed #3498db44;cursor:text}
+  .aviso-edicion{max-width:800px;margin:10px auto 0;padding:8px 16px;background:#eaf6ff;border:1px solid #3498db;border-radius:6px;font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#2c3e50}
+  .titulo{text-align:center;letter-spacing:10px;font-size:1.9rem;font-weight:700;color:#2c3e50;margin-bottom:52px}
+  hr.azul{border:none;border-top:2px solid #3498db;margin:10px 0}
+  hr.gris{border:none;border-top:1px solid #ccc;margin:18px 0}
+  .ref{display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px;font-size:13px}
+  .partes{display:flex;justify-content:space-between;gap:30px;margin:18px 0}
+  .partes .col{flex:1;line-height:1.8}
+  .partes .col.derecha{text-align:right}
+  .partes .col strong{display:block;font-size:14px;color:#2c3e50;margin-bottom:2px}
+  .concepto{margin:24px 0;font-size:13px;line-height:1.8}
+  table.totales{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  table.totales td{padding:8px 10px;border-bottom:1px solid #e0e0e0}
+  table.totales td:last-child{text-align:right;min-width:130px}
+  table.totales tr.liquido td{font-weight:700;font-size:14px;border-top:2px solid #3498db;border-bottom:2px solid #3498db}
+  .pie{margin-top:28px;padding-top:14px;border-top:1px solid #ccc;font-size:12px;color:#444;line-height:2}
+  .pie p{margin:2px 0}
+  .firma{margin-top:70px;font-size:13px;line-height:2}
+  @page{margin:0;size:A4}  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:1.5cm 2cm}.page{margin:0;padding:0}.aviso-edicion{display:none}}
+<\/style><\/head><body>
+<div class="aviso-edicion">✏️ Puede hacer clic y editar cualquier texto directamente en la factura antes de imprimir o guardar el PDF.<\/div>
+<div class="page" contenteditable="true">
+
+  <p class="titulo">F A C T U R A<\/p>
+  <hr class="azul">
+
+  <div class="ref">
+    <span><strong>Factura: ${nFactura || 'PROFORMA'}<\/strong><\/span>
+    <span>${fecha ? new Date(fecha).toLocaleDateString('es-ES') : today}<\/span>
+  <\/div>
+
+  <hr class="azul">
+
+  <div class="partes">
+    <div class="col">
+      <strong>${facNombre}<\/strong>
+      <p>NIF: ${facNif}<\/p>
+      <p>${facDir}<\/p>
+      <p>Telf.: ${facTelf}<\/p>
+    <\/div>
+    <div class="col derecha">
+      <strong>${clinNombre}<\/strong>
+      <p>NIF/CIF: ${clinNif}<\/p>
+      <p>${clinDir}<\/p>
+      <p>Telf.: ${clinTelf}<\/p>
+    <\/div>
+  <\/div>
+
+  <hr class="gris">
+
+  <div class="concepto">    <br><br><br><br>    <p>${mesFactura}<\/p>
+  <\/div>
+
+  <table class="totales">
+    <tr>
+      <td>Base imponible<\/td>
+      <td>${totalBase.toFixed(2)} €<\/td>
+    <\/tr>
+    <tr>
+      <td>Retención I.R.P.F. (${irpfPct}%)<\/td>
+      <td>${irpf.toFixed(2)} €<\/td>
+    <\/tr>
+    <tr class="liquido">
+      <td>Líquido<\/td>
+      <td>${liquido.toFixed(2)} €<\/td>
+    <\/tr>
+  <\/table>
+
+  <hr class="gris">
+
+  <div class="pie">
+    ${textoExen ? `<p>${textoExen}<\/p><br>` : ''}
+    ${cuentaIBAN ? `<p><strong>Cuenta Bancaria:<\/strong> ${cuentaIBAN}<\/p>` : ''}
+  <\/div>
+
+  <div class="firma">
+    <br><br><br>
+    <p>Fdo: ${facNombre}<\/p>
+    <p>N. de Colegiado: ${numColegiado}<\/p>
+  <\/div>
+
+<\/div>
+<\/body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+<\/html>`);
+            printWindow.document.close();
+            printWindow.document.title = suggestedFileName;
+            setTimeout(() => {
+                const btnBar = printWindow.document.createElement('div');
+                btnBar.style.cssText = 'max-width:800px;margin:10px auto 30px;display:flex;gap:10px;font-family:"Segoe UI",Arial,sans-serif;';
+                btnBar.className = 'aviso-edicion-botones';
+                btnBar.innerHTML = `<button id="btn-guardar-pdf" style="padding:8px 16px;border:none;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;">Guardar como PDF<\/button>
+<button id="btn-imprimir" style="padding:8px 16px;border:none;border-radius:6px;background:#2c3e50;color:#fff;cursor:pointer;">Imprimir<\/button>`;
+                printWindow.document.body.appendChild(btnBar);
+
+                printWindow.document.getElementById('btn-imprimir').addEventListener('click', () => printWindow.print());
+                printWindow.document.getElementById('btn-guardar-pdf').addEventListener('click', async () => {
+                    if (typeof printWindow.html2pdf !== 'function') {
+                        printWindow.print();
+                        return;
+                    }
+                    try {
+                        const pdfBlob = await printWindow.html2pdf()
+                            .set({
+                                margin: [10, 12, 10, 12],
+                                filename: suggestedFileNameWithExtension,
+                                image: { type: 'jpeg', quality: 0.98 },
+                                html2canvas: { scale: 2, useCORS: true },
+                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                            })
+                            .from(printWindow.document.querySelector('.page'))
+                            .outputPdf('blob');
+
+                        if (typeof window.showSaveFilePicker === 'function') {
+                            const fileHandle = await window.showSaveFilePicker({
+                                suggestedName: suggestedFileNameWithExtension,
+                                types: [{ description: 'Documento PDF', accept: { 'application/pdf': ['.pdf'] } }]
+                            });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(pdfBlob);
+                            await writable.close();
+                        } else {
+                            const downloadUrl = URL.createObjectURL(pdfBlob);
+                            const downloadLink = printWindow.document.createElement('a');
+                            downloadLink.href = downloadUrl;
+                            downloadLink.download = suggestedFileNameWithExtension;
+                            downloadLink.click();
+                            URL.revokeObjectURL(downloadUrl);
+                        }
+                    } catch (error) {
+                        if (error.name !== 'AbortError') printWindow.print();
+                    }
+                });
+            }, 300);
         }
 
         window.printGroupedInvoice = function(invoicesToPrint, invoiceRef) {
@@ -751,17 +1232,10 @@
         window.undoExclusions = undoExclusions;
         window.triggerFilePicker = triggerFilePicker;
 
-        onAuthStateChanged(auth, (user) => {
-            if (!user) { window.location.href = 'index.html'; return; }
-            currentUid = user.uid;
-            init();
-        });
-
-        // Hacer funciones accesibles globalmente
-        window.loadInvoices = loadInvoices;
-        window.loadInvoicesByRef = loadInvoicesByRef;
-        window.emitGroupedInvoice = emitGroupedInvoice;
-        window.exportToCSV = exportToCSV;
+        window.onclick = (e) => {
+            if (e.target === document.getElementById('modalFacturaManual')) closeManualInvoiceModal();
+            if (e.target === document.getElementById('modalTablaAgrupada')) closeGroupedTableModal();
+        };
     </script>
 </body>
 </html>
