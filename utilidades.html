@@ -90,8 +90,9 @@
             <div class="util-box" style="border-top-color: #f39c12;">
                 <div class="icon" style="font-size: 3rem; margin-bottom: 1rem;">🧹</div>
                 <h3>Optimizar Datos</h3>
-                <p>Analiza tu base de datos en busca de errores, citas sin paciente asignado o perfiles incompletos.</p>
+                <p>Analiza tu base de datos en busca de errores, citas sin paciente asignado, perfiles incompletos o clínicas/sociedades duplicadas.</p>
                 <button class="btn-util btn-optimize" id="btn-optimize">Analizar Base de Datos</button>
+                <button class="btn-util btn-optimize" id="btn-merge-duplicates" style="display:none; margin-top: 0.75rem; background:#d35400;">Fusionar Duplicados Detectados</button>
             </div>
 
             <!-- Reset -->
@@ -116,7 +117,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         const firebaseConfig = window.APP_CONFIG.firebase;
         const app = initializeApp(firebaseConfig);
@@ -267,9 +268,14 @@
         }
 
         // --- OPTIMIZE ---
+        const normalizeName = (s) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        let pendingDuplicates = {}; // { clinicas: [ [normName, [docIds]], ... ], sociedades: [...] }
+
         document.getElementById('btn-optimize').onclick = async () => {
             if (!currentUid) return;
             setStatus("Analizando base de datos...");
+            document.getElementById('btn-merge-duplicates').style.display = 'none';
+            pendingDuplicates = {};
             try {
                 const results = [];
                 // 1. Verificar perfil
@@ -286,13 +292,106 @@
                 });
                 if (huerfanas > 0) results.push(`⚠️ Tienes ${huerfanas} citas de pacientes que ya no existen.`);
 
-                // 3. Resultado
+                // 3. Clínicas y sociedades duplicadas (por nombre, ignorando mayúsculas/espacios)
+                let totalDupGroups = 0;
+                for (const col of ['clinicas', 'sociedades']) {
+                    const snap = await getDocs(collection(db, 'usuarios', currentUid, col));
+                    const groups = {};
+                    snap.forEach(d => {
+                        const n = normalizeName(d.data().nombre);
+                        if (!n) return;
+                        (groups[n] = groups[n] || []).push(d.id);
+                    });
+                    const dupGroups = Object.entries(groups).filter(([, ids]) => ids.length > 1);
+                    if (dupGroups.length > 0) {
+                        pendingDuplicates[col] = dupGroups;
+                        totalDupGroups += dupGroups.length;
+                        const label = col === 'clinicas' ? 'clínica(s)' : 'sociedad(es)';
+                        results.push(`⚠️ ${dupGroups.length} nombre(s) de ${label} duplicados: ${dupGroups.map(([n]) => n).join(', ')}.`);
+                    }
+                }
+
+                // 4. Referencias rotas: pacientes/citas cuya clínica/sociedad no existe como registro
+                const clinSnap = await getDocs(collection(db, 'usuarios', currentUid, 'clinicas'));
+                const socSnap = await getDocs(collection(db, 'usuarios', currentUid, 'sociedades'));
+                const clinNames = new Set(clinSnap.docs.map(d => normalizeName(d.data().nombre)));
+                const socNames = new Set(socSnap.docs.map(d => normalizeName(d.data().nombre)));
+                let clinicasRotas = 0, sociedadesRotas = 0;
+                pacientes.forEach(p => {
+                    const v = p.data();
+                    if (v.clinica && !clinNames.has(normalizeName(v.clinica))) clinicasRotas++;
+                    if (v.sociedad && !socNames.has(normalizeName(v.sociedad))) sociedadesRotas++;
+                });
+                if (clinicasRotas > 0) results.push(`⚠️ ${clinicasRotas} paciente(s) apuntan a una clínica que ya no existe (revisa nombres).`);
+                if (sociedadesRotas > 0) results.push(`⚠️ ${sociedadesRotas} paciente(s) apuntan a una sociedad que ya no existe (revisa nombres).`);
+
+                // 5. Resultado
                 if (results.length === 0) {
                     setStatus("✓ Todo parece estar en orden. ¡Base de datos optimizada!", "green");
                 } else {
                     setStatus("Hallazgos: " + results.join(" | "), "#f39c12");
                 }
+                if (totalDupGroups > 0) {
+                    document.getElementById('btn-merge-duplicates').style.display = 'block';
+                }
             } catch (err) { alert(err.message); }
+        };
+
+        // --- MERGE DUPLICATES (clínicas / sociedades) ---
+        document.getElementById('btn-merge-duplicates').onclick = async () => {
+            if (!currentUid) return;
+            const cols = Object.keys(pendingDuplicates);
+            if (cols.length === 0) return;
+            if (!confirm("Se fusionarán los registros duplicados detectados en un único registro por nombre, reasignando pacientes y citas al registro que se conserve. Se recomienda haber hecho un Backup antes. ¿Continuar?")) return;
+
+            const btn = document.getElementById('btn-merge-duplicates');
+            btn.disabled = true;
+            try {
+                let mergedCount = 0;
+                for (const col of cols) {
+                    const field = col === 'clinicas' ? 'clinica' : 'sociedad';
+                    const snap = await getDocs(collection(db, 'usuarios', currentUid, col));
+                    const byId = {};
+                    snap.forEach(d => { byId[d.id] = { id: d.id, ...d.data() }; });
+
+                    for (const [, ids] of pendingDuplicates[col]) {
+                        const docs = ids.map(id => byId[id]).filter(Boolean);
+                        if (docs.length < 2) continue;
+
+                        // Elegir el registro canónico: el que tenga más campos rellenados
+                        const scoreOf = (d) => Object.values(d).filter(v => v !== undefined && v !== null && v !== '').length;
+                        docs.sort((a, b) => scoreOf(b) - scoreOf(a));
+                        const canonical = docs[0];
+                        const toRemove = docs.slice(1);
+                        const canonicalName = (canonical.nombre || '').trim();
+
+                        // Reasignar pacientes y citas que apuntaban a cualquiera de los nombres duplicados
+                        const namesToMatch = new Set(docs.map(d => normalizeName(d.nombre)));
+                        for (const targetCol of ['pacientes', 'citas']) {
+                            const tSnap = await getDocs(collection(db, 'usuarios', currentUid, targetCol));
+                            for (const tDoc of tSnap.docs) {
+                                const v = tDoc.data();
+                                if (v[field] && namesToMatch.has(normalizeName(v[field])) && v[field] !== canonicalName) {
+                                    await updateDoc(doc(db, 'usuarios', currentUid, targetCol, tDoc.id), { [field]: canonicalName });
+                                }
+                            }
+                        }
+
+                        // Borrar los registros duplicados sobrantes
+                        for (const dup of toRemove) {
+                            await deleteDoc(doc(db, 'usuarios', currentUid, col, dup.id));
+                            mergedCount++;
+                        }
+                    }
+                }
+                pendingDuplicates = {};
+                btn.style.display = 'none';
+                setStatus(`✓ Fusión completada. Se han eliminado ${mergedCount} registro(s) duplicados y se han reasignado los pacientes/citas afectados.`, "green");
+            } catch (err) {
+                alert("Error al fusionar: " + err.message);
+            } finally {
+                btn.disabled = false;
+            }
         };
 
         // --- RESET DATA ---
