@@ -42,6 +42,7 @@
         .btn-psilogia { border-color: #3498db; background: #f0f7ff; }
         .btn-lineavida { border-color: #fbc02d; background: #fffde7; }
         .btn-agenda { border-color: #4db6ac; background: #e0f2f1; }
+        .stat-chip { background:#e0f2f1; border:1px solid #4db6ac; color:var(--azul-oscuro); padding:6px 12px; border-radius:20px; font-size:0.9rem; white-space:nowrap; }
     </style>
 </head>
 <body>
@@ -61,6 +62,10 @@
     <main class="container">
         <div class="agenda-header" style="text-align: left;">
             <h2>Consultas de pacientes</h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-right:auto; margin-left:1rem;">
+                <span class="stat-chip" title="Total de pacientes">Total pacientes: <strong id="stat-total">-</strong></span>
+                <span class="stat-chip" title="Primera sesión en los últimos 30 días">Nuevos último mes: <strong id="stat-nuevos">-</strong></span>
+            </div>
             <div class="agenda-actions">
                 <a href="index.html" class="home-icon" title="Inicio">🏠</a>
                 <a href="consultas.html" class="back-link">&larr; Volver</a>
@@ -225,9 +230,42 @@
             try {
                 const querySnapshot = await getDocs(uCol("pacientes"));
                 patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('stat-total').textContent = patients.length;
+                await loadNewPatientsStat();
                 // No renderizamos nada hasta que el usuario busque (según el marcador de posición)
             } catch (error) {
                 console.error("Error cargando pacientes:", error);
+            }
+        }
+
+        // Nuevo = primera cita no cancelada del paciente dentro de los últimos 30 días
+        async function loadNewPatientsStat() {
+            const el = document.getElementById('stat-nuevos');
+            try {
+                const snap = await getDocs(uCol("citas"));
+                const firstByName = new Map();
+                snap.forEach(d => {
+                    const c = d.data();
+                    if (!c.paciente || !c.fecha || c.estado === 'cancelled') return;
+                    const prev = firstByName.get(c.paciente);
+                    if (!prev || c.fecha < prev) firstByName.set(c.paciente, c.fecha);
+                });
+
+                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const hoy = new Date();
+                const desde = new Date();
+                desde.setDate(hoy.getDate() - 30);
+                const hoyStr = fmt(hoy), desdeStr = fmt(desde);
+
+                let nuevos = 0;
+                patients.forEach(p => {
+                    const first = firstByName.get(`${p.nombre} ${p.apellidos}`);
+                    if (first && first >= desdeStr && first <= hoyStr) nuevos++;
+                });
+                el.textContent = nuevos;
+            } catch (e) {
+                console.error("Error calculando pacientes nuevos:", e);
+                el.textContent = '?';
             }
         }
 

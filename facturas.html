@@ -78,14 +78,23 @@
 
     <!-- Modal para la tabla agrupada por paciente -->
     <div id="modalTablaAgrupada" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-content" style="max-width: 900px; max-height: 92vh; display:flex; flex-direction:column;">
             <div class="agenda-header">
                 <h2>Tabla Agrupada por Paciente</h2>
                 <span class="close-modal" onclick="closeGroupedTableModal()">&times;</span>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+                <label style="font-size:0.9rem;">Filas por página:
+                    <select id="grouped-page-size" onchange="setGroupedPageSize(this.value)">
+                        <option value="10">10</option>
+                        <option value="15" selected>15</option>
+                        <option value="25">25</option>
+                        <option value="0">Todas</option>
+                    </select>
+                </label>
                 <button class="btn-turquesa" onclick="printGroupedSummaryTable()" style="border:none; cursor:pointer;">Imprimir / Exportar PDF</button>
             </div>
+            <div style="overflow-y:auto; flex:1; min-height:0;">
             <table class="agenda-table" id="grouped-table">
                 <thead>
                     <tr>
@@ -106,6 +115,12 @@
                     </tr>
                 </tfoot>
             </table>
+            </div>
+            <div id="grouped-pager" style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:8px;">
+                <button class="btn-turquesa" id="grouped-prev" onclick="changeGroupedPage(-1)" style="border:none; cursor:pointer;">&laquo; Anterior</button>
+                <span id="grouped-page-info" style="font-size:0.9rem;"></span>
+                <button class="btn-turquesa" id="grouped-next" onclick="changeGroupedPage(1)" style="border:none; cursor:pointer;">Siguiente &raquo;</button>
+            </div>
         </div>
     </div>
 
@@ -625,7 +640,22 @@
             }
         }
 
+        let groupedPage = 1;
+        let groupedPageSize = 15;
+
+        window.setGroupedPageSize = function(v) {
+            groupedPageSize = parseInt(v, 10);
+            groupedPage = 1;
+            renderGroupedTable();
+        }
+
+        window.changeGroupedPage = function(delta) {
+            groupedPage += delta;
+            renderGroupedTable();
+        }
+
         window.openGroupedTableModal = function() {
+            groupedPage = 1;
             renderGroupedTable();
             document.getElementById('modalTablaAgrupada').style.display = 'flex';
         }
@@ -681,9 +711,22 @@
             tbody.innerHTML = '';
             let totalClinica = 0, totalFacultativo = 0;
 
+            const totalPages = groupedPageSize > 0 ? Math.max(1, Math.ceil(rows.length / groupedPageSize)) : 1;
+            groupedPage = Math.min(Math.max(1, groupedPage), totalPages);
+            const start = groupedPageSize > 0 ? (groupedPage - 1) * groupedPageSize : 0;
+            const pageRows = groupedPageSize > 0 ? rows.slice(start, start + groupedPageSize) : rows;
+
+            document.getElementById('grouped-page-info').textContent = `Página ${groupedPage} de ${totalPages} (${rows.length} pacientes)`;
+            document.getElementById('grouped-prev').disabled = groupedPage <= 1;
+            document.getElementById('grouped-next').disabled = groupedPage >= totalPages;
+            document.getElementById('grouped-pager').style.display = totalPages > 1 || groupedPageSize > 0 ? 'flex' : 'none';
+
             rows.forEach(r => {
                 totalClinica += r.importeClinica;
                 totalFacultativo += r.importeFacultativo;
+            });
+
+            pageRows.forEach(r => {
                 tbody.innerHTML += `
                     <tr>
                         <td>${r.nombre}</td>
