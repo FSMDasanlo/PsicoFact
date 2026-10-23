@@ -1528,6 +1528,19 @@
                 if (nameEl) nameEl.textContent = user.email;
             }
 
+            // Pasar a "Realizada" las citas pendientes cuyo fin ya pasó
+            try {
+                const pend = await getDocs(query(uCol("citas"), where("estado", "==", "pending")));
+                const ahora = new Date();
+                await Promise.all(pend.docs.filter(d => {
+                    const c = d.data();
+                    if (!c.fecha || !c.hora) return false;
+                    const fin = new Date(`${c.fecha}T${c.hora}`);
+                    fin.setMinutes(fin.getMinutes() + Math.max(15, parseInt(c.duracion) || 60));
+                    return fin <= ahora;
+                }).map(d => updateDoc(d.ref, { estado: 'completed' })));
+            } catch (e) { console.error("Error autocompletando citas:", e); }
+
             init();
         });
 
