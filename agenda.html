@@ -59,7 +59,32 @@
             cursor: help;
         }
     </style>
-<script src="js/menu.js"></script>
+<style>
+        .view-switch { display: inline-flex; border: 1px solid #546e7a; border-radius: 8px; overflow: hidden; }
+        .view-switch button { border: none; background: white; color: #546e7a; padding: 7px 16px; font-weight: 600; cursor: pointer; border-right: 1px solid #cfd8dc; }
+        .view-switch button:last-child { border-right: none; }
+        .view-switch button.active { background: #546e7a; color: white; }
+        .tm-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .tm-head { background: #f8f9fa; border: 1px solid #dee2e6; padding: 6px; text-align: center; font-weight: 600; font-size: .8rem; position: sticky; top: 0; z-index: 2; }
+        .tm-cell { border: 1px solid #dee2e6; min-height: 96px; padding: 3px; font-size: .72rem; overflow: hidden; background: white; }
+        .tm-cell.out { background: #f5f6f7; }
+        .tm-cell.weekend { background: #fafbfb; }
+        .tm-cell.today .tm-num { background: #1abc9c; color: white; border-radius: 50%; }
+        .tm-num { display: inline-block; min-width: 22px; text-align: center; font-weight: 700; cursor: pointer; margin-bottom: 2px; }
+        .tm-chip { display: block; margin: 1px 0; padding: 1px 4px; border-left: 3px solid #3498db; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .tm-chip.cancelled { text-decoration: line-through; opacity: .6; }
+        .tm-year { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; padding: 12px; }
+        .tm-mini h4 { margin: 0 0 4px; text-align: center; cursor: pointer; color: var(--azul-oscuro); }
+        .tm-mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: .7rem; text-align: center; }
+        .tm-mini-grid .dow { font-weight: 700; color: #90a4ae; }
+        .tm-mini-grid .d { padding: 3px 0; border-radius: 4px; cursor: pointer; }
+        .tm-mini-grid .d:hover { outline: 1px solid #546e7a; }
+        .tm-mini-grid .d.has { background: #a3e4d7; font-weight: 700; }
+        .tm-mini-grid .d.has2 { background: #48c9b0; font-weight: 700; }
+        .tm-mini-grid .d.has3 { background: #1abc9c; color: white; font-weight: 700; }
+        .tm-mini-grid .d.today { outline: 2px solid #e67e22; }
+    </style>
+    <script src="js/menu.js"></script>
 </head>
 <body>
 
@@ -243,9 +268,10 @@
             <div class="agenda-header" style="margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 20px;">
                     <h2 style="margin: 0;">Agenda Detallada</h2>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-turquesa" id="prev-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana anterior">&larr;</button>
-                        <button class="btn-turquesa" id="next-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Semana siguiente">&rarr;</button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-turquesa" id="prev-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Anterior">&larr;</button>
+                        <button class="btn-turquesa" id="today-btn" style="padding: 5px 14px; cursor: pointer;" title="Ir a hoy">Hoy</button>
+                        <button class="btn-turquesa" id="next-week-btn" style="padding: 5px 15px; font-size: 1.2rem; cursor: pointer;" title="Siguiente">&rarr;</button>
                     </div>
                     <a href="javascript:void(0)" onclick="window.openNuevoPacienteWindow()" title="Añadir nuevo paciente" style="text-decoration:none; display: flex; align-items: center;">
                         <img src="img/nuevo_paciente.png" alt="Nuevo paciente" style="height: 30px; width: auto;">
@@ -254,24 +280,12 @@
                 <span class="close-modal" onclick="closeTramosModal()">&times;</span>
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 14px; padding: 10px 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
-                <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--azul-oscuro); margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="hide-weekends-toggle" style="width: 18px; height: 18px; cursor: pointer;">
-                    Ocultar fines de semana
-                </label>
-                <label for="tramos-days-count" style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--azul-oscuro); margin: 0;">
-                    Días visibles
-                    <select id="tramos-days-count" style="padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px; background: white;">
-                        <option value="3">3</option>
-                        <option value="7" selected>7</option>
-                        <option value="8">8</option>
-                        <option value="9">9</option>
-                        <option value="10">10</option>
-                        <option value="11">11</option>
-                        <option value="12">12</option>
-                        <option value="13">13</option>
-                        <option value="14">14</option>
-                    </select>
-                </label>
+                <div id="tramos-view-switch" class="view-switch" role="group" aria-label="Vista">
+                    <button type="button" data-view="day">Día</button>
+                    <button type="button" data-view="week">Semana laboral</button>
+                    <button type="button" data-view="month">Mes</button>
+                    <button type="button" data-view="year">Año</button>
+                </div>
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--azul-oscuro); margin: 0; cursor: pointer;">
                     <input type="checkbox" id="pending-only-toggle" style="width: 18px; height: 18px; cursor: pointer;">
                     Solo pendientes
@@ -363,9 +377,9 @@
         let currentSortOrder = 'asc';
         let currentTramosDate = null; // Guardar la fecha base de la vista detallada
         let currentTramosStartDate = null; // Primer día visible actual en Agenda Detallada
+        let tramosRenderId = 0;
         const tramosViewConfig = {
-            hideWeekends: false,
-            daysToShow: 7,
+            view: (() => { try { const v = localStorage.getItem('psicofact_agenda_view'); return ['day', 'week', 'month', 'year'].includes(v) ? v : 'week'; } catch (e) { return 'week'; } })(),
             onlyPending: false
         };
 
@@ -426,71 +440,125 @@
             return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
         }
 
-        function shiftDateByVisibleDays(startDateStr, deltaVisibleDays) {
-            const d = new Date(startDateStr + 'T00:00:00');
-            const direction = deltaVisibleDays >= 0 ? 1 : -1;
-            let remaining = Math.abs(deltaVisibleDays);
-
-            while (remaining > 0) {
-                d.setDate(d.getDate() + direction);
-                if (!(tramosViewConfig.hideWeekends && isWeekendDate(d))) {
-                    remaining--;
-                }
+        // Rango visible según la vista: día, semana laboral (lun-vie), mes o año
+        function getTramosRange(anchorStr, view) {
+            const a = new Date(anchorStr + 'T00:00:00');
+            if (view === 'day') return { start: anchorStr, end: anchorStr, dates: [anchorStr] };
+            if (view === 'month') {
+                return { start: formatIsoDate(new Date(a.getFullYear(), a.getMonth(), 1)), end: formatIsoDate(new Date(a.getFullYear(), a.getMonth() + 1, 0)), dates: [] };
             }
+            if (view === 'year') return { start: `${a.getFullYear()}-01-01`, end: `${a.getFullYear()}-12-31`, dates: [] };
+            // Semana laboral: en sábado o domingo se muestra la semana siguiente
+            if (a.getDay() === 6) a.setDate(a.getDate() + 2);
+            if (a.getDay() === 0) a.setDate(a.getDate() + 1);
+            const monday = getMonday(a);
+            const dates = [];
+            for (let i = 0; i < 5; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                dates.push(formatIsoDate(d));
+            }
+            return { start: dates[0], end: dates[4], dates };
+        }
 
+        function shiftTramosAnchor(anchorStr, view, dir) {
+            const d = new Date(anchorStr + 'T00:00:00');
+            if (view === 'day') d.setDate(d.getDate() + dir);
+            else if (view === 'week') d.setDate(d.getDate() + 7 * dir);
+            else if (view === 'month') d.setMonth(d.getMonth() + dir, 1);
+            else d.setFullYear(d.getFullYear() + dir, 0, 1);
             return formatIsoDate(d);
         }
 
-        function buildTramosDates(baseDateStr, useAsStart = false) {
-            const baseDate = new Date(baseDateStr + 'T00:00:00');
-            const cursor = useAsStart ? new Date(baseDate) : getMonday(baseDate);
-            cursor.setHours(0, 0, 0, 0);
+        const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-            // Si se usa como inicio y cae en fin de semana con filtro activo, saltar al siguiente lunes
-            if (tramosViewConfig.hideWeekends && isWeekendDate(cursor)) {
-                while (isWeekendDate(cursor)) {
-                    cursor.setDate(cursor.getDate() + 1);
-                }
+        function citaBaseColor(cita) {
+            const centroInfo = centrosMasterData.find(c => c.nombre === cita.centro);
+            const clinicInfo = clinicsMasterData.find(c => c.nombre === cita.clinica);
+            return (centroInfo && centroInfo.color) || (clinicInfo && clinicInfo.color) || '#3498db';
+        }
+
+        window.tramosGoDay = (dateKey) => { setTramosView('day'); openTramosModal(dateKey); };
+        window.tramosGoMonth = (dateKey) => { setTramosView('month'); openTramosModal(dateKey); };
+        window.tramosEditCita = (id) => {
+            window.markTramosReturn();
+            window.closeTramosModal();
+            setTimeout(() => window.editAppointment(id), 50);
+        };
+
+        function setTramosView(view) {
+            tramosViewConfig.view = view;
+            try { localStorage.setItem('psicofact_agenda_view', view); } catch (e) {}
+        }
+
+        function renderTramosMonth(anchorStr, citas) {
+            const a = new Date(anchorStr + 'T00:00:00');
+            const year = a.getFullYear(), month = a.getMonth();
+            const todayStr = formatIsoDate(new Date());
+            const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const porDia = {};
+            citas.forEach(c => { (porDia[c.fecha] = porDia[c.fecha] || []).push(c); });
+
+            let html = '<div class="tm-grid">' + ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(n => `<div class="tm-head">${n}</div>`).join('');
+            const total = Math.ceil((lead + daysInMonth) / 7) * 7;
+            for (let i = 0; i < total; i++) {
+                const day = i - lead + 1;
+                if (day < 1 || day > daysInMonth) { html += '<div class="tm-cell out"></div>'; continue; }
+                const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const weekend = (i % 7) >= 5;
+                const dayCitas = (porDia[key] || []).sort((x, y) => String(x.hora).localeCompare(String(y.hora)));
+                html += `<div class="tm-cell${weekend ? ' weekend' : ''}${key === todayStr ? ' today' : ''}">
+                    <span class="tm-num" onclick="window.tramosGoDay('${key}')" title="Ver el día">${day}</span>`;
+                dayCitas.forEach(c => {
+                    const col = citaBaseColor(c);
+                    html += `<span class="tm-chip${c.estado === 'cancelled' ? ' cancelled' : ''}" style="border-left-color:${col}; background:${col}22;" title="${escHtml(c.paciente)} - ${escHtml(getStatusLabel(c.estado))}" onclick="window.tramosEditCita('${c.id}')">${escHtml(c.hora)} ${escHtml(c.paciente)}</span>`;
+                });
+                html += '</div>';
             }
-            const dates = [];
+            return html + '</div>';
+        }
 
-            while (dates.length < tramosViewConfig.daysToShow) {
-                if (!(tramosViewConfig.hideWeekends && isWeekendDate(cursor))) {
-                    dates.push(formatIsoDate(cursor));
+        function renderTramosYear(anchorStr, citas) {
+            const year = new Date(anchorStr + 'T00:00:00').getFullYear();
+            const todayStr = formatIsoDate(new Date());
+            const conteo = {};
+            citas.forEach(c => { conteo[c.fecha] = (conteo[c.fecha] || 0) + 1; });
+
+            let html = '<div class="tm-year">';
+            for (let month = 0; month < 12; month++) {
+                const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const firstKey = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+                html += `<div class="tm-mini"><h4 onclick="window.tramosGoMonth('${firstKey}')">${MESES[month]}</h4><div class="tm-mini-grid">`;
+                html += ["L", "M", "X", "J", "V", "S", "D"].map(n => `<div class="dow">${n}</div>`).join('');
+                for (let i = 0; i < lead; i++) html += '<div></div>';
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const n = conteo[key] || 0;
+                    const cls = n === 0 ? '' : (n <= 2 ? ' has' : (n <= 5 ? ' has2' : ' has3'));
+                    html += `<div class="d${cls}${key === todayStr ? ' today' : ''}" title="${n ? n + (n === 1 ? ' cita' : ' citas') : ''}" onclick="window.tramosGoDay('${key}')">${day}</div>`;
                 }
-                cursor.setDate(cursor.getDate() + 1);
+                html += '</div></div>';
             }
-
-            return dates;
+            return html + '</div>';
         }
 
         function setupTramosControls() {
-            const hideWeekendsToggle = document.getElementById('hide-weekends-toggle');
-            const daysCountSelect = document.getElementById('tramos-days-count');
             const pendingOnlyToggle = document.getElementById('pending-only-toggle');
-            if (!hideWeekendsToggle || !daysCountSelect || !pendingOnlyToggle) return;
+            if (!pendingOnlyToggle) return;
 
-            hideWeekendsToggle.onchange = () => {
-                tramosViewConfig.hideWeekends = hideWeekendsToggle.checked;
-                if (currentTramosStartDate || currentTramosDate) {
-                    openTramosModal(currentTramosStartDate || currentTramosDate, true);
-                }
-            };
-
-            daysCountSelect.onchange = () => {
-                const value = parseInt(daysCountSelect.value);
-                tramosViewConfig.daysToShow = Math.min(14, Math.max(3, isNaN(value) ? 7 : value));
-                daysCountSelect.value = String(tramosViewConfig.daysToShow);
-                if (currentTramosStartDate || currentTramosDate) {
-                    openTramosModal(currentTramosStartDate || currentTramosDate, true);
-                }
-            };
+            document.querySelectorAll('#tramos-view-switch button').forEach(btn => {
+                btn.onclick = () => {
+                    setTramosView(btn.dataset.view);
+                    openTramosModal(currentTramosDate || formatIsoDate(new Date()));
+                };
+            });
 
             pendingOnlyToggle.onchange = () => {
                 tramosViewConfig.onlyPending = pendingOnlyToggle.checked;
-                if (currentTramosStartDate || currentTramosDate) {
-                    openTramosModal(currentTramosStartDate || currentTramosDate, true);
-                }
+                openTramosModal(currentTramosStartDate || currentTramosDate, true);
             };
         }
 
@@ -989,10 +1057,19 @@
 
             loadFilteredAppointments();
 
+            // Si el calendario sincronizado está activo, las citas llegan solas a Google Calendar
+            let calendarioActivo = false;
+            try {
+                const calSnap = await getDoc(doc(db, 'usuarios', currentUid, 'facultativo', 'calendario'));
+                calendarioActivo = calSnap.exists() && !!calSnap.data().token;
+            } catch (e) { console.error('Error leyendo calendario:', e); }
+
             // Aplicar la preferencia de Google Calendar de la clínica elegida
             const clinicData = clinicsMasterData.find(c => c.nombre === data.clinica);
             const calendarPolicy = clinicData?.guardar_google_calendar || 'preguntar';
-            if (calendarPolicy === 'si') {
+            if (calendarioActivo) {
+                // nada que hacer
+            } else if (calendarPolicy === 'si') {
                 addToGoogleCalendar();
             } else if (calendarPolicy === 'preguntar') {
                 const quiereGCal = await showGCalendarConfirm();
@@ -1253,38 +1330,43 @@
             container.innerHTML = 'Cargando...';
             document.getElementById('modalAgendaTramos').style.display = 'flex';
 
-            const hideWeekendsToggle = document.getElementById('hide-weekends-toggle');
-            const daysCountSelect = document.getElementById('tramos-days-count');
+            const view = tramosViewConfig.view;
             const pendingOnlyToggle = document.getElementById('pending-only-toggle');
-            if (hideWeekendsToggle) hideWeekendsToggle.checked = tramosViewConfig.hideWeekends;
-            if (daysCountSelect) daysCountSelect.value = String(tramosViewConfig.daysToShow);
             if (pendingOnlyToggle) pendingOnlyToggle.checked = tramosViewConfig.onlyPending;
+            document.querySelectorAll('#tramos-view-switch button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
 
-            // Configurar los listeners de los botones de navegación (una sola vez)
-            document.getElementById('prev-week-btn').onclick = () => {
-                const baseStart = currentTramosStartDate || currentTramosDate;
-                if (!baseStart) return;
-                const prevStart = shiftDateByVisibleDays(baseStart, -tramosViewConfig.daysToShow);
-                openTramosModal(prevStart, true);
-            };
-            document.getElementById('next-week-btn').onclick = () => {
-                const baseStart = currentTramosStartDate || currentTramosDate;
-                if (!baseStart) return;
-                const nextStart = shiftDateByVisibleDays(baseStart, tramosViewConfig.daysToShow);
-                openTramosModal(nextStart, true);
-            };
+            const unidad = { day: 'día', week: 'semana', month: 'mes', year: 'año' }[view];
+            const prevBtn = document.getElementById('prev-week-btn');
+            const nextBtn = document.getElementById('next-week-btn');
+            prevBtn.title = `${unidad.charAt(0).toUpperCase() + unidad.slice(1)} anterior`;
+            nextBtn.title = `${unidad.charAt(0).toUpperCase() + unidad.slice(1)} siguiente`;
+            prevBtn.onclick = () => openTramosModal(shiftTramosAnchor(currentTramosStartDate || currentTramosDate, tramosViewConfig.view, -1));
+            nextBtn.onclick = () => openTramosModal(shiftTramosAnchor(currentTramosStartDate || currentTramosDate, tramosViewConfig.view, 1));
+            document.getElementById('today-btn').onclick = () => openTramosModal(formatIsoDate(new Date()));
 
-            const dates = buildTramosDates(selectedDateStr, useAsStart);
-            currentTramosStartDate = dates.length > 0 ? dates[0] : null;
+            const range = getTramosRange(selectedDateStr, view);
+            const dates = range.dates;
+            currentTramosStartDate = range.start;
 
             const rangeLabel = document.getElementById('tramos-range-label');
-            if (rangeLabel && dates.length > 0) {
-                rangeLabel.textContent = `${window.formatDate(dates[0])} - ${window.formatDate(dates[dates.length - 1])}`;
+            if (rangeLabel) {
+                const startObj = new Date(range.start + 'T00:00:00');
+                if (view === 'day') {
+                    rangeLabel.textContent = startObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                } else if (view === 'week') {
+                    rangeLabel.textContent = `${window.formatDate(range.start)} - ${window.formatDate(range.end)}`;
+                } else if (view === 'month') {
+                    rangeLabel.textContent = `${MESES[startObj.getMonth()]} ${startObj.getFullYear()}`;
+                } else {
+                    rangeLabel.textContent = String(startObj.getFullYear());
+                }
             }
 
-            // Fetch appointments for these dates
-            const q = query(uCol("citas"), where("fecha", ">=", dates[0]), where("fecha", "<=", dates[dates.length - 1]));
+            // Fetch appointments for the visible range
+            const renderId = ++tramosRenderId;
+            const q = query(uCol("citas"), where("fecha", ">=", range.start), where("fecha", "<=", range.end));
             const snap = await getDocs(q);
+            if (renderId !== tramosRenderId) return; // se pidió otra vista mientras cargaba
             const citasRange = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
             // Asegurar que las citas del rango estén disponibles para editAppointment
@@ -1297,6 +1379,12 @@
                     appointments[index] = c;
                 }
             });
+
+            if (view === 'month' || view === 'year') {
+                const visibles = tramosViewConfig.onlyPending ? citasRange.filter(c => c.estado === 'pending') : citasRange;
+                container.innerHTML = view === 'month' ? renderTramosMonth(range.start, visibles) : renderTramosYear(range.start, visibles);
+                return;
+            }
 
             let html = `<table class="tramos-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem; background: white;">
                 <thead>

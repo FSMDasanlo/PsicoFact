@@ -58,8 +58,41 @@
                 <h2>Estados</h2>
                 <p>Estados de cita</p>
             </a>
+            <a href="javascript:void(0)" class="menu-card" onclick="openCalendarioModal()" style="border-bottom-color: #4285f4;">
+                <div class="icon">🗓️</div>
+                <h2>Google Calendar</h2>
+                <p>Sincronizar la agenda</p>
+            </a>
         </nav>
     </main>
+
+    <!-- Modal Calendario -->
+    <div id="modalCalendario" class="modal">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="agenda-header">
+                <h2>Sincronizar con Google Calendar</h2>
+                <span class="close-modal" onclick="closeCalendarioModal()">&times;</span>
+            </div>
+            <p style="font-size:.9rem; color:#555;">Tus citas aparecerán solas en Google Calendar, sin pasos por cita. Solo se envían día, hora, duración, iniciales del paciente y centro. Google actualiza los calendarios por URL cada pocas horas, así que una cita nueva puede tardar en aparecer.</p>
+            <div id="cal-off" style="display:none; margin-top:12px;">
+                <button type="button" class="btn-turquesa" id="cal-activar" style="border:none; cursor:pointer;">Activar calendario</button>
+            </div>
+            <div id="cal-on" style="display:none; margin-top:12px;">
+                <label for="cal-url" style="font-weight:600;">Tu dirección privada (no la compartas)</label>
+                <input type="text" id="cal-url" readonly style="width:100%; margin: 6px 0; font-size:.8rem;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button type="button" class="btn-turquesa" id="cal-copiar" style="border:none; cursor:pointer;">Copiar dirección</button>
+                    <a class="btn-turquesa" id="cal-google" target="_blank" rel="noopener" style="text-decoration:none;">Añadir a Google Calendar</a>
+                </div>
+                <ol style="font-size:.85rem; color:#555; padding-left:1.2rem; line-height:1.5;">
+                    <li>Pulsa «Añadir a Google Calendar» y confirma. Si no se abre, copia la dirección.</li>
+                    <li>En calendar.google.com: «Otros calendarios» (+) → «Desde URL» → pega la dirección → «Añadir calendario».</li>
+                </ol>
+                <button type="button" class="back-link" id="cal-regenerar" style="border:none; background:none; cursor:pointer; color:#c0392b;">Generar una dirección nueva (la anterior dejará de funcionar)</button>
+                <button type="button" class="back-link" id="cal-desactivar" style="border:none; background:none; cursor:pointer; color:#c0392b;">Desactivar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal Facultativo -->
     <div id="modalFacultativo" class="modal">
@@ -195,12 +228,75 @@
         document.getElementById('form-facultativo').onsubmit = async (e) => {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target));
-            await setDoc(facDocRef(), data);
+            await setDoc(facDocRef(), data, { merge: true });
             showToast('Datos del facultativo guardados');
             closeFacultativoModal();
         };
 
-        window.onclick = (e) => { if (e.target === document.getElementById('modalFacultativo')) closeFacultativoModal(); };
+        window.onclick = (e) => {
+            if (e.target === document.getElementById('modalFacultativo')) closeFacultativoModal();
+            if (e.target === document.getElementById('modalCalendario')) closeCalendarioModal();
+        };
+
+        // ── Calendario (feed ICS servido por la Cloud Function "calendario") ──
+        const calDocRef = () => doc(db, 'usuarios', currentUid, 'facultativo', 'calendario');
+        const nuevoToken = () => Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('');
+        const feedUrl = (token) => `https://europe-west1-${firebaseConfig.projectId}.cloudfunctions.net/calendario?u=${currentUid}&t=${token}`;
+
+        function pintarCalendario(token) {
+            document.getElementById('cal-off').style.display = token ? 'none' : 'block';
+            document.getElementById('cal-on').style.display = token ? 'block' : 'none';
+            if (!token) return;
+            const url = feedUrl(token);
+            document.getElementById('cal-url').value = url;
+            document.getElementById('cal-google').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(url.replace(/^https:/, 'webcal:'));
+        }
+
+        async function guardarToken(token) {
+            await setDoc(calDocRef(), token ? { token, creado: new Date().toISOString() } : { token: null });
+            pintarCalendario(token);
+        }
+
+        function mostrarAvisoCalendario() {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:5000;';
+            ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:30px 34px;max-width:400px;width:90%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.3);font-family:inherit;">
+                <div style="width:64px;height:64px;margin:0 auto 14px;border-radius:50%;background:#e6f4ea;color:#1e8e3e;font-size:2rem;display:flex;align-items:center;justify-content:center;">✓</div>
+                <h3 style="margin:0 0 10px;color:#2c3e50;">Google Calendar ya está configurado</h3>
+                <p style="margin:0 0 22px;color:#555;font-size:.95rem;line-height:1.5;">No necesitas hacer nada más: tus citas se añaden solas.<br>Aquí puedes copiar la dirección, regenerarla o desactivarla.</p>
+                <button type="button" style="background:#4285f4;color:#fff;border:none;border-radius:8px;padding:10px 30px;font-size:1rem;cursor:pointer;">Entendido</button>
+            </div>`;
+            const cerrar = () => ov.remove();
+            ov.querySelector('button').onclick = cerrar;
+            ov.onclick = (e) => { if (e.target === ov) cerrar(); };
+            document.body.appendChild(ov);
+        }
+
+        window.openCalendarioModal = async function() {
+            document.getElementById('modalCalendario').style.display = 'flex';
+            try {
+                const snap = await getDoc(calDocRef());
+                const token = snap.exists() ? snap.data().token : null;
+                pintarCalendario(token);
+                if (token) mostrarAvisoCalendario();
+            } catch (e) { console.error(e); showToast('No se pudo leer la configuración del calendario', 'error'); }
+        };
+        window.closeCalendarioModal = function() { document.getElementById('modalCalendario').style.display = 'none'; };
+
+        document.getElementById('cal-activar').onclick = () => guardarToken(nuevoToken()).catch(() => showToast('Error al activar', 'error'));
+        document.getElementById('cal-regenerar').onclick = () => {
+            if (confirm('La dirección anterior dejará de funcionar y tendrás que volver a añadir el calendario en Google. ¿Continuar?')) {
+                guardarToken(nuevoToken()).catch(() => showToast('Error al regenerar', 'error'));
+            }
+        };
+        document.getElementById('cal-desactivar').onclick = () => {
+            if (confirm('Google dejará de recibir tus citas. ¿Desactivar?')) guardarToken(null).catch(() => showToast('Error al desactivar', 'error'));
+        };
+        document.getElementById('cal-copiar').onclick = async () => {
+            const input = document.getElementById('cal-url');
+            try { await navigator.clipboard.writeText(input.value); showToast('Dirección copiada'); }
+            catch (e) { input.select(); document.execCommand('copy'); showToast('Dirección copiada'); }
+        };
 
         onAuthStateChanged(auth, (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
