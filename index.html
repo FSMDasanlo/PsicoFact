@@ -257,6 +257,7 @@
             50% { transform: translateY(-14px) rotate(3deg); }
         }
     </style>
+<script src="js/menu.js"></script>
 </head>
 <body>
 
@@ -581,6 +582,17 @@
             document.getElementById('modalBirthday').style.display = 'none';
         });
 
+        // Tras el login se va a la agenda, salvo con ?panel=1; espera a que se cierren los avisos
+        function goToAgendaWhenReady() {
+            if (new URLSearchParams(window.location.search).has('panel')) return;
+            const modals = ['modalBilling', 'modalBirthday'].map(id => document.getElementById(id));
+            const check = () => {
+                if (modals.every(m => m.style.display !== 'flex')) window.location.replace('agenda.html');
+            };
+            modals.forEach(m => new MutationObserver(check).observe(m, { attributes: true, attributeFilter: ['style'] }));
+            check();
+        }
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 console.log("Usuario autenticado:", user.email);
@@ -601,7 +613,7 @@
                 } catch (e) { console.error('Error autocompletando citas:', e); }
 
                 // Verificar cobros pendientes
-                checkBilling(user.uid);
+                await checkBilling(user.uid);
 
                 // Mostrar tarjeta de Admin solo si es el usuario jesus.samperruiz@gmail.com
                 const adminCard = document.getElementById('admin-card');
@@ -635,6 +647,7 @@
                     const nameEl = document.getElementById('user-name');
                     if (nameEl) nameEl.textContent = user.email;
                 }
+                goToAgendaWhenReady();
             } else {
                 authScreen.style.display = 'flex';
                 appWrapper.style.display = 'none';

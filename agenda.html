@@ -59,6 +59,7 @@
             cursor: help;
         }
     </style>
+<script src="js/menu.js"></script>
 </head>
 <body>
 
@@ -80,8 +81,6 @@
                 <h2><span id="agenda-title-text">Citas de Hoy</span> <a href="javascript:void(0)" onclick="showCalendarView(true)" title="Vista de calendario" style="text-decoration:none; margin-left:10px;">📅</a></h2>
                 <div class="agenda-actions">
                     <button class="btn-turquesa" style="border:none; cursor:pointer;" onclick="openAppointmentModal()">Nueva Cita</button>
-                    <a href="index.html" class="home-icon" title="Inicio">🏠</a>
-                    <a href="index.html" class="back-link">&larr; Volver</a>
                 </div>
             </div>
             
@@ -140,7 +139,7 @@
     </div>
 
     <!-- Modal para Nueva Cita -->
-    <div id="modalCita" class="modal">
+    <div id="modalCita" class="modal" style="z-index: 1500;">
         <div class="modal-content">
             <div class="agenda-header">
                 <h2>Nueva Cita</h2>
@@ -534,6 +533,13 @@
             }
 
             loadFilteredAppointments();
+
+            // Por defecto se abre la agenda detallada (salvo si se llega filtrando por paciente)
+            if (!pacienteUrl && !new URLSearchParams(window.location.search).has('lista')) {
+                const t = new Date();
+                const hoyLocal = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+                openTramosModal(hoyLocal);
+            }
         }
 
         function populateCentrosDropdown() {

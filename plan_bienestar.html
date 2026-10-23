@@ -24,6 +24,7 @@
         @media (max-width: 700px) { .plan-grid { grid-template-columns: 1fr; } .plan-section.full { grid-column: auto; } }
         @media print { .navbar, .agenda-header, footer, .plan-actions, .plan-status, .plan-hero p { display: none !important; } body { background: white; } .container { max-width: none; margin: 0; } .agenda-container { box-shadow: none; padding: 0; } .plan-section { break-inside: avoid; border: 1px solid #ddd; } }
     </style>
+<script src="js/menu.js"></script>
 </head>
 <body>
     <header class="navbar">
@@ -34,7 +35,7 @@
     <main class="container">
         <div class="agenda-header">
             <div><h2 style="margin:0;">Plan de Bienestar</h2><p style="margin:3px 0 0; color:#758080; font-size:.9rem;">Prevención de recaídas y mantenimiento de avances</p></div>
-            <div class="agenda-actions"><a href="index.html" class="home-icon" title="Inicio">🏠</a><a id="back-link" href="Con_pacientes.html" class="back-link">&larr; Pacientes</a></div>
+            <div class="agenda-actions"><a id="back-link" href="Con_pacientes.html" class="back-link">&larr; Pacientes</a></div>
         </div>
 
         <section class="agenda-container plan-hero" style="margin-bottom:18px;">
