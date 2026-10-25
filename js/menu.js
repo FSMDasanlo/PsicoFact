@@ -39,11 +39,25 @@
         #sb-gear .sb-icon { width: 24px; text-align: center; font-size: 1.15rem; }
         #sb-color-panel { display: none; padding: 10px 16px 14px; font-size: .85rem; border-top: 1px solid var(--sb-hover, rgba(255,255,255,.12)); }
         #sb-color-panel.open { display: block; }
-        #sb-color-panel .sb-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-        #sb-color-panel .sb-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); cursor: pointer; padding: 0; }
-        #sb-color-panel input[type=color] { width: 100%; height: 32px; border: none; padding: 0; background: none; cursor: pointer; }
+        #sb-color-panel .sb-target { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+        #sb-color-panel .sb-target label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        #sb-sv { position: relative; width: 100%; height: 130px; border-radius: 6px; cursor: crosshair; touch-action: none; overflow: hidden;
+            background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(var(--sb-h, 0), 100%, 50%)); }
+        #sb-sv-thumb { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,.5); pointer-events: none; }
+        #sb-hue { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; margin: 10px 0; border-radius: 6px; outline: none; cursor: pointer;
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+        #sb-hue::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid rgba(0,0,0,.5); }
+        #sb-hue::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid rgba(0,0,0,.5); }
+        #sb-color-panel .sb-hexrow { display: flex; align-items: center; gap: 8px; }
+        #sb-preview { width: 32px; height: 32px; border-radius: 6px; border: 2px solid rgba(255,255,255,.7); flex: 0 0 auto; }
+        #sb-hex { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,.6); font-family: monospace; font-size: .9rem; text-transform: uppercase; }
+        #sb-hex.invalid { border-color: #e74c3c; }
         #sb-color-panel button.sb-reset { width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px; border: 1px solid currentColor;
             background: none; color: inherit; cursor: pointer; }
+        .menu-card { background-color: var(--card-bg, #fff); }
+        .menu-card h2 { color: var(--card-fg, #2c3e50); }
+        .menu-card p { color: var(--card-fg2, #7f8c8d); }
         #sb-collapse { position: fixed; top: calc(var(--nb-h, 72px) + 12px); left: 230px; z-index: 1001; width: 22px; height: 38px; border: none; cursor: pointer;
             border-radius: 0 8px 8px 0; background: var(--sb-bg, #2c3e50); color: var(--sb-fg, #fff); font-weight: 700; font-size: .95rem; padding: 0;
             box-shadow: 2px 0 6px rgba(0,0,0,.15); }
@@ -68,9 +82,45 @@
         }`;
 
     const DEFAULT_COLOR = '#2c3e50';
-    const PRESETS = ['#2c3e50', '#1f3a5f', '#34495e', '#16a085', '#8e44ad', '#c0392b', '#d35400', '#7f8c8d', '#e8eef2', '#fdf2e9'];
     const LS_COLOR = 'psicofact_menu_color';
     const LS_COLLAPSED = 'psicofact_menu_collapsed';
+    const DEFAULT_CARD = '#ffffff';
+    const LS_CARD = 'psicofact_card_color';
+
+    function hexToHsv(hex) {
+        const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        let h = 0;
+        if (d) {
+            if (max === r) h = ((g - b) / d) % 6;
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h = Math.round(h * 60);
+            if (h < 0) h += 360;
+        }
+        return { h, s: max ? d / max : 0, v: max };
+    }
+
+    function hsvToHex(h, s, v) {
+        const f = (n) => {
+            const k = (n + h / 60) % 6;
+            return v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+        };
+        return '#' + [f(5), f(3), f(1)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+    }
+
+    // Fondo de las tarjetas del menú; el texto se adapta (claro/oscuro) según la luminosidad del color
+    function applyCardColor(hex) {
+        if (!/^#[0-9a-f]{6}$/i.test(hex || '')) hex = DEFAULT_CARD;
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        const light = (0.299 * r + 0.587 * g + 0.114 * b) > 150;
+        const root = document.documentElement.style;
+        root.setProperty('--card-bg', hex);
+        root.setProperty('--card-fg', light ? '#2c3e50' : '#ffffff');
+        root.setProperty('--card-fg2', light ? '#7f8c8d' : '#d5dde5');
+        try { localStorage.setItem(LS_CARD, hex); } catch (e) {}
+        return hex;
+    }
 
     function applyColor(hex) {
         if (!/^#[0-9a-f]{6}$/i.test(hex || '')) hex = DEFAULT_COLOR;
@@ -86,6 +136,7 @@
 
     function build() {
         try { applyColor(localStorage.getItem(LS_COLOR)); } catch (e) { applyColor(DEFAULT_COLOR); }
+        try { applyCardColor(localStorage.getItem(LS_CARD)); } catch (e) { applyCardColor(DEFAULT_CARD); }
 
         const nav = document.createElement('nav');
         nav.id = 'app-sidebar';
@@ -94,11 +145,14 @@
                 const adm = i.admin ? ' sb-admin' : '';
                 return `<a class="sb-item${active}${adm}" href="${i.href}"><span class="sb-icon">${i.icon}</span><span>${i.label}</span></a>`;
             }).join('') +
-            '<button type="button" id="sb-gear"><span class="sb-icon">⚙️</span><span>Color del menú</span></button>' +
-            '<div id="sb-color-panel"><div>Elige un color de fondo</div><div class="sb-swatches">' +
-            PRESETS.map(c => `<button type="button" class="sb-swatch" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('') +
-            '</div><input type="color" id="sb-color-input" value="' + DEFAULT_COLOR + '">' +
-            '<button type="button" class="sb-reset">Restablecer color original</button></div>';
+            '<button type="button" id="sb-gear"><span class="sb-icon">⚙️</span><span>Color de fondo</span></button>' +
+            '<div id="sb-color-panel">' +
+            '<div class="sb-target"><label><input type="radio" name="sb-target" value="menu" checked> Menú lateral</label>' +
+            '<label><input type="radio" name="sb-target" value="card"> Tarjetas</label></div>' +
+            '<div id="sb-sv"><div id="sb-sv-thumb"></div></div>' +
+            '<input type="range" id="sb-hue" min="0" max="360" step="1" value="0">' +
+            '<div class="sb-hexrow"><span id="sb-preview"></span><input type="text" id="sb-hex" maxlength="7" spellcheck="false" value="' + DEFAULT_COLOR + '" aria-label="Código HEX"></div>' +
+            '<button type="button" class="sb-reset" id="sb-reset">Restablecer color original</button></div>';
         document.body.prepend(nav);
 
         const btn = document.createElement('button');
@@ -154,16 +208,88 @@
     async function setupFirebase(nav) {
         const gear = nav.querySelector('#sb-gear');
         const panel = nav.querySelector('#sb-color-panel');
-        const input = nav.querySelector('#sb-color-input');
         gear.addEventListener('click', () => panel.classList.toggle('open'));
-        try { input.value = localStorage.getItem(LS_COLOR) || DEFAULT_COLOR; } catch (e) {}
 
-        let save = () => {};
-        const choose = (hex) => { input.value = applyColor(hex); save(hex); };
-        nav.querySelectorAll('.sb-swatch').forEach(b => b.addEventListener('click', () => choose(b.dataset.color)));
-        input.addEventListener('input', () => applyColor(input.value));
-        input.addEventListener('change', () => choose(input.value));
-        nav.querySelector('.sb-reset').addEventListener('click', () => choose(DEFAULT_COLOR));
+        const sv = nav.querySelector('#sb-sv');
+        const thumb = nav.querySelector('#sb-sv-thumb');
+        const hueEl = nav.querySelector('#sb-hue');
+        const hexEl = nav.querySelector('#sb-hex');
+        const preview = nav.querySelector('#sb-preview');
+        const resetBtn = nav.querySelector('#sb-reset');
+
+        // Colores actuales y funciones de guardado de cada destino
+        const targets = {
+            menu: { hex: DEFAULT_COLOR, def: DEFAULT_COLOR, ls: LS_COLOR, apply: applyColor, save: () => {}, resetLabel: 'Restablecer color original' },
+            card: { hex: DEFAULT_CARD, def: DEFAULT_CARD, ls: LS_CARD, apply: applyCardColor, save: () => {}, resetLabel: 'Restablecer tarjetas' }
+        };
+        try { targets.menu.hex = localStorage.getItem(LS_COLOR) || DEFAULT_COLOR; } catch (e) {}
+        try { targets.card.hex = localStorage.getItem(LS_CARD) || DEFAULT_CARD; } catch (e) {}
+        const getTarget = () => targets[(nav.querySelector('input[name="sb-target"]:checked') || {}).value || 'menu'];
+
+        let hsv = hexToHsv(targets.menu.hex);
+        // Dibuja el selector (cuadro, tono, HEX y vista previa) a partir de hsv
+        const paint = () => {
+            sv.style.setProperty('--sb-h', hsv.h);
+            thumb.style.left = (hsv.s * 100) + '%';
+            thumb.style.top = ((1 - hsv.v) * 100) + '%';
+            hueEl.value = hsv.h;
+            const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+            hexEl.value = hex.toUpperCase();
+            hexEl.classList.remove('invalid');
+            preview.style.background = hex;
+            return hex;
+        };
+        const setHsvFromHex = (hex) => { hsv = hexToHsv(hex); paint(); };
+        // live: aplica al instante; final: además guarda (al soltar el ratón)
+        const update = (final) => {
+            const t = getTarget();
+            const hex = paint();
+            t.hex = t.apply(hex);
+            if (final) t.save(t.hex);
+        };
+
+        const pickSv = (e) => {
+            const r = sv.getBoundingClientRect();
+            hsv.s = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+            hsv.v = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+            update(false);
+        };
+        sv.addEventListener('pointerdown', (e) => { sv.setPointerCapture(e.pointerId); pickSv(e); });
+        sv.addEventListener('pointermove', (e) => { if (sv.hasPointerCapture(e.pointerId)) pickSv(e); });
+        sv.addEventListener('pointerup', (e) => { if (sv.hasPointerCapture(e.pointerId)) { sv.releasePointerCapture(e.pointerId); update(true); } });
+        hueEl.addEventListener('input', () => { hsv.h = Number(hueEl.value); update(false); });
+        hueEl.addEventListener('change', () => update(true));
+        hexEl.addEventListener('input', () => {
+            let v = hexEl.value.trim();
+            if (v && v[0] !== '#') v = '#' + v;
+            if (/^#[0-9a-f]{6}$/i.test(v)) {
+                v = v.toLowerCase();
+                const t = getTarget();
+                hsv = hexToHsv(v);
+                sv.style.setProperty('--sb-h', hsv.h);
+                thumb.style.left = (hsv.s * 100) + '%';
+                thumb.style.top = ((1 - hsv.v) * 100) + '%';
+                hueEl.value = hsv.h;
+                hexEl.classList.remove('invalid');
+                preview.style.background = v;
+                t.hex = t.apply(v);
+                t.save(t.hex);
+            } else {
+                hexEl.classList.add('invalid');
+            }
+        });
+        nav.querySelectorAll('input[name="sb-target"]').forEach(r => r.addEventListener('change', () => {
+            const t = getTarget();
+            resetBtn.textContent = t.resetLabel;
+            setHsvFromHex(t.hex);
+        }));
+        resetBtn.addEventListener('click', () => {
+            const t = getTarget();
+            t.hex = t.apply(t.def);
+            setHsvFromHex(t.hex);
+            t.save(t.hex);
+        });
+        setHsvFromHex(targets.menu.hex);
 
         try {
             const cfg = window.APP_CONFIG && window.APP_CONFIG.firebase;
@@ -181,12 +307,16 @@
                 if (el) el.style.display = email === 'jesus.samperruiz@gmail.com' ? 'flex' : 'none';
                 if (!user) return;
                 const ref = doc(db, 'usuarios', user.uid, 'facultativo', 'perfil');
-                save = (hex) => setDoc(ref, { menuColor: hex, menuColorOriginal: DEFAULT_COLOR }, { merge: true })
+                targets.menu.save = (hex) => setDoc(ref, { menuColor: hex, menuColorOriginal: DEFAULT_COLOR }, { merge: true })
                     .catch(e => console.error('Menú: no se pudo guardar el color', e));
+                targets.card.save = (hex) => setDoc(ref, { cardColor: hex }, { merge: true })
+                    .catch(e => console.error('Menú: no se pudo guardar el color de tarjetas', e));
                 try {
                     const snap = await getDoc(ref);
-                    const saved = snap.exists() ? snap.data().menuColor : null;
-                    if (saved) input.value = applyColor(saved);
+                    const data = snap.exists() ? snap.data() : {};
+                    if (data.menuColor) targets.menu.hex = applyColor(data.menuColor);
+                    if (data.cardColor) targets.card.hex = applyCardColor(data.cardColor);
+                    setHsvFromHex(getTarget().hex);
                 } catch (e) { console.error('Menú: no se pudo leer el color', e); }
             });
         } catch (e) { console.error('Menú: error de Firebase', e); }
