@@ -259,6 +259,91 @@
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
 
+        // ---- Diálogos propios (sustituyen a alert / confirm / prompt del navegador) ----
+        function uiDialog({ message, title = 'PsicoFact', icon = 'ℹ️', input = null, confirmText = 'Aceptar', cancelText = null, danger = false, win = window }) {
+            return new Promise((resolve) => {
+                const d = win.document;
+                if (!d.getElementById('ui-dialog-style')) {
+                    const st = d.createElement('style');
+                    st.id = 'ui-dialog-style';
+                    st.textContent = `
+                        .ui-dlg-overlay{position:fixed;inset:0;background:rgba(44,62,80,.55);display:flex;align-items:center;justify-content:center;z-index:100000;font-family:"Segoe UI",Arial,sans-serif;animation:uiDlgFade .15s}
+                        .ui-dlg{background:#fff;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.35);width:min(440px,92vw);overflow:hidden;text-align:left;animation:uiDlgPop .18s}
+                        .ui-dlg-head{display:flex;align-items:center;gap:10px;padding:14px 20px;color:#fff;font-weight:600;font-size:15px;background:linear-gradient(135deg,#2c3e50,#3498db)}
+                        .ui-dlg-head.danger{background:linear-gradient(135deg,#c0392b,#e67e22)}
+                        .ui-dlg-head span.ico{font-size:20px}
+                        .ui-dlg-body{padding:20px;color:#2c3e50;font-size:14px;line-height:1.6;white-space:pre-line}
+                        .ui-dlg-input{width:100%;margin-top:14px;padding:10px 12px;border:2px solid #dfe6e9;border-radius:8px;font-size:14px;font-family:inherit;color:#2c3e50;outline:none;box-sizing:border-box}
+                        .ui-dlg-input:focus{border-color:#3498db}
+                        .ui-dlg-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 20px 18px}
+                        .ui-dlg-btn{border:none;border-radius:8px;padding:9px 22px;font-size:14px;font-family:inherit;cursor:pointer;transition:filter .15s}
+                        .ui-dlg-btn:hover{filter:brightness(1.08)}
+                        .ui-dlg-ok{background:#1abc9c;color:#fff}
+                        .ui-dlg-ok.danger{background:#e74c3c}
+                        .ui-dlg-cancel{background:#ecf0f1;color:#2c3e50}
+                        @keyframes uiDlgFade{from{opacity:0}to{opacity:1}}
+                        @keyframes uiDlgPop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}`;
+                    d.head.appendChild(st);
+                }
+                const overlay = d.createElement('div');
+                overlay.className = 'ui-dlg-overlay';
+                const box = d.createElement('div');
+                box.className = 'ui-dlg';
+                box.setAttribute('role', 'dialog');
+                box.setAttribute('aria-modal', 'true');
+
+                const head = d.createElement('div');
+                head.className = 'ui-dlg-head' + (danger ? ' danger' : '');
+                const ico = d.createElement('span');
+                ico.className = 'ico';
+                ico.textContent = icon;
+                head.append(ico, d.createTextNode(title));
+
+                const body = d.createElement('div');
+                body.className = 'ui-dlg-body';
+                body.textContent = message;
+                let field = null;
+                if (input !== null) {
+                    field = d.createElement('input');
+                    field.type = 'text';
+                    field.className = 'ui-dlg-input';
+                    field.value = input;
+                    body.appendChild(field);
+                }
+
+                const actions = d.createElement('div');
+                actions.className = 'ui-dlg-actions';
+                const finish = (value) => { overlay.remove(); d.removeEventListener('keydown', onKey, true); resolve(value); };
+                const cancelValue = input !== null ? null : false;
+                if (cancelText) {
+                    const cancelBtn = d.createElement('button');
+                    cancelBtn.className = 'ui-dlg-btn ui-dlg-cancel';
+                    cancelBtn.textContent = cancelText;
+                    cancelBtn.addEventListener('click', () => finish(cancelValue));
+                    actions.appendChild(cancelBtn);
+                }
+                const okBtn = d.createElement('button');
+                okBtn.className = 'ui-dlg-btn ui-dlg-ok' + (danger ? ' danger' : '');
+                okBtn.textContent = confirmText;
+                okBtn.addEventListener('click', () => finish(field ? field.value : true));
+                actions.appendChild(okBtn);
+
+                const onKey = (e) => {
+                    if (e.key === 'Escape') { e.preventDefault(); finish(cancelText ? cancelValue : true); }
+                    else if (e.key === 'Enter') { e.preventDefault(); finish(field ? field.value : true); }
+                };
+                d.addEventListener('keydown', onKey, true);
+
+                box.append(head, body, actions);
+                overlay.appendChild(box);
+                d.body.appendChild(overlay);
+                if (field) { field.focus(); field.select(); } else { okBtn.focus(); }
+            });
+        }
+        const uiAlert = (message, opts = {}) => uiDialog({ message, icon: '⚠️', title: 'Aviso', ...opts });
+        const uiInfo = (message, opts = {}) => uiDialog({ message, icon: '✅', title: 'Hecho', ...opts });
+        const uiConfirm = (message, opts = {}) => uiDialog({ message, icon: '🗑️', title: 'Confirmar', cancelText: 'Cancelar', confirmText: 'Eliminar', danger: true, ...opts });
+        const uiPrompt = (message, defaultValue = '', opts = {}) => uiDialog({ message, input: defaultValue, icon: '🧾', title: 'Referencia de factura', cancelText: 'Cancelar', ...opts });
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
             currentUid = user.uid;
@@ -430,7 +515,7 @@
                 // CASO A: Solo hay sesiones ya facturadas visibles (re-impresión o cambio de ref.)
                 const refsExistentes = [...new Set(yaFacturadas.map(i => i.n_factura))];
                 const defaultRef = refsExistentes[0];
-                const manualRef = prompt(
+                const manualRef = await uiPrompt(
                     `Todas las sesiones visibles ya están facturadas (${refsExistentes.join(', ')}).\n` +
                     `Puede cambiar la referencia o pulsar Aceptar para mantenerla.\n\n` +
                     `⚠️ Solo se actualizarán las sesiones con la referencia "${defaultRef}".`,
@@ -445,7 +530,7 @@
                 // CASO B: Hay pendientes Y ya facturadas → solo procesamos las pendientes
                 const refsExistentes = [...new Set(yaFacturadas.map(i => i.n_factura))];
                 const nextRef = await generateNextInvoiceRef(year);
-                const manualRef = prompt(
+                const manualRef = await uiPrompt(
                     `Hay ${yaFacturadas.length} sesión(es) ya facturadas (${refsExistentes.join(', ')}) que NO se modificarán.\n\n` +
                     `Se va a crear una factura nueva para las ${pendientesSeleccionadas.length} sesiones pendientes.\n` +
                     `Introduzca la referencia:`,
@@ -458,14 +543,14 @@
             } else {
                 // CASO C: Solo hay pendientes (nada facturado aún)
                 const nextRef = await generateNextInvoiceRef(year);
-                const manualRef = prompt(`Introduzca la referencia para las ${pendientesSeleccionadas.length} sesiones nuevas:`, nextRef);
+                const manualRef = await uiPrompt(`Introduzca la referencia para las ${pendientesSeleccionadas.length} sesiones nuevas:`, nextRef);
                 if (manualRef === null) return;
                 newInvoiceRef = manualRef.trim() || nextRef;
                 printableInvoices = pendientesSeleccionadas;
             }
 
             if (printableInvoices.length === 0) {
-                alert('No hay sesiones a procesar.');
+                await uiAlert('No hay sesiones a procesar.');
                 return;
             }
 
@@ -477,7 +562,7 @@
             //    conservan su referencia original intacta.
 
             // 4. FINALIZACIÓN
-            alert(`Factura ${newInvoiceRef} procesada y lista para imprimir.`);
+            await uiInfo(`Factura ${newInvoiceRef} procesada y lista para imprimir.`, { title: 'Factura procesada', confirmText: 'Ver factura' });
             printGroupedInvoice(printableInvoices, newInvoiceRef);
             excludedIds = [];
             loadInvoices();
@@ -776,7 +861,7 @@
         window.printGroupedSummaryTable = function() {
             const rows = buildGroupedSummary();
             if (rows.length === 0) {
-                alert('No hay sesiones válidas para mostrar.');
+                uiAlert('No hay sesiones válidas para mostrar.');
                 return;
             }
             let totalClinica = 0, totalFacultativo = 0;
@@ -827,7 +912,7 @@
         function exportToCSV() {
             const printableInvoices = currentInvoices.filter(i => !excludedIds.includes(i.id));
             if (printableInvoices.length === 0) {
-                alert("No hay sesiones válidas para exportar");
+                uiAlert("No hay sesiones válidas para exportar");
                 return;
             }
             
@@ -1049,7 +1134,7 @@
                 const saveBtn = printWindow.document.getElementById('btn-guardar-pdf');
                 saveBtn.addEventListener('click', async () => {
                     if (typeof printWindow.html2pdf !== 'function') {
-                        printWindow.alert('No se ha podido cargar el generador de PDF. Inténtelo de nuevo.');
+                        uiAlert('No se ha podido cargar el generador de PDF. Inténtelo de nuevo.', { win: printWindow });
                         return;
                     }
                     saveBtn.disabled = true;
@@ -1057,7 +1142,7 @@
                     try {
                         const pdfBlob = await renderInvoicePdf(printWindow, suggestedFileNameWithExtension);
 
-                        const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinNombre });
+                        const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinNombre, win: printWindow });
                         if (ok) showCloudToast(printWindow);
                         saveBtn.textContent = ok ? 'Guardada ✔' : 'Guardar en la nube';
                         saveBtn.disabled = ok;
@@ -1245,9 +1330,24 @@
                     return;
                 }
 
-                const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinic.nombre || first.clinica });
+                const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinic.nombre || first.clinica, win: printWindow });
                 if (ok) showCloudToast(printWindow);
+                addPrintButton(printWindow);
             }
+        }
+
+        // Botón flotante para imprimir la factura abierta (queda fuera de .page y se oculta al imprimir)
+        function addPrintButton(win) {
+            const doc = win.document;
+            const btn = doc.createElement('button');
+            btn.className = 'btn-print-floating';
+            btn.textContent = '🖨️ Imprimir';
+            btn.style.cssText = 'position:fixed;top:20px;right:20px;padding:10px 18px;border:none;border-radius:8px;background:#2c3e50;color:#fff;font-family:"Segoe UI",Arial,sans-serif;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);z-index:9998;';
+            btn.addEventListener('click', () => win.print());
+            const style = doc.createElement('style');
+            style.textContent = '@media print{.btn-print-floating{display:none!important}}';
+            doc.head.appendChild(style);
+            doc.body.appendChild(btn);
         }
 
         // Genera el PDF con el mismo aspecto que la impresión: sin el margen de pantalla de .page
@@ -1299,6 +1399,7 @@
         let invoiceFiles = [];
 
         async function uploadInvoicePdf(file, name, extra = {}) {
+            const uploadWin = (extra.win && !extra.win.closed) ? extra.win : window;
             try {
                 const fileName = name || file.name;
                 const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -1321,7 +1422,7 @@
                 return true;
             } catch (error) {
                 console.error('Error subiendo la factura a Firebase:', error);
-                alert('No se ha podido guardar la factura en la nube. Inténtelo de nuevo.');
+                uiAlert('No se ha podido guardar la factura en la nube. Inténtelo de nuevo.', { win: uploadWin });
                 return false;
             }
         }
@@ -1363,14 +1464,15 @@
 
         window.deleteInvoiceFile = async (id) => {
             const f = invoiceFiles.find(x => x.id === id);
-            if (!f || !confirm(`¿Eliminar el fichero "${f.nombre}"?`)) return;
+            if (!f) return;
+            if (!(await uiConfirm(`¿Eliminar el fichero "${f.nombre}"?\nEsta acción no se puede deshacer.`, { title: 'Eliminar fichero' }))) return;
             try {
                 await deleteObject(ref(storage, f.rutaStorage)).catch(e => { if (e.code !== 'storage/object-not-found') throw e; });
                 await deleteDoc(uDoc('facturas_ficheros', id));
                 await loadInvoiceFiles();
             } catch (error) {
                 console.error('Error eliminando fichero:', error);
-                alert('No se ha podido eliminar el fichero.');
+                uiAlert('No se ha podido eliminar el fichero.');
             }
         };
 
@@ -1378,8 +1480,8 @@
             const file = e.target.files[0];
             e.target.value = '';
             if (!file) return;
-            if (file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF.'); return; }
-            if (file.size > MAX_INVOICE_FILE_SIZE) { alert('El archivo no puede superar los 10 MB.'); return; }
+            if (file.type !== 'application/pdf') { uiAlert('Solo se permiten archivos PDF.'); return; }
+            if (file.size > MAX_INVOICE_FILE_SIZE) { uiAlert('El archivo no puede superar los 10 MB.'); return; }
             const btn = document.getElementById('btn-subir-factura');
             btn.disabled = true;
             btn.textContent = 'Subiendo...';
