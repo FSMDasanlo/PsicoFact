@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
 <script src="js/menu.js"></script>
+    <style>
+        main.container { max-width: 1400px; }
+        .agenda-container { overflow-x: auto; }
+        @media (min-width: 769px) {
+            #invoices-body td, .agenda-table > thead th { white-space: nowrap; }
+        }
+        .btn-carpeta-nube { border: none; background: transparent; cursor: pointer; padding: 0; margin-left: auto; display: flex; align-items: center; }
+        .btn-carpeta-nube img { height: 38px; width: auto; }
+    </style>
 </head>
 <body>
     <header class="navbar">
@@ -51,7 +60,8 @@
                 <button class="btn-turquesa" onclick="exportToCSV()" style="border:none; cursor:pointer;">Exportar CSV</button>
                 <button class="btn-turquesa" onclick="openManualInvoiceModal()" style="border:none; cursor:pointer;">Factura Manual</button>
                 <button class="btn-turquesa" onclick="openGroupedTableModal()" style="border:none; cursor:pointer;">Mostrar tabla agrupada</button>
-            </div>
+                                <button type="button" class="btn-carpeta-nube" id="btn-ficheros-facturas" title="Gestionar ficheros de facturas"><img src="img/carpeta_nube1.png" alt="Ficheros de facturas"></button>
+                            </div>
 
             <table class="agenda-table">
                 <thead>
@@ -75,6 +85,26 @@
             </table>
         </div>
     </main>
+
+    <!-- Modal de ficheros de facturas (Firebase Storage) -->
+    <div id="modalFicherosFacturas" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 92vh; display:flex; flex-direction:column;">
+            <div class="agenda-header">
+                <h2>Ficheros de Facturas</h2>
+                <span class="close-modal" onclick="closeInvoiceFilesModal()">&times;</span>
+            </div>
+            <div style="display:flex; justify-content:flex-start; margin-bottom:8px;">
+                <button class="btn-turquesa" id="btn-subir-factura" onclick="document.getElementById('invoice-files-input').click()" style="border:none; cursor:pointer;">Subir nuevo</button>
+                <input type="file" id="invoice-files-input" accept="application/pdf,.pdf" style="display:none;">
+            </div>
+            <div style="overflow-y:auto; flex:1; min-height:0;">
+                <table class="agenda-table">
+                    <thead><tr><th>Nombre</th><th>Fecha</th><th style="text-align:center;">Acciones</th></tr></thead>
+                    <tbody id="invoice-files-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal para la tabla agrupada por paciente -->
     <div id="modalTablaAgrupada" class="modal">
@@ -215,7 +245,8 @@
     <script src="js/config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
         const firebaseConfig = window.APP_CONFIG.firebase;
@@ -223,6 +254,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const storage = getStorage(app);
         let currentUid = null;
         const uCol = (name) => collection(db, "usuarios", currentUid, name);
         const uDoc = (name, id) => doc(db, "usuarios", currentUid, name, id);
@@ -1006,52 +1038,39 @@
                 const btnBar = printWindow.document.createElement('div');
                 btnBar.style.cssText = 'max-width:800px;margin:10px auto 30px;display:flex;gap:10px;font-family:"Segoe UI",Arial,sans-serif;';
                 btnBar.className = 'aviso-edicion-botones';
-                btnBar.innerHTML = `<button id="btn-guardar-pdf" style="padding:8px 16px;border:none;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;">Guardar como PDF<\/button>
+                const barStyle = printWindow.document.createElement('style');
+                barStyle.textContent = '@media print{.aviso-edicion-botones{display:none!important}}';
+                printWindow.document.head.appendChild(barStyle);
+                btnBar.innerHTML = `<button id="btn-guardar-pdf" style="padding:8px 16px;border:none;border-radius:6px;background:#3498db;color:#fff;cursor:pointer;">Guardar en la nube<\/button>
 <button id="btn-imprimir" style="padding:8px 16px;border:none;border-radius:6px;background:#2c3e50;color:#fff;cursor:pointer;">Imprimir<\/button>`;
                 printWindow.document.body.appendChild(btnBar);
 
                 printWindow.document.getElementById('btn-imprimir').addEventListener('click', () => printWindow.print());
-                printWindow.document.getElementById('btn-guardar-pdf').addEventListener('click', async () => {
+                const saveBtn = printWindow.document.getElementById('btn-guardar-pdf');
+                saveBtn.addEventListener('click', async () => {
                     if (typeof printWindow.html2pdf !== 'function') {
-                        printWindow.print();
+                        printWindow.alert('No se ha podido cargar el generador de PDF. Inténtelo de nuevo.');
                         return;
                     }
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Guardando...';
                     try {
-                        const pdfBlob = await printWindow.html2pdf()
-                            .set({
-                                margin: [10, 12, 10, 12],
-                                filename: suggestedFileNameWithExtension,
-                                image: { type: 'jpeg', quality: 0.98 },
-                                html2canvas: { scale: 2, useCORS: true },
-                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                            })
-                            .from(printWindow.document.querySelector('.page'))
-                            .outputPdf('blob');
+                        const pdfBlob = await renderInvoicePdf(printWindow, suggestedFileNameWithExtension);
 
-                        if (typeof window.showSaveFilePicker === 'function') {
-                            const fileHandle = await window.showSaveFilePicker({
-                                suggestedName: suggestedFileNameWithExtension,
-                                types: [{ description: 'Documento PDF', accept: { 'application/pdf': ['.pdf'] } }]
-                            });
-                            const writable = await fileHandle.createWritable();
-                            await writable.write(pdfBlob);
-                            await writable.close();
-                        } else {
-                            const downloadUrl = URL.createObjectURL(pdfBlob);
-                            const downloadLink = printWindow.document.createElement('a');
-                            downloadLink.href = downloadUrl;
-                            downloadLink.download = suggestedFileNameWithExtension;
-                            downloadLink.click();
-                            URL.revokeObjectURL(downloadUrl);
-                        }
+                        const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinNombre });
+                        if (ok) showCloudToast(printWindow);
+                        saveBtn.textContent = ok ? 'Guardada ✔' : 'Guardar en la nube';
+                        saveBtn.disabled = ok;
                     } catch (error) {
-                        if (error.name !== 'AbortError') printWindow.print();
+                        console.error('Error generando el PDF:', error);
+                        saveBtn.textContent = 'Guardar en la nube';
+                        saveBtn.disabled = false;
                     }
                 });
             }, 300);
         }
 
-        window.printGroupedInvoice = function(invoicesToPrint, invoiceRef) {
+        window.printGroupedInvoice = async function(invoicesToPrint, invoiceRef) {
             const printableInvoices = invoicesToPrint || currentInvoices.filter(i => !excludedIds.includes(i.id));
             if (printableInvoices.length === 0) return;
 
@@ -1081,26 +1100,6 @@
                 .trim();
             const suggestedFileNameWithExtension = `${suggestedFileName}.pdf`;
 
-            const copyWithLegacyClipboard = () => {
-                const clipboardInput = document.createElement('textarea');
-                clipboardInput.value = suggestedFileNameWithExtension;
-                clipboardInput.style.position = 'fixed';
-                clipboardInput.style.opacity = '0';
-                document.body.appendChild(clipboardInput);
-                clipboardInput.select();
-                try { document.execCommand('copy'); } catch (error) {}
-                clipboardInput.remove();
-            };
-
-            const copyFileNameToClipboard = () => {
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(suggestedFileNameWithExtension).catch(copyWithLegacyClipboard);
-                    return;
-                }
-                copyWithLegacyClipboard();
-            };
-            copyFileNameToClipboard();
-            alert(`Nombre copiado al portapapeles:\n${suggestedFileNameWithExtension}\n\nPéguelo en el campo del nombre con Ctrl+V.`);
 
             // Totales (ICA = 0 %)
             let totalBase = 0;
@@ -1221,49 +1220,176 @@
 <\/html>`);
             printWindow.document.close();
             printWindow.document.title = suggestedFileName;
-            setTimeout(async () => {
+            // html2pdf se carga de forma asíncrona en la ventana nueva: se espera hasta 10 s a que esté disponible
+            let waited = 0;
+            while (typeof printWindow.html2pdf !== 'function' && waited < 10000) {
+                await new Promise(r => setTimeout(r, 200));
+                waited += 200;
+            }
+            await new Promise(r => setTimeout(r, 500));
+            {
                 if (typeof printWindow.html2pdf !== 'function') {
                     printWindow.print();
                     return;
                 }
 
+                let pdfBlob = null;
                 try {
-                    const pdfBlob = await printWindow.html2pdf()
-                        .set({
-                            margin: [10, 12, 10, 12],
-                            filename: suggestedFileNameWithExtension,
-                            image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: { scale: 2, useCORS: true },
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                        })
-                        .from(printWindow.document.querySelector('.page'))
-                        .outputPdf('blob');
-
-                    if (typeof window.showSaveFilePicker === 'function') {
-                        const fileHandle = await window.showSaveFilePicker({
-                            suggestedName: suggestedFileNameWithExtension,
-                            types: [{
-                                description: 'Documento PDF',
-                                accept: { 'application/pdf': ['.pdf'] }
-                            }]
-                        });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(pdfBlob);
-                        await writable.close();
-                    } else {
-                        const downloadUrl = URL.createObjectURL(pdfBlob);
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = downloadUrl;
-                        downloadLink.download = suggestedFileNameWithExtension;
-                        downloadLink.click();
-                        URL.revokeObjectURL(downloadUrl);
-                    }
-                    printWindow.close();
+                    pdfBlob = await renderInvoicePdf(printWindow, suggestedFileNameWithExtension);
                 } catch (error) {
-                    if (error.name !== 'AbortError') printWindow.print();
+                    console.error('Error generando el PDF:', error);
                 }
-            }, 1000);
+
+                if (!pdfBlob) {
+                    printWindow.print();
+                    return;
+                }
+
+                const ok = await uploadInvoicePdf(pdfBlob, suggestedFileNameWithExtension, { n_factura: nFactura, clinica: clinic.nombre || first.clinica });
+                if (ok) showCloudToast(printWindow);
+            }
         }
+
+        // Genera el PDF con el mismo aspecto que la impresión: sin el margen de pantalla de .page
+        // (si no, se suma a los márgenes del PDF, la factura baja y se desborda de la página).
+        async function renderInvoicePdf(win, filename) {
+            const page = win.document.querySelector('.page');
+            const prev = { margin: page.style.margin, padding: page.style.padding, outline: page.style.outline, maxWidth: page.style.maxWidth, width: page.style.width };
+            page.style.margin = '0';
+            // El relleno lateral va DENTRO del lienzo capturado: así el texto alineado a la derecha nunca toca el borde y no se recorta su último carácter.
+            page.style.padding = '0 6mm';
+            page.style.outline = 'none';
+            page.style.maxWidth = 'none';
+            page.style.width = '190mm';
+            try {
+                return await win.html2pdf()
+                    .set({
+                        margin: win.Array.of(15, 10, 15, 10),
+                        filename,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                        pagebreak: { mode: win.Array.of('css', 'legacy') }
+                    })
+                    .from(page)
+                    .outputPdf('blob');
+            } finally {
+                Object.assign(page.style, prev);
+            }
+        }
+
+        // Mensaje flotante en la ventana de la factura (no se imprime)
+        function showCloudToast(win) {
+            const doc = win.document;
+            const toast = doc.createElement('div');
+            toast.className = 'cloud-toast';
+            toast.innerHTML = '<span style="font-size:22px;">☁️</span><span><b>Factura guardada en la nube</b><br><small>Ya puede consultarla desde Ficheros de facturas</small></span>';
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:14px 26px;background:linear-gradient(135deg,#1abc9c,#3498db);color:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-family:"Segoe UI",Arial,sans-serif;font-size:14px;z-index:9999;transition:opacity .6s;';
+            const style = doc.createElement('style');
+            style.textContent = '@media print{.cloud-toast{display:none!important}}';
+            doc.head.appendChild(style);
+            doc.body.appendChild(toast);
+            win.setTimeout(() => { toast.style.opacity = '0'; }, 4000);
+            win.setTimeout(() => toast.remove(), 4700);
+        }
+
+        // ---- Ficheros de facturas en Firebase Storage (metadatos en Firestore) ----
+        const MAX_INVOICE_FILE_SIZE = 10 * 1024 * 1024;
+        const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let invoiceFiles = [];
+
+        async function uploadInvoicePdf(file, name, extra = {}) {
+            try {
+                const fileName = name || file.name;
+                const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const storagePath = `usuarios/${currentUid}/facturas/${Date.now()}_${safeName}`;
+                const storageRef = ref(storage, storagePath);
+                // El Blob generado en la ventana emergente es de otro contexto JS y Firebase no lo reconoce
+                // como Blob (subiría texto en vez del PDF): se copia a un Blob de esta ventana.
+                const data = new Blob([new Uint8Array(await file.arrayBuffer())], { type: 'application/pdf' });
+                await uploadBytes(storageRef, data, { contentType: 'application/pdf' });
+                const url = await getDownloadURL(storageRef);
+                await addDoc(uCol('facturas_ficheros'), {
+                    nombre: fileName,
+                    n_factura: extra.n_factura || '',
+                    clinica: extra.clinica || '',
+                    tamano: data.size,
+                    rutaStorage: storagePath,
+                    url,
+                    fechaSubida: new Date().toISOString()
+                });
+                return true;
+            } catch (error) {
+                console.error('Error subiendo la factura a Firebase:', error);
+                alert('No se ha podido guardar la factura en la nube. Inténtelo de nuevo.');
+                return false;
+            }
+        }
+
+        async function loadInvoiceFiles() {
+            const body = document.getElementById('invoice-files-body');
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
+            try {
+                const snap = await getDocs(uCol('facturas_ficheros'));
+                invoiceFiles = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (b.fechaSubida || '').localeCompare(a.fechaSubida || ''));
+                if (!invoiceFiles.length) {
+                    body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6;">No hay ficheros de facturas.</td></tr>';
+                    return;
+                }
+                body.innerHTML = invoiceFiles.map(f => `<tr>
+                    <td>${escHtml(f.nombre)}</td>
+                    <td>${escHtml(f.fechaSubida ? new Date(f.fechaSubida).toLocaleDateString('es-ES') : '-')}</td>
+                    <td style="text-align:center; white-space:nowrap;">
+                        <a href="javascript:void(0)" class="action-icon" title="Abrir" onclick="openInvoiceFile('${f.id}')">👁️</a>
+                        <a href="javascript:void(0)" class="action-icon" title="Eliminar" onclick="deleteInvoiceFile('${f.id}')">🗑️</a>
+                    </td></tr>`).join('');
+            } catch (error) {
+                console.error('Error cargando ficheros de facturas:', error);
+                body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#d63031;">No se han podido cargar los ficheros.</td></tr>';
+            }
+        }
+
+        window.openInvoiceFilesModal = () => {
+            document.getElementById('modalFicherosFacturas').style.display = 'flex';
+            loadInvoiceFiles();
+        };
+        window.closeInvoiceFilesModal = () => { document.getElementById('modalFicherosFacturas').style.display = 'none'; };
+
+        window.openInvoiceFile = (id) => {
+            const f = invoiceFiles.find(x => x.id === id);
+            if (f) window.open(f.url, '_blank', 'noopener');
+        };
+
+        window.deleteInvoiceFile = async (id) => {
+            const f = invoiceFiles.find(x => x.id === id);
+            if (!f || !confirm(`¿Eliminar el fichero "${f.nombre}"?`)) return;
+            try {
+                await deleteObject(ref(storage, f.rutaStorage)).catch(e => { if (e.code !== 'storage/object-not-found') throw e; });
+                await deleteDoc(uDoc('facturas_ficheros', id));
+                await loadInvoiceFiles();
+            } catch (error) {
+                console.error('Error eliminando fichero:', error);
+                alert('No se ha podido eliminar el fichero.');
+            }
+        };
+
+        document.getElementById('invoice-files-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            if (file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF.'); return; }
+            if (file.size > MAX_INVOICE_FILE_SIZE) { alert('El archivo no puede superar los 10 MB.'); return; }
+            const btn = document.getElementById('btn-subir-factura');
+            btn.disabled = true;
+            btn.textContent = 'Subiendo...';
+            await uploadInvoicePdf(file, file.name);
+            btn.disabled = false;
+            btn.textContent = 'Subir nuevo';
+            await loadInvoiceFiles();
+        });
+
+        document.getElementById('btn-ficheros-facturas').addEventListener('click', window.openInvoiceFilesModal);
 
         // Exponer la función al objeto window para que sea accesible desde el onchange del HTML
         window.loadInvoices = loadInvoices;
@@ -1278,6 +1404,7 @@
         window.onclick = (e) => {
             if (e.target === document.getElementById('modalFacturaManual')) closeManualInvoiceModal();
             if (e.target === document.getElementById('modalTablaAgrupada')) closeGroupedTableModal();
+            if (e.target === document.getElementById('modalFicherosFacturas')) closeInvoiceFilesModal();
         };
     </script>
 </body>
