@@ -1,14 +1,5 @@
-// Generación del calendario .ics (sin datos clínicos: solo fecha, hora, duración, iniciales y centro)
+// Generación del calendario .ics (sin datos clínicos: solo cita, paciente y centro)
 const TZ = 'Europe/Madrid';
-const PARTICULAS = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'i', 'da', 'do', 'dos', 'van', 'von']);
-
-function iniciales(nombre) {
-    return String(nombre || '')
-        .split(/\s+/)
-        .filter(p => p && !PARTICULAS.has(p.toLowerCase()))
-        .map(p => p.charAt(0).toUpperCase())
-        .join('');
-}
 
 function escapar(texto) {
     return String(texto || '')
@@ -84,8 +75,8 @@ function construirIcs(citas, ahora = new Date()) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(c.fecha || '') || !/^\d{1,2}:\d{2}$/.test(c.hora || '')) continue;
         const duracion = Math.max(15, parseInt(c.duracion, 10) || 60);
         const lugar = c.centro || c.clinica || '';
-        const ini = iniciales(c.paciente) || 'Cita';
-        const resumen = lugar ? `${ini} - ${lugar}` : ini;
+        const paciente = String(c.paciente || '').trim() || 'Cita';
+        const resumen = lugar ? `${paciente} - ${lugar}` : paciente;
         lineas.push(
             'BEGIN:VEVENT',
             `UID:${c.id}@psicofact`,
@@ -102,4 +93,4 @@ function construirIcs(citas, ahora = new Date()) {
     return lineas.map(plegar).join('\r\n') + '\r\n';
 }
 
-module.exports = { construirIcs, iniciales };
+module.exports = { construirIcs };
