@@ -9,7 +9,6 @@
         { href: 'agenda.html', icon: '📅', label: 'Agenda', pages: ['agenda.html'] },
         { href: 'consultas.html', icon: '👤', label: 'Consultas', pages: ['consultas.html', 'con_pacientes.html', 'con_citas.html', 'facturas.html', 'expediente_paciente.html', 'lineavida.html', 'mapa_calor.html', 'sentiment_dashboard.html', 'copiloto.html', 'evaluacion.html', 'pautas.html', 'psilogia.html', 'documentos.html', 'tutores.html'] },
         { href: 'configuracion.html', icon: '⚙️', label: 'Configuración/Datos', pages: ['configuracion.html', 'pacientes.html', 'sociedades.html', 'clinicas.html', 'centros.html', 'estados.html'] },
-        { href: 'plan_bienestar.html', icon: '🌿', label: 'Plan de Bienestar', pages: ['plan_bienestar.html'] },
         { href: 'utilidades.html', icon: '🛠️', label: 'Utilidades', pages: ['utilidades.html'] },
         { href: 'herramientas.html', icon: '🚀', label: 'Herramientas', pages: ['herramientas.html'] },
         { href: 'admin.html', icon: '🛡️', label: 'Admin', pages: ['admin.html'], admin: true },
